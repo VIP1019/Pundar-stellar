@@ -20,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pundarapp.R
 import com.example.pundarapp.ui.theme.*
 
 enum class BottomNavItem(
@@ -51,56 +52,26 @@ fun PundarBottomBar(
                 selected = selected,
                 onClick = { onNavigate(item.route) },
                 icon = {
-                    if (item == BottomNavItem.CIRCLE) {
-                        // Special Circle icon with yellow accent
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = if (selected) {
-                                Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(PundarGold)
-                            } else {
-                                Modifier.size(48.dp)
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Home, // placeholder, overridden below
-                                contentDescription = item.label,
-                                tint = if (selected) PundarTextPrimary else PundarTextSecondary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            // We'll use text-based icons since we can't import custom drawables
-                            Text(
-                                text = when (item) {
-                                    BottomNavItem.CIRCLE -> "👥"
-                                    else -> ""
-                                },
-                                fontSize = 20.sp
-                            )
-                        }
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = when (item) {
-                                    BottomNavItem.HOME -> if (selected) "🏠" else "🏠"
-                                    BottomNavItem.PAY -> if (selected) "💳" else "💳"
-                                    BottomNavItem.GROW -> if (selected) "📈" else "📈"
-                                    else -> ""
-                                },
-                                fontSize = 22.sp
-                            )
-                        }
+                    val iconRes = when (item) {
+                        BottomNavItem.HOME -> R.drawable.home
+                        BottomNavItem.PAY -> R.drawable.pay
+                        BottomNavItem.CIRCLE -> R.drawable.circle
+                        BottomNavItem.GROW -> R.drawable.grow
                     }
+
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = item.label,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(24.dp)
+                    )
                 },
                 label = {
                     Text(
                         text = item.label,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (selected) {
-                            if (item == BottomNavItem.CIRCLE) PundarGold else PundarBlue
-                        } else PundarTextSecondary
+                        color = if (selected) PundarBlue else PundarTextSecondary
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(

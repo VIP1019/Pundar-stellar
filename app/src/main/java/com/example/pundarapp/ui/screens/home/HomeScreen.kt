@@ -1,5 +1,6 @@
 package com.example.pundarapp.ui.screens.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,11 +19,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.pundarapp.R
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
@@ -75,7 +78,7 @@ fun HomeScreen(navController: NavController) {
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "\"Every Peso Keeps Building.\"",
+                                text = "\"Every Transaction Counts.\"",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Color.White.copy(alpha = 0.8f),
                                 fontWeight = FontWeight.Medium
@@ -151,17 +154,18 @@ fun HomeScreen(navController: NavController) {
                 PundarCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        JourneyStep("Spend", "✅", PundarSuccess, true)
+                        JourneyStep("Spend", R.drawable.spend, PundarSuccess, true)
                         JourneyArrow()
-                        JourneyStep("Save", "✅", PundarSuccess, true)
+                        JourneyStep("Save", R.drawable.save, PundarSuccess, true)
                         JourneyArrow()
-                        JourneyStep("Grow", "🔄", PundarBlue, true)
+                        JourneyStep("Grow", R.drawable.grow1, PundarBlue, true)
                         JourneyArrow()
-                        JourneyStep("Score", "⭐", PundarGold, true)
+                        JourneyStep("Score", R.drawable.score, PundarGold, true)
                         JourneyArrow()
-                        JourneyStep("Access", "🔒", PundarTextSecondary, false)
+                        JourneyStep("Access", R.drawable.access, PundarTextSecondary, false)
                     }
                 }
             }
@@ -336,9 +340,13 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun JourneyStep(label: String, emoji: String, color: Color, isComplete: Boolean) {
+private fun JourneyStep(label: String, iconRes: Int, color: Color, isComplete: Boolean) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = emoji, fontSize = 18.sp)
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = label,
+            modifier = Modifier.size(24.dp)
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             text = label,
