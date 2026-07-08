@@ -23,24 +23,33 @@ import com.example.pundarapp.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PundarMainTopBar(
+    userName: String = "User",
     userInitials: String = "JD",
     pundarScore: Int = 850,
     onNotificationClick: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
-            Text(
-                text = "PUNDAR",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = PundarTextPrimary
-            )
+            Column {
+                Text(
+                    text = "Magandang gabi, ${userName.split(" ").first()}! 👋",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PundarTextPrimary
+                )
+                Text(
+                    text = "\"Every Transaction Counts.\"",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = PundarTextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         },
         navigationIcon = {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .padding(start = 8.dp)
+                    .padding(start = 12.dp, end = 8.dp)
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(PundarBlue)

@@ -39,6 +39,7 @@ fun HomeScreen(navController: NavController) {
     Scaffold(
         topBar = {
             PundarMainTopBar(
+                userName = user.name,
                 userInitials = user.initials,
                 pundarScore = user.pundarScore
             )
@@ -56,7 +57,7 @@ fun HomeScreen(navController: NavController) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                 ) {
                     Box(
@@ -67,31 +68,150 @@ fun HomeScreen(navController: NavController) {
                                     colors = listOf(PundarBlue, PundarBlueDark)
                                 )
                             )
-                            .padding(20.dp)
                     ) {
+                        // Background Illustration (Optional: if you have a wallet illustration)
+                        // Image(
+                        //     painter = painterResource(id = R.drawable.wallet_illustration),
+                        //     contentDescription = null,
+                        //     modifier = Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 10.dp).size(150.dp)
+                        // )
+
                         Column {
-                            Text(
-                                text = "Magandang gabi, ${user.name.split(" ").first()}! 👋",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                            Column(modifier = Modifier.padding(24.dp)) {
+                                Text(
+                                    text = "Total Saved",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    text = "₱ 357,000",
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Visibility,
+                                        contentDescription = "View balance",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "View Saved Balance",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 24.dp),
+                                color = Color.White.copy(alpha = 0.15f),
+                                thickness = 0.5.dp
                             )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = "\"Every Transaction Counts.\"",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(Modifier.height(16.dp))
 
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min)
+                                    .padding(vertical = 16.dp)
                             ) {
-                                HomeStatItem("Total Saved", "₱ 357,000", Color.White)
-                                HomeStatItem("Invested", "₱ 124,500", Color.White)
-                                HomeStatItem("Score", "${user.pundarScore}", PundarGold)
+                                // Invested Section
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 20.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White.copy(alpha = 0.15f))
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.invested),
+                                            contentDescription = null
+                                        )
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Invested",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "₱ 124,500",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                VerticalDivider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = Color.White.copy(alpha = 0.15f),
+                                    thickness = 0.5.dp
+                                )
+
+                                // Credit Score Section
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 20.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White.copy(alpha = 0.15f))
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.score1),
+                                            contentDescription = null
+                                        )
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Credit Score",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "850",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -269,23 +389,6 @@ fun HomeScreen(navController: NavController) {
                 Spacer(Modifier.height(8.dp))
             }
         }
-    }
-}
-
-@Composable
-private fun HomeStatItem(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = 0.7f)
-        )
     }
 }
 

@@ -30,6 +30,7 @@ fun PayScreen(navController: NavController) {
     Scaffold(
         topBar = {
             PundarMainTopBar(
+                userName = SampleData.currentUser.name,
                 userInitials = SampleData.currentUser.initials,
                 pundarScore = SampleData.currentUser.pundarScore
             )
