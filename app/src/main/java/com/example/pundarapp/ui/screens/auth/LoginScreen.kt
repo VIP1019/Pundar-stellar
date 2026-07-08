@@ -25,6 +25,7 @@ import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,20 +49,11 @@ fun LoginScreen(navController: NavController) {
             Spacer(modifier = Modifier.weight(1f))
 
             // Logo & Branding
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = PundarBlue,
-                modifier = Modifier.size(80.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "P",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-                }
-            }
+            Image(
+                painter = painterResource(id = R.drawable.logo), // Replace with your file name
+                contentDescription = "App Logo",
+                modifier = Modifier.size(120.dp) // Adjust size as needed
+            )
             
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -75,7 +67,7 @@ fun LoginScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "\"Every Peso Keeps Building.\"",
+                text = "\"Every Transaction Counts.\"",
                 style = MaterialTheme.typography.bodyLarge,
                 color = PundarTextSecondary,
                 textAlign = TextAlign.Center
