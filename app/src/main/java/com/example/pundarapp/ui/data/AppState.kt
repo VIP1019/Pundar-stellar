@@ -1,0 +1,125 @@
+package com.example.pundarapp.ui.data
+
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+
+/**
+ * Central in-memory app state shared across all screens.
+ * Uses Compose snapshot state so changes automatically recompose subscribers.
+ */
+object AppState {
+
+    // ── PAY ─────────────────────────────────────────────────────────
+    val bills = mutableStateListOf(*SampleData.recentBills.toTypedArray())
+
+    fun addBill(bill: GroupBill) {
+        bills.add(0, bill) // newest first
+        addHomeActivity(
+            HomeActivity(
+                icon = "payment",
+                title = bill.name,
+                subtitle = "Pending • ${bill.memberCount} members",
+                amount = "₱ ${String.format("%,.2f", bill.yourShare)}",
+                isPositive = false,
+                module = "Pay"
+            )
+        )
+    }
+
+    // ── CIRCLE ──────────────────────────────────────────────────────
+    val circles = mutableStateListOf(*SampleData.circles.toTypedArray())
+    val pendingInvitation = mutableStateOf<CircleInvitation?>(SampleData.circleInvitation)
+
+    fun acceptInvitation(invitation: CircleInvitation) {
+        val newCircle = Circle(
+            id = "circle_${invitation.id}",
+            name = invitation.circleName,
+            targetAmount = invitation.targetAmount,
+            savedAmount = invitation.targetAmount * invitation.fundedPercent / 100.0,
+            targetDate = "Dec 2025",
+            memberCount = invitation.memberCount + 1,
+            contributionPerMonth = invitation.monthlyContribution,
+            members = listOf(
+                CircleMember(
+                    name = SampleData.currentUser.name,
+                    initials = SampleData.currentUser.initials,
+                    sharePercent = (100.0 / (invitation.memberCount + 1)).toInt(),
+                    amount = invitation.monthlyContribution,
+                    status = ContributionStatus.PAID,
+                    isYou = true,
+                    avatarColor = 0xFF0052CC
+                )
+            ),
+            isActive = true
+        )
+        circles.add(0, newCircle)
+        pendingInvitation.value = null
+
+        addHomeActivity(
+            HomeActivity(
+                icon = "savings",
+                title = invitation.circleName,
+                subtitle = "Joined circle",
+                amount = "+₱ ${String.format("%,.0f", invitation.monthlyContribution)}",
+                isPositive = true,
+                module = "Circle"
+            )
+        )
+    }
+
+    fun contributeToCircle(circleId: String, amount: Double) {
+        val index = circles.indexOfFirst { it.id == circleId }
+        if (index >= 0) {
+            val old = circles[index]
+            circles[index] = old.copy(
+                savedAmount = (old.savedAmount + amount).coerceAtMost(old.targetAmount)
+            )
+            addHomeActivity(
+                HomeActivity(
+                    icon = "savings",
+                    title = old.name,
+                    subtitle = "Contribution sent",
+                    amount = "+₱ ${String.format("%,.0f", amount)}",
+                    isPositive = true,
+                    module = "Circle"
+                )
+            )
+        }
+    }
+
+    // ── GROW ────────────────────────────────────────────────────────
+    val portfolio = mutableStateOf(SampleData.portfolio)
+
+    fun invest(amount: Double) {
+        val old = portfolio.value
+        portfolio.value = old.copy(
+            totalValue = old.totalValue + amount,
+            totalReturnAmount = old.totalReturnAmount + amount * 0.01
+        )
+        addHomeActivity(
+            HomeActivity(
+                icon = "trending_up",
+                title = "Investment",
+                subtitle = "Invested via Grow",
+                amount = "+₱ ${String.format("%,.2f", amount)}",
+                isPositive = true,
+                module = "Grow"
+            )
+        )
+    }
+
+    fun withdraw(amount: Double) {
+        val old = portfolio.value
+        portfolio.value = old.copy(
+            totalValue = (old.totalValue - amount).coerceAtLeast(0.0)
+        )
+    }
+
+    // ── HOME ACTIVITY FEED ──────────────────────────────────────────
+    val homeActivities = mutableStateListOf(*SampleData.homeActivities.toTypedArray())
+
+    private fun addHomeActivity(activity: HomeActivity) {
+        homeActivities.add(0, activity) // newest first
+        if (homeActivities.size > 20) homeActivities.removeLast()
+    }
+}
