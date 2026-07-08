@@ -27,15 +27,35 @@ import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.HomeRepository
+import com.example.pundarapp.ui.data.HomeActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController) {
     val user = SampleData.currentUser
+    
+    var userName by remember { mutableStateOf("User") }
+    var recentActivities by remember { mutableStateOf<List<HomeActivity>>(emptyList()) }
+    var isLoadingActivities by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        userName = AuthRepository.getCurrentUserName().split(" ").first()
+        val userId = AuthRepository.getCurrentUserId()
+        if (userId != null) {
+            val result = HomeRepository.getRecentActivities(userId)
+            if (result.isSuccess) {
+                recentActivities = result.getOrDefault(emptyList())
+            }
+        }
+        isLoadingActivities = false
+    }
 
     Scaffold(
         topBar = {
             PundarMainTopBar(
+                userName = userName,
                 userInitials = user.initials,
                 pundarScore = user.pundarScore
             )
@@ -68,7 +88,7 @@ fun HomeScreen(navController: NavController) {
                     ) {
                         Column {
                             Text(
-                                text = "Magandang gabi, ${user.name.split(" ").first()}! 👋",
+                                text = "Welcome, $userName! 👋",
                                 style = MaterialTheme.typography.titleLarge,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
@@ -189,65 +209,87 @@ fun HomeScreen(navController: NavController) {
                 }
             }
 
-            items(SampleData.homeActivities) { activity ->
-                PundarCard {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    when (activity.module) {
-                                        "Pay" -> PundarBlueSubtle
-                                        "Circle" -> PundarGoldLight
-                                        "Grow" -> PundarSuccessLight
-                                        else -> PundarSurfaceVariant
-                                    }
-                                )
+            if (isLoadingActivities) {
+                item {
+                    Text(
+                        text = "Loading activities...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PundarTextSecondary,
+                        modifier = Modifier.padding(vertical = 24.dp).fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else if (recentActivities.isEmpty()) {
+                item {
+                    Text(
+                        text = "No recent activity yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PundarTextSecondary,
+                        modifier = Modifier.padding(vertical = 24.dp).fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                items(recentActivities) { activity ->
+                    PundarCard {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = when (activity.module) {
-                                    "Pay" -> Icons.Filled.Receipt
-                                    "Circle" -> Icons.Filled.Groups
-                                    "Grow" -> Icons.AutoMirrored.Filled.TrendingUp
-                                    else -> Icons.Filled.Info
-                                },
-                                contentDescription = null,
-                                tint = when (activity.module) {
-                                    "Pay" -> PundarBlue
-                                    "Circle" -> PundarGoldDark
-                                    "Grow" -> PundarSuccess
-                                    else -> PundarTextSecondary
-                                },
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when (activity.module) {
+                                            "Pay" -> PundarBlueSubtle
+                                            "Circle" -> PundarGoldLight
+                                            "Grow" -> PundarSuccessLight
+                                            else -> PundarSurfaceVariant
+                                        }
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = when (activity.module) {
+                                        "Pay" -> Icons.Filled.Receipt
+                                        "Circle" -> Icons.Filled.Groups
+                                        "Grow" -> Icons.AutoMirrored.Filled.TrendingUp
+                                        else -> Icons.Filled.Info
+                                    },
+                                    contentDescription = null,
+                                    tint = when (activity.module) {
+                                        "Pay" -> PundarBlue
+                                        "Circle" -> PundarGoldDark
+                                        "Grow" -> PundarSuccess
+                                        else -> PundarTextSecondary
+                                    },
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
 
-                        Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(12.dp))
 
-                        Column(modifier = Modifier.weight(1f)) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = activity.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = activity.subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = PundarTextSecondary
+                                )
+                            }
+
                             Text(
-                                text = activity.title,
+                                text = activity.amount,
                                 style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = activity.subtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = PundarTextSecondary
+                                fontWeight = FontWeight.Bold,
+                                color = if (activity.isPositive) PundarSuccess else PundarTextPrimary
                             )
                         }
-
-                        Text(
-                            text = activity.amount,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (activity.isPositive) PundarSuccess else PundarTextPrimary
-                        )
                     }
                 }
             }

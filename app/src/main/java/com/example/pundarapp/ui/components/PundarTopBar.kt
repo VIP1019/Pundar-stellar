@@ -32,7 +32,7 @@ fun PundarMainTopBar(
         title = {
             Column {
                 Text(
-                    text = "Magandang gabi, ${userName.split(" ").first()}! 👋",
+                    text = "Welcome, ${userName.split(" ").first()}! 👋",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = PundarTextPrimary

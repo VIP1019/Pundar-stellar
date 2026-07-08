@@ -2,6 +2,8 @@ package com.example.pundarapp.data.remote
 
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 object AuthRepository {
     private val auth = Supabase.client.auth
@@ -19,11 +21,14 @@ object AuthRepository {
         }
     }
 
-    suspend fun register(email: String, password: String): Result<Boolean> {
+    suspend fun register(email: String, password: String, fullName: String): Result<Boolean> {
         return try {
             auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
+                data = buildJsonObject {
+                    put("full_name", fullName)
+                }
             }
             Result.success(true)
         } catch (e: Exception) {
@@ -34,6 +39,16 @@ object AuthRepository {
 
     fun isUserLoggedIn(): Boolean {
         return auth.currentSessionOrNull() != null
+    }
+
+    fun getCurrentUserId(): String? {
+        return auth.currentSessionOrNull()?.user?.id
+    }
+
+    fun getCurrentUserName(): String {
+        val user = auth.currentSessionOrNull()?.user
+        val name = user?.userMetadata?.get("full_name")?.toString()?.replace("\"", "")
+        return name ?: "User"
     }
 
     suspend fun logout() {

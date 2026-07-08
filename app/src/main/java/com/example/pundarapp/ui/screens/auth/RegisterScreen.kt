@@ -169,7 +169,7 @@ fun RegisterScreen(navController: NavController) {
                     isLoading = true
                     errorMessage = null
                     coroutineScope.launch {
-                        val result = AuthRepository.register(emailOrPhone, password)
+                        val result = AuthRepository.register(emailOrPhone, password, fullName)
                         isLoading = false
                         if (result.isSuccess) {
                             val encodedEmail = java.net.URLEncoder.encode(emailOrPhone, "UTF-8")
