@@ -1,5 +1,6 @@
 package com.example.pundarapp.ui.screens.auth
 
+import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,13 +27,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.R
 import com.example.pundarapp.data.remote.AuthRepository
-import com.example.pundarapp.data.remote.Supabase
+import com.example.pundarapp.data.remote.GoogleSignInHelper
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
-import io.github.jan.supabase.compose.auth.composeAuth
-import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
-import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,27 +43,7 @@ fun LoginScreen(navController: NavController) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
     val coroutineScope = rememberCoroutineScope()
-
-    val googleSignIn = Supabase.client.composeAuth.rememberSignInWithGoogle(
-        onResult = { result ->
-            when (result) {
-                is NativeSignInResult.Success -> {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
-                    }
-                }
-                is NativeSignInResult.Error -> {
-                    errorMessage = result.message
-                }
-                is NativeSignInResult.ClosedByUser -> {
-                    // Do nothing
-                }
-                is NativeSignInResult.NetworkError -> {
-                    errorMessage = result.message
-                }
-            }
-        }
-    )
+    val context = LocalContext.current
 
     Scaffold(
         containerColor = PundarBackground
@@ -220,21 +199,37 @@ fun LoginScreen(navController: NavController) {
             
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Google Button
+            // Google Button - uses CredentialManager directly (no compose-auth)
             OutlinedButton(
-                onClick = { googleSignIn.startFlow() },
+                onClick = {
+                    isLoading = true
+                    errorMessage = null
+                    coroutineScope.launch {
+                        val result = GoogleSignInHelper.signInWithGoogle(context as Activity)
+                        isLoading = false
+                        if (result.isSuccess) {
+                            navController.navigate(Routes.HOME) {
+                                popUpTo(Routes.LOGIN) { inclusive = true }
+                            }
+                        } else {
+                            val msg = result.exceptionOrNull()?.message ?: ""
+                            if (msg != "cancelled") {
+                                errorMessage = msg.ifBlank { "Google sign-in failed." }
+                            }
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTextPrimary)
             ) {
-                // Using an internal icon placeholder or generic Android icon if Google icon not available
                 Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_myplaces), // Placeholder
+                    painter = painterResource(id = android.R.drawable.ic_menu_myplaces),
                     contentDescription = "Google",
                     modifier = Modifier.size(24.dp),
-                    tint = androidx.compose.ui.graphics.Color.Unspecified
+                    tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
