@@ -1,5 +1,11 @@
 import java.util.Properties
 
+val properties = Properties()
+val propertiesFile = project.rootProject.file("local.properties")
+if (propertiesFile.exists()) {
+    properties.load(propertiesFile.inputStream())
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -14,22 +20,19 @@ android {
     defaultConfig {
         applicationId = "com.example.pundarapp"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
-        val properties = Properties()
-        val propertiesFile = project.rootProject.file("local.properties")
-        if (propertiesFile.exists()) {
-            properties.load(propertiesFile.inputStream())
-        }
-        val supabaseUrl = properties.getProperty("SUPABASE_URL", "\"\"")
-        val supabaseAnonKey = properties.getProperty("SUPABASE_ANON_KEY", "\"\"")
+        val supabaseUrl = properties.getProperty("SUPABASE_URL", "")
+        val supabaseAnonKey = properties.getProperty("SUPABASE_ANON_KEY", "")
+        val googleWebClientId = properties.getProperty("GOOGLE_WEB_CLIENT_ID", "YOUR_WEB_CLIENT_ID_HERE")
         
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildTypes {
@@ -79,6 +82,8 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.auth)
     implementation(libs.supabase.realtime)
+    implementation(libs.supabase.compose.auth)
+    implementation(libs.supabase.compose.auth.ui)
 
     // Ktor
     implementation(libs.ktor.client.core)

@@ -13,18 +13,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.pundarapp.R
+import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.Supabase
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
-import com.example.pundarapp.data.remote.AuthRepository
+import io.github.jan.supabase.compose.auth.composeAuth
+import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
+import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
 import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +45,27 @@ fun RegisterScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+
+    val googleSignIn = Supabase.client.composeAuth.rememberSignInWithGoogle(
+        onResult = { result ->
+            when (result) {
+                is NativeSignInResult.Success -> {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+                is NativeSignInResult.Error -> {
+                    errorMessage = result.message
+                }
+                is NativeSignInResult.ClosedByUser -> {
+                    // Do nothing
+                }
+                is NativeSignInResult.NetworkError -> {
+                    errorMessage = result.message
+                }
+            }
+        }
+    )
 
     Scaffold(
         containerColor = PundarBackground
@@ -162,18 +191,86 @@ fun RegisterScreen(navController: NavController) {
                     isLoading = true
                     errorMessage = null
                     coroutineScope.launch {
-                        val success = AuthRepository.register(emailOrPhone, password)
+                        val result = AuthRepository.register(emailOrPhone, password)
                         isLoading = false
-                        if (success) {
-                            navController.navigate(Routes.HOME) {
-                                popUpTo(Routes.LOGIN) { inclusive = true }
+                        if (result.isSuccess) {
+                            val encodedEmail = java.net.URLEncoder.encode(emailOrPhone, "UTF-8")
+                            navController.navigate(Routes.emailConfirm(encodedEmail)) {
+                                popUpTo(Routes.LOGIN)
                             }
                         } else {
-                            errorMessage = "Registration failed. Please try again."
+                            errorMessage = result.exceptionOrNull()?.message ?: "Registration failed. Please try again."
                         }
                     }
                 }
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Or divider
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f), color = PundarTextSecondary.copy(alpha = 0.3f))
+                Text(
+                    text = "Or sign up with",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PundarTextSecondary,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                HorizontalDivider(modifier = Modifier.weight(1f), color = PundarTextSecondary.copy(alpha = 0.3f))
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Google Button
+            OutlinedButton(
+                onClick = { googleSignIn.startFlow() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTextPrimary)
+            ) {
+                Icon(
+                    painter = painterResource(id = android.R.drawable.ic_menu_myplaces), // Placeholder
+                    contentDescription = "Google",
+                    modifier = Modifier.size(24.dp),
+                    tint = androidx.compose.ui.graphics.Color.Unspecified
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Google",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Phone Button
+            OutlinedButton(
+                onClick = { navController.navigate(Routes.PHONE_LOGIN) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTextPrimary)
+            ) {
+                Icon(
+                    painter = painterResource(id = android.R.drawable.ic_menu_call),
+                    contentDescription = "Phone",
+                    modifier = Modifier.size(24.dp),
+                    tint = PundarBlue
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Phone Number",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
