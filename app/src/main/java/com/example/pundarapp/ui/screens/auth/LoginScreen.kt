@@ -26,6 +26,8 @@ import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.R
+import com.example.pundarapp.data.remote.AuthRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +35,9 @@ fun LoginScreen(navController: NavController) {
     var emailOrPhone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = PundarBackground
@@ -133,11 +138,31 @@ fun LoginScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    color = PundarError,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
             PundarPrimaryButton(
-                text = "Sign In",
+                text = if (isLoading) "Signing In..." else "Sign In",
+                enabled = !isLoading && emailOrPhone.isNotBlank() && password.isNotBlank(),
                 onClick = { 
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    isLoading = true
+                    errorMessage = null
+                    coroutineScope.launch {
+                        val success = AuthRepository.login(emailOrPhone, password)
+                        isLoading = false
+                        if (success) {
+                            navController.navigate(Routes.HOME) {
+                                popUpTo(Routes.LOGIN) { inclusive = true }
+                            }
+                        } else {
+                            errorMessage = "Login failed. Please check your credentials."
+                        }
                     }
                 }
             )

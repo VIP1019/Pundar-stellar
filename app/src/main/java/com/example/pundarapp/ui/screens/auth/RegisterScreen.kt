@@ -23,6 +23,8 @@ import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.data.remote.AuthRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +34,9 @@ fun RegisterScreen(navController: NavController) {
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = PundarBackground
@@ -141,11 +146,31 @@ fun RegisterScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    color = PundarError,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
             PundarPrimaryButton(
-                text = "Register",
+                text = if (isLoading) "Registering..." else "Register",
+                enabled = !isLoading && fullName.isNotBlank() && emailOrPhone.isNotBlank() && password.isNotBlank() && password == confirmPassword,
                 onClick = { 
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    isLoading = true
+                    errorMessage = null
+                    coroutineScope.launch {
+                        val success = AuthRepository.register(emailOrPhone, password)
+                        isLoading = false
+                        if (success) {
+                            navController.navigate(Routes.HOME) {
+                                popUpTo(Routes.LOGIN) { inclusive = true }
+                            }
+                        } else {
+                            errorMessage = "Registration failed. Please try again."
+                        }
                     }
                 }
             )

@@ -2,6 +2,11 @@ package com.example.pundarapp.ui.data
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.PayRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Central in-memory app state shared across all screens.
@@ -11,9 +16,30 @@ object AppState {
 
     // ── PAY ─────────────────────────────────────────────────────────
     val bills = mutableStateListOf(*SampleData.recentBills.toTypedArray())
+    private val scope = CoroutineScope(Dispatchers.IO)
+
+    init {
+        // Try to sync with Supabase if logged in
+        scope.launch {
+            if (AuthRepository.isUserLoggedIn()) {
+                val remoteBills = PayRepository.getBills()
+                if (remoteBills.isNotEmpty()) {
+                    bills.clear()
+                    bills.addAll(remoteBills)
+                }
+            }
+        }
+    }
 
     fun addBill(bill: GroupBill) {
         bills.add(0, bill) // newest first
+        
+        scope.launch {
+            if (AuthRepository.isUserLoggedIn()) {
+                PayRepository.createBill(bill)
+            }
+        }
+
         addHomeActivity(
             HomeActivity(
                 icon = "payment",
