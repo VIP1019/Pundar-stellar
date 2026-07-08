@@ -19,19 +19,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.*
+import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
-import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayScreen(navController: NavController) {
+    // Read from AppState — auto-recomposes when bills are added
+    val bills = AppState.bills
+
+    val settledCount = bills.count { it.status == BillStatus.SETTLED }
+    val pendingCount = bills.count { it.status == BillStatus.PENDING || it.status == BillStatus.PARTIAL }
+    val monthTotal = bills.sumOf { it.yourShare }
+
     Scaffold(
         topBar = {
             PundarMainTopBar(
-                userInitials = SampleData.currentUser.initials,
-                pundarScore = SampleData.currentUser.pundarScore
+                userInitials = com.example.pundarapp.ui.data.SampleData.currentUser.initials,
+                pundarScore = com.example.pundarapp.ui.data.SampleData.currentUser.pundarScore
             )
         },
         floatingActionButton = {
@@ -43,91 +50,74 @@ fun PayScreen(navController: NavController) {
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "New Bill")
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    "New Group Bill",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("New Group Bill", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
         },
         containerColor = PundarBackground
     ) { padding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text(
-                    text = "PUNDAR Pay",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = PundarTextPrimary
-                )
+                Text("PUNDAR Pay", style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.ExtraBold, color = PundarTextPrimary)
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Intelligent, transparent settlement of shared expenses",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = PundarTextSecondary
-                )
+                Text("Intelligent, transparent settlement of shared expenses",
+                    style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
             }
 
-            // Summary card
+            // Summary card — live data
             item {
                 PundarCard(accentColor = PundarBlue) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        PaySummaryItem("This Month", "₱ 4,826.67", PundarTextPrimary)
-                        PaySummaryItem("Settled", "5 bills", PundarSuccess)
-                        PaySummaryItem("Pending", "1 bill", PundarWarning)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        PaySummaryItem("This Month", "₱ ${String.format("%,.2f", monthTotal)}", PundarTextPrimary)
+                        PaySummaryItem("Settled", "$settledCount bills", PundarSuccess)
+                        PaySummaryItem("Pending", "$pendingCount bills", PundarWarning)
                     }
                 }
             }
 
             // Recent splits header
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
+                Row(modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Recent Splits",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    TextButton(onClick = { }) {
-                        Text("View All", color = PundarBlue)
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("Recent Splits", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    TextButton(onClick = { }) { Text("View All", color = PundarBlue) }
+                }
+            }
+
+            if (bills.isEmpty()) {
+                item {
+                    PundarCard {
+                        Text(
+                            "No bills yet. Tap \"New Group Bill\" to get started!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = PundarTextSecondary
+                        )
                     }
                 }
             }
 
-            // Bill items
-            items(SampleData.recentBills) { bill ->
+            // Bill items — now clickable → BillDetailScreen
+            items(bills.toList()) { bill ->
                 PundarCard(
-                    modifier = Modifier.clickable { }
+                    modifier = Modifier.clickable {
+                        navController.navigate(Routes.billDetail(bill.id))
+                    }
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Status icon
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    when (bill.status) {
-                                        BillStatus.SETTLED -> PundarSuccessLight
-                                        BillStatus.PENDING -> PundarWarningLight
-                                        BillStatus.PARTIAL -> PundarInfoLight
-                                    }
-                                )
+                            modifier = Modifier.size(48.dp).clip(CircleShape).background(
+                                when (bill.status) {
+                                    BillStatus.SETTLED -> PundarSuccessLight
+                                    BillStatus.PENDING -> PundarWarningLight
+                                    BillStatus.PARTIAL -> PundarInfoLight
+                                }
+                            )
                         ) {
                             Icon(
                                 imageVector = when (bill.status) {
@@ -144,15 +134,9 @@ fun PayScreen(navController: NavController) {
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-
                         Spacer(Modifier.width(12.dp))
-
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = bill.name,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Text(bill.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(2.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
@@ -175,43 +159,23 @@ fun PayScreen(navController: NavController) {
                                 )
                             }
                         }
-
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "₱ ${String.format("%,.2f", bill.totalAmount)}",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Your share: ₱ ${String.format("%,.2f", bill.yourShare)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = PundarTextSecondary
-                            )
+                            Text("₱ ${String.format("%,.2f", bill.totalAmount)}",
+                                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text("Your share: ₱ ${String.format("%,.2f", bill.yourShare)}",
+                                style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
                         }
                     }
                 }
             }
 
-            // PUNDAR Score note
             item {
                 Spacer(Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Verified,
-                        contentDescription = null,
-                        tint = PundarBlue,
-                        modifier = Modifier.size(16.dp)
-                    )
+                Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Verified, null, tint = PundarBlue, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "Settlement builds your PUNDAR Score.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = PundarTextSecondary
-                    )
+                    Text("Settlement builds your PUNDAR Score.", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
                 }
                 Spacer(Modifier.height(80.dp))
             }
@@ -222,16 +186,7 @@ fun PayScreen(navController: NavController) {
 @Composable
 private fun PaySummaryItem(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = PundarTextSecondary
-        )
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
     }
 }
