@@ -115,8 +115,20 @@ object AppState {
         val index = circles.indexOfFirst { it.id == circleId }
         if (index >= 0) {
             val old = circles[index]
+            // Update the member's contribution status and amount
+            val updatedMembers = old.members.map { member ->
+                if (member.isYou) {
+                    member.copy(
+                        status = ContributionStatus.PAID,
+                        amount = member.amount + amount
+                    )
+                } else {
+                    member
+                }
+            }
             circles[index] = old.copy(
-                savedAmount = (old.savedAmount + amount).coerceAtMost(old.targetAmount)
+                savedAmount = (old.savedAmount + amount).coerceAtMost(old.targetAmount),
+                members = updatedMembers
             )
             addHomeActivity(
                 HomeActivity(

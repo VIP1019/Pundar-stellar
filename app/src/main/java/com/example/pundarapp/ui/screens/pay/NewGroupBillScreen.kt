@@ -206,7 +206,7 @@ fun NewGroupBillScreen(navController: NavController) {
                     )
                     if (sharePerMember > 0) {
                         Text(
-                            text = "₱ ${String.format("%,.2f")} each",
+                            text = "₱ ${String.format("%,.2f", sharePerMember)} each",
                             style = MaterialTheme.typography.labelLarge,
                             color = PundarBlue,
                             fontWeight = FontWeight.SemiBold

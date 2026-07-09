@@ -32,7 +32,7 @@ fun CircleScreen(navController: NavController) {
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { },
+                onClick = { navController.navigate(Routes.CIRCLE_CREATE) },
                 containerColor = PundarGold,
                 contentColor = PundarTextPrimary,
                 shape = RoundedCornerShape(16.dp)

@@ -24,8 +24,10 @@ import com.example.pundarapp.ui.screens.home.UserSettingsScreen
 import com.example.pundarapp.ui.screens.pay.BillDetailScreen
 import com.example.pundarapp.ui.screens.pay.NewGroupBillScreen
 import com.example.pundarapp.ui.screens.pay.PayScreen
+import com.example.pundarapp.ui.screens.SplashScreen
 
 object Routes {
+    const val SPLASH = "splash"
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
@@ -76,9 +78,18 @@ fun PundarNavigation() {
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Routes.LOGIN,
+            startDestination = Routes.SPLASH,
             modifier = Modifier.padding(paddingValues)
         ) {
+            composable(Routes.SPLASH) {
+                SplashScreen(
+                    onSplashFinished = {
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(Routes.SPLASH) { inclusive = true }
+                        }
+                    }
+                )
+            }
             composable(Routes.LOGIN) {
                 LoginScreen(navController = navController)
             }
