@@ -1,9 +1,11 @@
 package com.example.pundarapp.data.remote
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
 object AuthRepository {
+    private const val TAG = "AuthRepository"
     private val db = FirebaseFirestore.getInstance()
     private val usersCollection = db.collection("users")
 
@@ -19,10 +21,12 @@ object AuthRepository {
     suspend fun registerWithPhone(phone: String, fullName: String, mpin: String): Result<Boolean> {
         return try {
             val cleanPhone = phone.trim()
+            Log.d(TAG, "registerWithPhone: phone=$cleanPhone")
 
             // Check if phone number already exists
             val existing = usersCollection.document(cleanPhone).get().await()
             if (existing.exists()) {
+                Log.w(TAG, "registerWithPhone: phone already exists")
                 return Result.failure(Exception("This mobile number is already registered."))
             }
 
@@ -35,6 +39,7 @@ object AuthRepository {
                 "created_at" to System.currentTimeMillis()
             )
             usersCollection.document(cleanPhone).set(userData).await()
+            Log.d(TAG, "registerWithPhone: success")
 
             // Auto-login: set session
             currentUserData = UserData(
@@ -45,25 +50,30 @@ object AuthRepository {
 
             Result.success(true)
         } catch (e: Exception) {
-            e.printStackTrace()
-            Result.failure(e)
+            Log.e(TAG, "registerWithPhone failed", e)
+            // Map common Firestore failures to user-friendly messages
+            val friendly = mapFirestoreError(e)
+            Result.failure(Exception(friendly, e))
         }
     }
 
     suspend fun loginWithPhone(phone: String, mpin: String): Result<Boolean> {
         return try {
             val cleanPhone = phone.trim()
+            Log.d(TAG, "loginWithPhone: phone=$cleanPhone")
 
             // Look up user in Firestore by phone number
             val doc = usersCollection.document(cleanPhone).get().await()
 
             if (!doc.exists()) {
+                Log.w(TAG, "loginWithPhone: account not found")
                 return Result.failure(Exception("Account not found. Please register first."))
             }
 
             // Verify MPIN
             val storedMpin = doc.getString("mpin") ?: ""
             if (storedMpin != mpin.trim()) {
+                Log.w(TAG, "loginWithPhone: incorrect mpin")
                 return Result.failure(Exception("Incorrect MPIN. Please try again."))
             }
 
@@ -74,11 +84,28 @@ object AuthRepository {
                 name = name,
                 phone = cleanPhone
             )
+            Log.d(TAG, "loginWithPhone: success")
 
             Result.success(true)
         } catch (e: Exception) {
-            e.printStackTrace()
-            Result.failure(e)
+            Log.e(TAG, "loginWithPhone failed", e)
+            val friendly = mapFirestoreError(e)
+            Result.failure(Exception(friendly, e))
+        }
+    }
+
+    private fun mapFirestoreError(e: Exception): String {
+        val msg = e.message.orEmpty()
+        return when {
+            msg.contains("UNAVAILABLE", ignoreCase = true) ||
+                msg.contains("Failed to connect", ignoreCase = true) ->
+                "Cannot reach Firebase. Check your internet connection."
+            msg.contains("PERMISSION_DENIED", ignoreCase = true) ->
+                "Firestore permission denied. Update your Firestore security rules in the Firebase Console to allow reads/writes on the 'users' collection."
+            msg.contains("NOT_FOUND", ignoreCase = true) ||
+                msg.contains("does not exist", ignoreCase = true) ->
+                "Firestore database has not been created yet. Open the Firebase Console and create a Firestore database for project 'pundar-app'."
+            else -> "Auth error: $msg"
         }
     }
 
