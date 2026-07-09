@@ -20,6 +20,7 @@ import com.example.pundarapp.ui.screens.circle.CreateCircleScreen
 import com.example.pundarapp.ui.screens.grow.GrowScreen
 import com.example.pundarapp.ui.screens.grow.StockDetailScreen
 import com.example.pundarapp.ui.screens.home.HomeScreen
+import com.example.pundarapp.ui.screens.home.UserSettingsScreen
 import com.example.pundarapp.ui.screens.pay.BillDetailScreen
 import com.example.pundarapp.ui.screens.pay.NewGroupBillScreen
 import com.example.pundarapp.ui.screens.pay.PayScreen
@@ -41,6 +42,7 @@ object Routes {
     fun billDetail(billId: String) = "pay/bill/$billId"
     fun circleDetail(circleId: String) = "circle/$circleId"
     fun circleInvite(inviteId: String) = "circle/invite/$inviteId"
+    const val SETTINGS = "settings"
 }
 
 // Routes where bottom bar should be visible
@@ -85,6 +87,9 @@ fun PundarNavigation() {
             }
             composable(Routes.HOME) {
                 HomeScreen(navController = navController)
+            }
+            composable(Routes.SETTINGS) {
+                UserSettingsScreen(navController = navController)
             }
             composable(Routes.PAY) {
                 PayScreen(navController = navController)

@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +28,8 @@ import com.example.pundarapp.ui.theme.*
 fun CircleDetailScreen(circleId: String, navController: NavController) {
     val circle = AppState.circles.find { it.id == circleId }
         ?: run { navController.navigateUp(); return }
+    val context = LocalContext.current
+    val isMember = circle.members.any { it.isYou }
 
     var showContributeDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
@@ -175,15 +179,17 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                     Spacer(Modifier.height(24.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
-                            onClick = { showContributeDialog = true },
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PundarGold, contentColor = PundarTextPrimary)
-                        ) {
-                            Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Contribute", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        if (isMember) {
+                            Button(
+                                onClick = { showContributeDialog = true },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = PundarGold, contentColor = PundarTextPrimary)
+                            ) {
+                                Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Contribute", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            }
                         }
                         OutlinedButton(
                             onClick = { showShareDialog = true },
@@ -206,7 +212,9 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Member Contributions", style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold, color = PundarTextPrimary)
-                    TextButton(onClick = { }) { Text("View History", color = PundarBlue) }
+                    TextButton(onClick = { 
+                        Toast.makeText(context, "No recent history found.", Toast.LENGTH_SHORT).show()
+                    }) { Text("View History", color = PundarBlue) }
                 }
             }
 

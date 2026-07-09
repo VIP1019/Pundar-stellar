@@ -57,7 +57,8 @@ fun HomeScreen(navController: NavController) {
             PundarMainTopBar(
                 userName = userName,
                 userInitials = user.initials,
-                pundarScore = user.pundarScore
+                pundarScore = user.pundarScore,
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
             )
         },
         containerColor = PundarBackground

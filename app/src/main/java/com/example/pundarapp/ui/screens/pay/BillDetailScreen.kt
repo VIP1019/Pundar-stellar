@@ -7,8 +7,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import android.content.Intent
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +29,7 @@ import com.example.pundarapp.ui.theme.*
 fun BillDetailScreen(billId: String, navController: NavController) {
     val bill = AppState.bills.find { it.id == billId }
         ?: run { navController.navigateUp(); return }
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -177,7 +180,10 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                 item {
                     PundarPrimaryButton(
                         text = "Settle My Share — ₱ ${String.format("%,.2f", bill.yourShare)}",
-                        onClick = { navController.navigateUp() }
+                        onClick = { 
+                            AppState.settleBill(bill.id)
+                            navController.navigateUp()
+                        }
                     )
                 }
             }
@@ -185,7 +191,14 @@ fun BillDetailScreen(billId: String, navController: NavController) {
             item {
                 PundarSecondaryButton(
                     text = "Share Split Summary",
-                    onClick = { }
+                    onClick = {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Pundar Bill: ${bill.name}")
+                            putExtra(Intent.EXTRA_TEXT, "Hey! Our bill '${bill.name}' is ₱${String.format("%,.2f", bill.totalAmount)}. Your share is ₱${String.format("%,.2f", bill.yourShare)}. Please settle it on PUNDAR!")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Bill"))
+                    }
                 )
                 Spacer(Modifier.height(16.dp))
             }

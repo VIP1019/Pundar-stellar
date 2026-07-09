@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.*
+import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
@@ -70,36 +71,39 @@ fun CircleScreen(navController: NavController) {
             }
 
             // Invitations
-            item {
-                PundarAccentCard(
-                    modifier = Modifier.clickable { 
-                        navController.navigate(Routes.circleInvite(SampleData.circleInvitation.id))
-                    }
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
+            val invitation = AppState.pendingInvitation.value
+            if (invitation != null) {
+                item {
+                    PundarAccentCard(
+                        modifier = Modifier.clickable { 
+                            navController.navigate(Routes.circleInvite(invitation.id))
+                        }
                     ) {
-                        Column {
-                            Text(
-                                text = "1 Pending Invitation",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = PundarTextPrimary
-                            )
-                            Text(
-                                text = SampleData.circleInvitation.circleName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = PundarTextSecondary
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column {
+                                Text(
+                                    text = "1 Pending Invitation",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PundarTextPrimary
+                                )
+                                Text(
+                                    text = invitation.circleName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = PundarTextSecondary
+                                )
+                            }
+                            PundarSmallButton(
+                                text = "View",
+                                onClick = { navController.navigate(Routes.circleInvite(invitation.id)) },
+                                containerColor = PundarGoldLight,
+                                contentColor = PundarTextPrimary
                             )
                         }
-                        PundarSmallButton(
-                            text = "View",
-                            onClick = { navController.navigate(Routes.circleInvite(SampleData.circleInvitation.id)) },
-                            containerColor = PundarGoldLight,
-                            contentColor = PundarTextPrimary
-                        )
                     }
                 }
             }
@@ -113,7 +117,7 @@ fun CircleScreen(navController: NavController) {
                 )
             }
 
-            items(SampleData.circles) { circle ->
+            items(AppState.circles.toList()) { circle ->
                 PundarCard(
                     modifier = Modifier.clickable { 
                         navController.navigate(Routes.circleDetail(circle.id))

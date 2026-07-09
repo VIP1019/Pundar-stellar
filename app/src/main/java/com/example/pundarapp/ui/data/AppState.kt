@@ -4,9 +4,11 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.PayRepository
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.util.Log
 
 /**
  * Central in-memory app state shared across all screens.
@@ -16,7 +18,10 @@ object AppState {
 
     // ── PAY ─────────────────────────────────────────────────────────
     val bills = mutableStateListOf(*SampleData.recentBills.toTypedArray())
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
+        Log.e("AppState", "Background operation failed", exception)
+    }
+    private val scope = CoroutineScope(Dispatchers.IO + exceptionHandler)
 
     init {
         // Try to sync with Firebase if logged in
@@ -50,6 +55,19 @@ object AppState {
                 module = "Pay"
             )
         )
+    }
+
+    fun settleBill(billId: String) {
+        val index = bills.indexOfFirst { it.id == billId }
+        if (index >= 0) {
+            val old = bills[index]
+            bills[index] = old.copy(status = BillStatus.SETTLED)
+            scope.launch {
+                if (AuthRepository.isUserLoggedIn()) {
+                    PayRepository.createBill(bills[index])
+                }
+            }
+        }
     }
 
     // ── CIRCLE ──────────────────────────────────────────────────────

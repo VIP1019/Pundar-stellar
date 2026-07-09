@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -26,7 +27,8 @@ fun PundarMainTopBar(
     userName: String = "User",
     userInitials: String = "JD",
     pundarScore: Int = 850,
-    onNotificationClick: () -> Unit = {}
+    onNotificationClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -89,6 +91,13 @@ fun PundarMainTopBar(
                 }
             }
             Spacer(Modifier.width(8.dp))
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = PundarTextSecondary
+                )
+            }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = PundarSurface,
