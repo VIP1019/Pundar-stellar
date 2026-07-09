@@ -128,4 +128,31 @@ object AuthRepository {
     suspend fun logout() {
         currentUserData = null
     }
+
+    suspend fun searchUsers(query: String): List<UserData> {
+        return try {
+            if (query.isBlank()) return emptyList()
+            
+            // Get all users and filter locally (acceptable for prototyping)
+            val snapshot = usersCollection.get().await()
+            val lowerQuery = query.lowercase()
+            
+            snapshot.documents.mapNotNull { doc ->
+                val phone = doc.getString("phone_number") ?: return@mapNotNull null
+                val name = doc.getString("full_name") ?: return@mapNotNull null
+                
+                // Exclude current user from search results
+                if (phone == currentUserData?.id) return@mapNotNull null
+                
+                if (phone.contains(lowerQuery) || name.lowercase().contains(lowerQuery)) {
+                    UserData(id = phone, name = name, phone = phone)
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "searchUsers failed", e)
+            emptyList()
+        }
+    }
 }

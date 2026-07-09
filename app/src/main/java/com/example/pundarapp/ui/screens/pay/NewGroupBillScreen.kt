@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
@@ -50,16 +51,31 @@ fun NewGroupBillScreen(navController: NavController) {
     val sharePerMember = if (selectedMembers.isNotEmpty() && total > 0)
         total / selectedMembers.size else 0.0
 
-    // All available contacts to add
-    val allContacts = SampleData.recentContacts + listOf(
-        BillMember("Miguel Santos", "@migs_s", "MS", 0.0, 0xFF4C9AFF),
-        BillMember("Ana Reyes", "@ana_reyes", "AR", 0.0, 0xFF22C55E),
-        BillMember("Maria Santos", "@maria_s", "MA", 0.0, 0xFFF59E0B)
-    )
-    val availableContacts = allContacts.filter { contact ->
-        selectedMembers.none { it.name == contact.name } &&
-        (searchQuery.isBlank() || contact.name.contains(searchQuery, ignoreCase = true) ||
-         contact.username.contains(searchQuery, ignoreCase = true))
+    // Available contacts to add (search results)
+    var searchResults by remember { mutableStateOf<List<BillMember>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+
+    // Dynamic search effect
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = emptyList()
+            return@LaunchedEffect
+        }
+        
+        isSearching = true
+        val users = AuthRepository.searchUsers(searchQuery)
+        searchResults = users.map { u ->
+            BillMember(
+                name = u.name,
+                username = u.phone, // using phone as username display for now
+                initials = u.name.take(2).uppercase(),
+                amount = 0.0,
+                avatarColor = 0xFF6B7280
+            )
+        }.filter { contact ->
+            selectedMembers.none { it.name == contact.name }
+        }
+        isSearching = false
     }
 
     Scaffold(
@@ -287,17 +303,24 @@ fun NewGroupBillScreen(navController: NavController) {
             }
 
             // ── Available Contacts to Add ────────────────────────
-            if (availableContacts.isNotEmpty()) {
+            if (isSearching) {
+                item {
+                    Text("Searching...", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                }
+            } else if (searchResults.isNotEmpty()) {
                 item {
                     Text(
-                        text = if (searchQuery.isBlank()) "Add from Recent" else "Search Results",
+                        text = "Search Results",
                         style = MaterialTheme.typography.labelMedium,
                         color = PundarTextSecondary
                     )
                 }
-                items(availableContacts) { contact ->
+                items(searchResults) { contact ->
                     Surface(
-                        modifier = Modifier.fillMaxWidth().clickable { selectedMembers.add(contact) },
+                        modifier = Modifier.fillMaxWidth().clickable { 
+                            selectedMembers.add(contact) 
+                            searchQuery = "" // Clear search after adding
+                        },
                         shape = RoundedCornerShape(12.dp),
                         color = PundarSurface
                     ) {

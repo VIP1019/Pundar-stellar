@@ -136,127 +136,12 @@ object SampleData {
     )
 
     // ── Pay ─────────────────────────────────────────────
-
-    val recentBills = listOf(
-        GroupBill(
-            id = "bill1",
-            name = "Samgyupsal at BGC",
-            totalAmount = 2450.00,
-            memberCount = 3,
-            status = BillStatus.SETTLED,
-            date = "Today",
-            yourShare = 816.67,
-            members = listOf(
-                BillMember("Miguel Santos", "@migs_s", "MS", 816.67, 0xFF4C9AFF),
-                BillMember("Ana Reyes", "@ana_reyes", "AR", 816.67, 0xFF22C55E),
-                BillMember("You", "", "You", 816.66)
-            )
-        ),
-        GroupBill(
-            id = "bill2",
-            name = "Grab to Makati",
-            totalAmount = 380.00,
-            memberCount = 2,
-            status = BillStatus.PENDING,
-            date = "Yesterday",
-            yourShare = 190.00
-        ),
-        GroupBill(
-            id = "bill3",
-            name = "Office Lunch",
-            totalAmount = 1850.00,
-            memberCount = 5,
-            status = BillStatus.SETTLED,
-            date = "Jul 4",
-            yourShare = 370.00
-        ),
-        GroupBill(
-            id = "bill4",
-            name = "Birthday Gift for Chloe",
-            totalAmount = 3000.00,
-            memberCount = 6,
-            status = BillStatus.PARTIAL,
-            date = "Jul 3",
-            yourShare = 500.00
-        ),
-        GroupBill(
-            id = "bill5",
-            name = "Grocery Run",
-            totalAmount = 2100.00,
-            memberCount = 2,
-            status = BillStatus.SETTLED,
-            date = "Jul 1",
-            yourShare = 1050.00
-        )
-    )
-
-    val recentContacts = listOf(
-        BillMember("Chloe", "@chloe", "CH", 0.0, 0xFFEF4444),
-        BillMember("John", "@john_t", "JT", 0.0, 0xFF6B7280),
-        BillMember("Tito Boy", "@tito_boy", "TB", 0.0, 0xFF22C55E)
-    )
+    val recentBills = emptyList<GroupBill>()
+    val recentContacts = emptyList<BillMember>()
 
     // ── Circle ──────────────────────────────────────────
-
-    val circles = listOf(
-        Circle(
-            id = "circle1",
-            name = "Family Dream House",
-            targetAmount = 500000.00,
-            savedAmount = 250000.00,
-            targetDate = "Dec 2024",
-            memberCount = 5,
-            contributionPerMonth = 10000.00,
-            members = listOf(
-                CircleMember("Juan Dela Cruz", "JD", 20, 50000.00, ContributionStatus.PAID, isYou = true, avatarColor = 0xFF0052CC),
-                CircleMember("Maria Santos", "MS", 20, 50000.00, ContributionStatus.PENDING, avatarColor = 0xFFF59E0B),
-                CircleMember("Pedro Dimagiba", "PD", 20, 50000.00, ContributionStatus.PAID, avatarColor = 0xFF6B7280),
-                CircleMember("Ana Reyes", "AR", 20, 50000.00, ContributionStatus.PAID, avatarColor = 0xFF22C55E),
-                CircleMember("Carlos Tan", "CT", 20, 50000.00, ContributionStatus.PAID, avatarColor = 0xFFEF4444)
-            )
-        ),
-        Circle(
-            id = "circle2",
-            name = "Barkada Travel Fund",
-            targetAmount = 100000.00,
-            savedAmount = 65000.00,
-            targetDate = "Mar 2025",
-            memberCount = 8,
-            contributionPerMonth = 2500.00,
-            members = listOf(
-                CircleMember("Juan Dela Cruz", "JD", 12, 8125.00, ContributionStatus.PAID, isYou = true)
-            )
-        ),
-        Circle(
-            id = "circle3",
-            name = "Emergency Fund",
-            targetAmount = 50000.00,
-            savedAmount = 42000.00,
-            targetDate = "Sep 2024",
-            memberCount = 1,
-            contributionPerMonth = 5000.00,
-            members = listOf(
-                CircleMember("Juan Dela Cruz", "JD", 100, 42000.00, ContributionStatus.PAID, isYou = true)
-            ),
-            isActive = true
-        )
-    )
-
-    val circleInvitation = CircleInvitation(
-        id = "invite1",
-        circleName = "Manila Food Cart Fund",
-        goal = "Food Cart Biz",
-        inviterName = "Maria Santos",
-        inviterScore = 850,
-        inviterCirclesCompleted = 4,
-        targetAmount = 50000.00,
-        fundedPercent = 20,
-        monthlyContribution = 1000.00,
-        memberCount = 8,
-        maxMembers = 10,
-        inviterInitials = "MS",
-        inviterAvatarColor = 0xFFF59E0B
-    )
+    val circles = emptyList<Circle>()
+    val circleInvitation: CircleInvitation? = null
 
     // ── Grow ────────────────────────────────────────────
 
@@ -351,14 +236,7 @@ object SampleData {
     )
 
     // ── Home Activities ─────────────────────────────────
-
-    val homeActivities = listOf(
-        HomeActivity("payment", "Samgyupsal at BGC", "Settled • 3 members", "₱ 816.67", false, "Pay"),
-        HomeActivity("savings", "Family Dream House", "Contribution received", "+₱ 10,000", true, "Circle"),
-        HomeActivity("trending_up", "Auto-Sweep", "Invested via Grow", "+₱ 500.00", true, "Grow"),
-        HomeActivity("payment", "Grab to Makati", "Pending • 2 members", "₱ 190.00", false, "Pay"),
-        HomeActivity("savings", "Barkada Travel Fund", "Cycle completed", "+₱ 12,500", true, "Circle")
-    )
+    val homeActivities = emptyList<HomeActivity>()
 
     // ── Chart Data ──────────────────────────────────────
 

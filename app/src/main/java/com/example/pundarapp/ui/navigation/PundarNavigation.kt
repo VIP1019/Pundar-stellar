@@ -24,6 +24,8 @@ import com.example.pundarapp.ui.screens.home.UserSettingsScreen
 import com.example.pundarapp.ui.screens.pay.BillDetailScreen
 import com.example.pundarapp.ui.screens.pay.NewGroupBillScreen
 import com.example.pundarapp.ui.screens.pay.PayScreen
+import com.example.pundarapp.ui.screens.home.SendMoneyScreen
+import com.example.pundarapp.ui.screens.home.BuyLoadScreen
 import com.example.pundarapp.ui.screens.SplashScreen
 
 object Routes {
@@ -45,6 +47,8 @@ object Routes {
     fun circleDetail(circleId: String) = "circle/$circleId"
     fun circleInvite(inviteId: String) = "circle/invite/$inviteId"
     const val SETTINGS = "settings"
+    const val SEND_MONEY = "send_money"
+    const val BUY_LOAD = "buy_load"
 }
 
 // Routes where bottom bar should be visible
@@ -138,12 +142,15 @@ fun PundarNavigation() {
             composable(Routes.GROW) {
                 GrowScreen(navController = navController)
             }
-            composable(
-                route = Routes.STOCK_DETAIL,
-                arguments = listOf(navArgument("ticker") { type = NavType.StringType })
-            ) { backStackEntry ->
+            composable(Routes.STOCK_DETAIL, arguments = listOf(navArgument("ticker") { type = NavType.StringType })) { backStackEntry ->
                 val ticker = backStackEntry.arguments?.getString("ticker") ?: ""
                 StockDetailScreen(ticker = ticker, navController = navController)
+            }
+            composable(Routes.SEND_MONEY) {
+                SendMoneyScreen(navController = navController)
+            }
+            composable(Routes.BUY_LOAD) {
+                BuyLoadScreen(navController = navController)
             }
         }
     }

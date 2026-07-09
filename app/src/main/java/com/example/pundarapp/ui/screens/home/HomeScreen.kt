@@ -12,6 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,11 +32,13 @@ import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.HomeRepository
 import com.example.pundarapp.ui.data.HomeActivity
+import com.example.pundarapp.ui.data.AppState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController) {
     val user = SampleData.currentUser
+    val context = LocalContext.current
     
     var userName by remember { mutableStateOf("User") }
     var recentActivities by remember { mutableStateOf<List<HomeActivity>>(emptyList()) }
@@ -107,8 +111,8 @@ fun HomeScreen(navController: NavController) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-                                HomeStatItem("Total Saved", "₱ 357,000", Color.White)
-                                HomeStatItem("Invested", "₱ 124,500", Color.White)
+                                HomeStatItem("Wallet Balance", "₱ ${String.format("%,.0f", AppState.walletBalance.value)}", Color.White)
+                                HomeStatItem("Total Saved", "₱ 0", Color.White)
                                 HomeStatItem("Score", "${user.pundarScore}", PundarGold)
                             }
                         }
@@ -124,9 +128,31 @@ fun HomeScreen(navController: NavController) {
                     fontWeight = FontWeight.Bold,
                     color = PundarTextPrimary
                 )
-            }
-
-            item {
+                Spacer(Modifier.height(12.dp))
+                // Row 1
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickActionCard(
+                        icon = Icons.Filled.Send,
+                        title = "Send Money",
+                        subtitle = "PUNDAR Wallet",
+                        color = PundarBlue,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Routes.SEND_MONEY) }
+                    )
+                    QuickActionCard(
+                        icon = Icons.Filled.PhoneAndroid,
+                        title = "Buy Load",
+                        subtitle = "PUNDAR Wallet",
+                        color = PundarGoldDark,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Routes.BUY_LOAD) }
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                // Row 2
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -135,7 +161,7 @@ fun HomeScreen(navController: NavController) {
                         icon = Icons.Filled.Receipt,
                         title = "Split a Bill",
                         subtitle = "PUNDAR Pay",
-                        color = PundarBlue,
+                        color = PundarWarning,
                         modifier = Modifier.weight(1f),
                         onClick = { navController.navigate(Routes.PAY_NEW_BILL) }
                     )
@@ -143,17 +169,9 @@ fun HomeScreen(navController: NavController) {
                         icon = Icons.Filled.Groups,
                         title = "Join Circle",
                         subtitle = "PUNDAR Circle",
-                        color = PundarGoldDark,
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate(Routes.CIRCLE) }
-                    )
-                    QuickActionCard(
-                        icon = Icons.AutoMirrored.Filled.TrendingUp,
-                        title = "Invest",
-                        subtitle = "PUNDAR Grow",
                         color = PundarSuccess,
                         modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate(Routes.GROW) }
+                        onClick = { navController.navigate(Routes.CIRCLE) }
                     )
                 }
             }
@@ -247,6 +265,7 @@ fun HomeScreen(navController: NavController) {
                                             "Pay" -> PundarBlueSubtle
                                             "Circle" -> PundarGoldLight
                                             "Grow" -> PundarSuccessLight
+                                            "Wallet" -> PundarInfoLight
                                             else -> PundarSurfaceVariant
                                         }
                                     )
@@ -256,6 +275,7 @@ fun HomeScreen(navController: NavController) {
                                         "Pay" -> Icons.Filled.Receipt
                                         "Circle" -> Icons.Filled.Groups
                                         "Grow" -> Icons.AutoMirrored.Filled.TrendingUp
+                                        "Wallet" -> Icons.Filled.AccountBalanceWallet
                                         else -> Icons.Filled.Info
                                     },
                                     contentDescription = null,
@@ -263,6 +283,7 @@ fun HomeScreen(navController: NavController) {
                                         "Pay" -> PundarBlue
                                         "Circle" -> PundarGoldDark
                                         "Grow" -> PundarSuccess
+                                        "Wallet" -> PundarInfo
                                         else -> PundarTextSecondary
                                     },
                                     modifier = Modifier.size(22.dp)

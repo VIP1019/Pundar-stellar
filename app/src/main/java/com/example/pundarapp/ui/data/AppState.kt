@@ -17,7 +17,7 @@ import android.util.Log
 object AppState {
 
     // ── PAY ─────────────────────────────────────────────────────────
-    val bills = mutableStateListOf(*SampleData.recentBills.toTypedArray())
+    val bills = mutableStateListOf<GroupBill>()
     private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
         Log.e("AppState", "Background operation failed", exception)
     }
@@ -71,8 +71,8 @@ object AppState {
     }
 
     // ── CIRCLE ──────────────────────────────────────────────────────
-    val circles = mutableStateListOf(*SampleData.circles.toTypedArray())
-    val pendingInvitation = mutableStateOf<CircleInvitation?>(SampleData.circleInvitation)
+    val circles = mutableStateListOf<Circle>()
+    val pendingInvitation = mutableStateOf<CircleInvitation?>(null)
 
     fun acceptInvitation(invitation: CircleInvitation) {
         val newCircle = Circle(
@@ -172,7 +172,8 @@ object AppState {
     }
 
     // ── HOME ACTIVITY FEED ──────────────────────────────────────────
-    val homeActivities = mutableStateListOf(*SampleData.homeActivities.toTypedArray())
+    val homeActivities = mutableStateListOf<HomeActivity>()
+    val walletBalance = mutableStateOf(5000.0)
 
     private fun addHomeActivity(activity: HomeActivity) {
         homeActivities.add(0, activity) // newest first
