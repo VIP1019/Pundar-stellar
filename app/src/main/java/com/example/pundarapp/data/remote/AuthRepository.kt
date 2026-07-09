@@ -1,19 +1,48 @@
 package com.example.pundarapp.data.remote
 
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 object AuthRepository {
-    private val auth = Supabase.client.auth
+    private val db = FirebaseFirestore.getInstance()
+    private val usersCollection = db.collection("users")
 
-    suspend fun login(email: String, password: String): Result<Boolean> {
+    // In-memory session (simple dev approach - no Firebase Auth needed)
+    private var currentUserData: UserData? = null
+
+    data class UserData(
+        val id: String,
+        val name: String,
+        val phone: String
+    )
+
+    suspend fun registerWithPhone(phone: String, fullName: String, mpin: String): Result<Boolean> {
         return try {
-            auth.signInWith(Email) {
-                this.email = email
-                this.password = password
+            val cleanPhone = phone.trim()
+
+            // Check if phone number already exists
+            val existing = usersCollection.document(cleanPhone).get().await()
+            if (existing.exists()) {
+                return Result.failure(Exception("This mobile number is already registered."))
             }
+
+            // Store user directly in Firestore
+            val userData = hashMapOf(
+                "phone_number" to cleanPhone,
+                "full_name" to fullName.trim(),
+                "mpin" to mpin.trim(),
+                "pundar_score" to 800,
+                "created_at" to System.currentTimeMillis()
+            )
+            usersCollection.document(cleanPhone).set(userData).await()
+
+            // Auto-login: set session
+            currentUserData = UserData(
+                id = cleanPhone,
+                name = fullName.trim(),
+                phone = cleanPhone
+            )
+
             Result.success(true)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -21,15 +50,31 @@ object AuthRepository {
         }
     }
 
-    suspend fun register(email: String, password: String, fullName: String): Result<Boolean> {
+    suspend fun loginWithPhone(phone: String, mpin: String): Result<Boolean> {
         return try {
-            auth.signUpWith(Email) {
-                this.email = email
-                this.password = password
-                data = buildJsonObject {
-                    put("full_name", fullName)
-                }
+            val cleanPhone = phone.trim()
+
+            // Look up user in Firestore by phone number
+            val doc = usersCollection.document(cleanPhone).get().await()
+
+            if (!doc.exists()) {
+                return Result.failure(Exception("Account not found. Please register first."))
             }
+
+            // Verify MPIN
+            val storedMpin = doc.getString("mpin") ?: ""
+            if (storedMpin != mpin.trim()) {
+                return Result.failure(Exception("Incorrect MPIN. Please try again."))
+            }
+
+            // Set session
+            val name = doc.getString("full_name") ?: "User"
+            currentUserData = UserData(
+                id = cleanPhone,
+                name = name,
+                phone = cleanPhone
+            )
+
             Result.success(true)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -38,46 +83,22 @@ object AuthRepository {
     }
 
     fun isUserLoggedIn(): Boolean {
-        return auth.currentSessionOrNull() != null
+        return currentUserData != null
     }
 
     fun getCurrentUserId(): String? {
-        return auth.currentSessionOrNull()?.user?.id
+        return currentUserData?.id
     }
 
     fun getCurrentUserName(): String {
-        val user = auth.currentSessionOrNull()?.user
-        val name = user?.userMetadata?.get("full_name")?.toString()?.replace("\"", "")
-        return name ?: "User"
+        return currentUserData?.name ?: "User"
+    }
+
+    fun getCurrentUserPhone(): String {
+        return currentUserData?.phone ?: ""
     }
 
     suspend fun logout() {
-        auth.signOut()
-    }
-
-    suspend fun sendOtp(phone: String): Result<Boolean> {
-        return try {
-            auth.signInWith(io.github.jan.supabase.auth.providers.builtin.OTP) {
-                this.phone = phone
-            }
-            Result.success(true)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Result.failure(e)
-        }
-    }
-
-    suspend fun verifyOtp(phone: String, token: String): Result<Boolean> {
-        return try {
-            auth.verifyPhoneOtp(
-                type = io.github.jan.supabase.auth.OtpType.Phone.SMS,
-                phone = phone,
-                token = token
-            )
-            Result.success(true)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Result.failure(e)
-        }
+        currentUserData = null
     }
 }

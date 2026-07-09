@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1015849837056",
+    "project_id": "pundar-app",
+    "storage_bucket": "pundar-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1015849837056:android:8bbc59d335fc7deb85aee5",
+        "android_client_info": {
+          "package_name": "com.example.pundarapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBM_3C4evjjnjyQ6-FjNMAARD6ZtNAIVws"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

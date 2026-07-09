@@ -9,6 +9,7 @@ CREATE TYPE activity_type AS ENUM ('AUTO_SWEEP', 'DIVIDEND', 'PURCHASE', 'ROUND_
 -- 2. Profiles (Users)
 CREATE TABLE profiles (
     id UUID REFERENCES auth.users(id) PRIMARY KEY,
+    phone_number TEXT UNIQUE,
     name TEXT NOT NULL,
     initials TEXT NOT NULL,
     pundar_score INTEGER DEFAULT 800,

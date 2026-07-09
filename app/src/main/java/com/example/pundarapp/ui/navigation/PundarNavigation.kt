@@ -11,9 +11,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pundarapp.ui.components.PundarBottomBar
-import com.example.pundarapp.ui.screens.auth.EmailConfirmationScreen
 import com.example.pundarapp.ui.screens.auth.LoginScreen
-import com.example.pundarapp.ui.screens.auth.PhoneLoginScreen
 import com.example.pundarapp.ui.screens.auth.RegisterScreen
 import com.example.pundarapp.ui.screens.circle.CircleDetailScreen
 import com.example.pundarapp.ui.screens.circle.CircleInviteScreen
@@ -29,7 +27,6 @@ import com.example.pundarapp.ui.screens.pay.PayScreen
 object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
-    const val PHONE_LOGIN = "phone_login"
     const val HOME = "home"
     const val PAY = "pay"
     const val PAY_NEW_BILL = "pay/new"
@@ -40,13 +37,10 @@ object Routes {
     const val CIRCLE_INVITE = "circle/invite/{inviteId}"
     const val GROW = "grow"
     const val STOCK_DETAIL = "grow/stock/{ticker}"
-    const val EMAIL_CONFIRM = "auth/confirm/{email}"
-
+    fun stockDetail(ticker: String) = "grow/stock/$ticker"
     fun billDetail(billId: String) = "pay/bill/$billId"
     fun circleDetail(circleId: String) = "circle/$circleId"
     fun circleInvite(inviteId: String) = "circle/invite/$inviteId"
-    fun stockDetail(ticker: String) = "grow/stock/$ticker"
-    fun emailConfirm(email: String) = "auth/confirm/$email"
 }
 
 // Routes where bottom bar should be visible
@@ -88,18 +82,6 @@ fun PundarNavigation() {
             }
             composable(Routes.REGISTER) {
                 RegisterScreen(navController = navController)
-            }
-            composable(Routes.PHONE_LOGIN) {
-                PhoneLoginScreen(navController = navController)
-            }
-            composable(
-                route = Routes.EMAIL_CONFIRM,
-                arguments = listOf(navArgument("email") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val email = java.net.URLDecoder.decode(
-                    backStackEntry.arguments?.getString("email") ?: "", "UTF-8"
-                )
-                EmailConfirmationScreen(email = email, navController = navController)
             }
             composable(Routes.HOME) {
                 HomeScreen(navController = navController)

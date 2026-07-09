@@ -1,8 +1,6 @@
 package com.example.pundarapp.ui.screens.auth
 
-import android.app.Activity
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,8 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,11 +19,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.R
 import com.example.pundarapp.data.remote.AuthRepository
-import com.example.pundarapp.data.remote.GoogleSignInHelper
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
@@ -36,14 +30,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(navController: NavController) {
-    var emailOrPhone by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
+    var phone by remember { mutableStateOf("") }
+    var mpin by remember { mutableStateOf("") }
+    var mpinVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     Scaffold(
         containerColor = PundarBackground
@@ -59,17 +52,16 @@ fun LoginScreen(navController: NavController) {
             
             Spacer(modifier = Modifier.weight(1f))
 
-            // Logo & Branding
             Image(
-                painter = painterResource(id = R.drawable.logo), // Replace with your file name
+                painter = painterResource(id = R.drawable.logo),
                 contentDescription = "App Logo",
-                modifier = Modifier.size(120.dp) // Adjust size as needed
+                modifier = Modifier.size(120.dp)
             )
             
             Spacer(modifier = Modifier.height(24.dp))
             
             Text(
-                text = "Welcome to PUNDAR",
+                text = "Welcome back!",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = PundarTextPrimary
@@ -78,7 +70,7 @@ fun LoginScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "\"Every Transaction Counts.\"",
+                text = "Sign in to PUNDAR",
                 style = MaterialTheme.typography.bodyLarge,
                 color = PundarTextSecondary,
                 textAlign = TextAlign.Center
@@ -86,13 +78,12 @@ fun LoginScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Input Fields
             OutlinedTextField(
-                value = emailOrPhone,
-                onValueChange = { emailOrPhone = it },
-                label = { Text("Email or Phone Number") },
+                value = phone,
+                onValueChange = { phone = it },
+                label = { Text("Mobile Number (e.g. 09171234567)") },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PundarBlue,
                     focusedLabelColor = PundarBlue,
@@ -104,19 +95,16 @@ fun LoginScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
+                value = mpin,
+                onValueChange = { mpin = it.take(4) },
+                label = { Text("4-digit MPIN") },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation = if (mpinVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 trailingIcon = {
-                    val image = if (passwordVisible)
-                        Icons.Filled.Visibility
-                    else Icons.Filled.VisibilityOff
-
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = "Toggle password visibility")
+                    val image = if (mpinVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    IconButton(onClick = { mpinVisible = !mpinVisible }) {
+                        Icon(imageVector = image, contentDescription = "Toggle MPIN visibility")
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
@@ -126,21 +114,6 @@ fun LoginScreen(navController: NavController) {
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = "Forgot Password?",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = PundarBlue,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable { /* Handle forgot password */ }
-                )
-            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -149,120 +122,35 @@ fun LoginScreen(navController: NavController) {
                     text = errorMessage!!,
                     color = PundarError,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 16.dp),
+                    textAlign = TextAlign.Center
                 )
             }
 
             PundarPrimaryButton(
-                text = if (isLoading) "Signing In..." else "Sign In",
-                enabled = !isLoading && emailOrPhone.isNotBlank() && password.isNotBlank(),
+                text = if (isLoading) "Verifying..." else "Sign In",
+                enabled = !isLoading && phone.isNotBlank() && mpin.length == 4,
                 onClick = { 
                     isLoading = true
                     errorMessage = null
                     coroutineScope.launch {
-                        val result = AuthRepository.login(emailOrPhone, password)
+                        val result = AuthRepository.loginWithPhone(phone, mpin)
                         isLoading = false
                         if (result.isSuccess) {
                             navController.navigate(Routes.HOME) {
                                 popUpTo(Routes.LOGIN) { inclusive = true }
                             }
                         } else {
-                            val msg = result.exceptionOrNull()?.message ?: ""
-                            errorMessage = when {
-                                msg.contains("Email not confirmed", ignoreCase = true) ->
-                                    "Your email is not yet confirmed. Please check your inbox and click the confirmation link, then try again."
-                                msg.contains("Invalid login credentials", ignoreCase = true) ->
-                                    "Invalid email or password. Please check and try again."
-                                else -> msg.ifBlank { "Login failed. Please try again." }
+                            val msg = result.exceptionOrNull()?.message ?: "Unknown error"
+                            errorMessage = if (msg.contains("Invalid login credentials")) {
+                                "Invalid Mobile Number or MPIN."
+                            } else {
+                                "Error: $msg"
                             }
                         }
                     }
                 }
             )
-
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Or divider
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                HorizontalDivider(modifier = Modifier.weight(1f), color = PundarTextSecondary.copy(alpha = 0.3f))
-                Text(
-                    text = "Or continue with",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = PundarTextSecondary,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                HorizontalDivider(modifier = Modifier.weight(1f), color = PundarTextSecondary.copy(alpha = 0.3f))
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Google Button - uses CredentialManager directly (no compose-auth)
-            OutlinedButton(
-                onClick = {
-                    isLoading = true
-                    errorMessage = null
-                    coroutineScope.launch {
-                        val result = GoogleSignInHelper.signInWithGoogle(context as Activity)
-                        isLoading = false
-                        if (result.isSuccess) {
-                            navController.navigate(Routes.HOME) {
-                                popUpTo(Routes.LOGIN) { inclusive = true }
-                            }
-                        } else {
-                            val msg = result.exceptionOrNull()?.message ?: ""
-                            if (msg != "cancelled") {
-                                errorMessage = msg.ifBlank { "Google sign-in failed." }
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTextPrimary)
-            ) {
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_myplaces),
-                    contentDescription = "Google",
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.Unspecified
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Google",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Phone Button
-            OutlinedButton(
-                onClick = { navController.navigate(Routes.PHONE_LOGIN) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTextPrimary)
-            ) {
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_call),
-                    contentDescription = "Phone",
-                    modifier = Modifier.size(24.dp),
-                    tint = PundarBlue
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Phone Number",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -278,7 +166,7 @@ fun LoginScreen(navController: NavController) {
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "Register",
+                    text = "Register Here",
                     style = MaterialTheme.typography.labelLarge,
                     color = PundarBlue,
                     fontWeight = FontWeight.Bold,

@@ -19,7 +19,7 @@ object AppState {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     init {
-        // Try to sync with Supabase if logged in
+        // Try to sync with Firebase if logged in
         scope.launch {
             if (AuthRepository.isUserLoggedIn()) {
                 val remoteBills = PayRepository.getBills()

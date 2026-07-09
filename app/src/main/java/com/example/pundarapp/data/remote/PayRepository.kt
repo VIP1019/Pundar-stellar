@@ -2,36 +2,32 @@ package com.example.pundarapp.data.remote
 
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.data.GroupBill
-import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.postgrest.query.Columns
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class SupabaseBill(
-    val id: String,
-    val name: String,
-    val total_amount: Double,
-    val member_count: Int,
-    val status: String,
-    val date: String,
-    val your_share: Double
-)
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 object PayRepository {
-    private val client = Supabase.client.postgrest
+    private val db = FirebaseFirestore.getInstance()
 
     suspend fun getBills(): List<GroupBill> {
         return try {
-            val supabaseBills = client["group_bills"].select().decodeList<SupabaseBill>()
-            supabaseBills.map { 
+            val snapshot = db.collection("group_bills").get().await()
+            snapshot.documents.mapNotNull { doc ->
+                val id = doc.getString("id") ?: return@mapNotNull null
+                val name = doc.getString("name") ?: return@mapNotNull null
+                val totalAmount = doc.getDouble("total_amount") ?: return@mapNotNull null
+                val memberCount = doc.getLong("member_count")?.toInt() ?: return@mapNotNull null
+                val statusStr = doc.getString("status") ?: return@mapNotNull null
+                val date = doc.getString("date") ?: return@mapNotNull null
+                val yourShare = doc.getDouble("your_share") ?: return@mapNotNull null
+                
                 GroupBill(
-                    id = it.id,
-                    name = it.name,
-                    totalAmount = it.total_amount,
-                    memberCount = it.member_count,
-                    status = BillStatus.valueOf(it.status),
-                    date = it.date,
-                    yourShare = it.your_share,
+                    id = id,
+                    name = name,
+                    totalAmount = totalAmount,
+                    memberCount = memberCount,
+                    status = BillStatus.valueOf(statusStr),
+                    date = date,
+                    yourShare = yourShare,
                     members = emptyList() // Fetching members separately could be added later
                 )
             }
@@ -43,16 +39,16 @@ object PayRepository {
 
     suspend fun createBill(bill: GroupBill): Boolean {
         return try {
-            val supabaseBill = SupabaseBill(
-                id = bill.id,
-                name = bill.name,
-                total_amount = bill.totalAmount,
-                member_count = bill.memberCount,
-                status = bill.status.name,
-                date = bill.date,
-                your_share = bill.yourShare
+            val billData = hashMapOf(
+                "id" to bill.id,
+                "name" to bill.name,
+                "total_amount" to bill.totalAmount,
+                "member_count" to bill.memberCount,
+                "status" to bill.status.name,
+                "date" to bill.date,
+                "your_share" to bill.yourShare
             )
-            client["group_bills"].insert(supabaseBill)
+            db.collection("group_bills").document(bill.id).set(billData).await()
             true
         } catch (e: Exception) {
             e.printStackTrace()

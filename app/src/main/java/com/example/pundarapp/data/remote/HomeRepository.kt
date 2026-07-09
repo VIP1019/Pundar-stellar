@@ -1,50 +1,45 @@
 package com.example.pundarapp.data.remote
 
 import com.example.pundarapp.ui.data.HomeActivity
-import io.github.jan.supabase.postgrest.postgrest
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class HomeActivityDto(
-    val id: String,
-    val user_id: String,
-    val icon: String,
-    val title: String,
-    val subtitle: String,
-    val amount: String,
-    val is_positive: Boolean,
-    val module: String,
-    val created_at: String
-) {
-    fun toHomeActivity(): HomeActivity {
-        return HomeActivity(
-            icon = icon,
-            title = title,
-            subtitle = subtitle,
-            amount = amount,
-            isPositive = is_positive,
-            module = module
-        )
-    }
-}
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 object HomeRepository {
-    private val client = Supabase.client
+    private val db = FirebaseFirestore.getInstance()
 
     suspend fun getRecentActivities(userId: String): Result<List<HomeActivity>> {
         return try {
-            val dtos = client.postgrest["home_activities"]
-                .select {
-                    filter {
-                        eq("user_id", userId)
-                    }
-                }
-                .decodeList<HomeActivityDto>()
+            val snapshot = db.collection("home_activities")
+                .whereEqualTo("user_id", userId)
+                .get()
+                .await()
+                
+            val activities = snapshot.documents.mapNotNull { doc ->
+                val icon = doc.getString("icon") ?: return@mapNotNull null
+                val title = doc.getString("title") ?: return@mapNotNull null
+                val subtitle = doc.getString("subtitle") ?: return@mapNotNull null
+                val amount = doc.getString("amount") ?: return@mapNotNull null
+                val isPositive = doc.getBoolean("is_positive") ?: false
+                val module = doc.getString("module") ?: return@mapNotNull null
+                val createdAt = doc.getString("created_at") ?: ""
+                
+                Pair(
+                    createdAt,
+                    HomeActivity(
+                        icon = icon,
+                        title = title,
+                        subtitle = subtitle,
+                        amount = amount,
+                        isPositive = isPositive,
+                        module = module
+                    )
+                )
+            }
             
             // Sort by descending created_at
-            val sortedDtos = dtos.sortedByDescending { it.created_at }
+            val sortedActivities = activities.sortedByDescending { it.first }.map { it.second }
             
-            Result.success(sortedDtos.map { it.toHomeActivity() })
+            Result.success(sortedActivities)
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
