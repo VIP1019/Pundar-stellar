@@ -35,11 +35,14 @@ fun PayScreen(navController: NavController) {
     val pendingCount = bills.count { it.status == BillStatus.PENDING || it.status == BillStatus.PARTIAL }
     val monthTotal = bills.sumOf { it.yourShare }
 
+    val currentName = AuthRepository.getCurrentUserName()
+    val initials = currentName.take(2).uppercase()
+
     Scaffold(
         topBar = {
             PundarMainTopBar(
-                userName = AuthRepository.getCurrentUserName(),
-                userInitials = AuthRepository.getCurrentUserName().take(2).uppercase(),
+                userName = currentName,
+                userInitials = initials,
                 pundarScore = com.example.pundarapp.ui.data.SampleData.currentUser.pundarScore,
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) }
             )
@@ -88,6 +91,7 @@ fun PayScreen(navController: NavController) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Text("Recent Splits", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    TextButton(onClick = { }) { Text("View All", color = PundarBlue) }
                 }
             }
 
