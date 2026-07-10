@@ -1,5 +1,6 @@
 package com.example.pundarapp.ui.screens.pay
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,14 +16,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.R
 import com.example.pundarapp.data.remote.AuthRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,13 +78,120 @@ fun PayScreen(navController: NavController) {
                     style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
             }
 
-            // Summary card — live data
+            // Summary card — redesigned with your custom PNG drawables
             item {
                 PundarCard(accentColor = PundarBlue) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        PaySummaryItem("This Month", "₱ ${String.format("%,.2f", monthTotal)}", PundarTextPrimary)
-                        PaySummaryItem("Settled", "$settledCount bills", PundarSuccess)
-                        PaySummaryItem("Pending", "$pendingCount bills", PundarWarning)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 20.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left side: Total Balance info
+                        Column {
+                            Text(
+                                text = "TOTAL",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = PundarTextSecondary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "₱${String.format("%,.2f", monthTotal)}",
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = PundarBlue
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "This Month",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PundarTextPrimary
+                            )
+                        }
+
+                        // Right side: Settled and Pending stats
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Settled Column Item
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.settled),
+                                    contentDescription = "Settled",
+                                    modifier = Modifier.size(40.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = "SETTLED",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = PundarTextSecondary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "$settledCount ${if (settledCount == 1) "BILL" else "BILLS"}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = PundarSuccess
+                                    )
+                                    Text(
+                                        text = "View All",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = PundarBlue,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.clickable { /* Filter list to settled */ }
+                                    )
+                                }
+                            }
+
+                            // Vertical Divider
+                            VerticalDivider(
+                                modifier = Modifier
+                                    .height(48.dp)
+                                    .padding(horizontal = 4.dp),
+                                color = Color.LightGray.copy(alpha = 0.5f),
+                                thickness = 1.dp
+                            )
+
+                            // Pending Column Item
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.pending),
+                                    contentDescription = "Pending",
+                                    modifier = Modifier.size(40.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = "PENDINGS",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = PundarTextSecondary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "$pendingCount ${if (pendingCount == 1) "BILL" else "BILLS"}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = PundarWarning
+                                    )
+                                    Text(
+                                        text = "View All",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = PundarBlue,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.clickable { /* Filter list to pending */ }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -107,7 +218,7 @@ fun PayScreen(navController: NavController) {
                 }
             }
 
-            // Bill items — now clickable → BillDetailScreen
+            // Bill items
             items(bills.toList()) { bill ->
                 PundarCard(
                     modifier = Modifier.clickable {
@@ -186,13 +297,5 @@ fun PayScreen(navController: NavController) {
                 Spacer(Modifier.height(80.dp))
             }
         }
-    }
-}
-
-@Composable
-private fun PaySummaryItem(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
-        Text(label, style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
     }
 }

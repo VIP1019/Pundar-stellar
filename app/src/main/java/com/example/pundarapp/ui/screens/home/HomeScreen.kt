@@ -1,5 +1,7 @@
 package com.example.pundarapp.ui.screens.home
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,11 +22,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.pundarapp.R
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
@@ -39,7 +43,7 @@ import com.example.pundarapp.ui.data.AppState
 fun HomeScreen(navController: NavController) {
     val user = SampleData.currentUser
     val context = LocalContext.current
-    
+
     var userName by remember { mutableStateOf("User") }
     var isLoadingActivities by remember { mutableStateOf(true) }
 
@@ -54,7 +58,7 @@ fun HomeScreen(navController: NavController) {
         }
         isLoadingActivities = false
     }
-    
+
     val totalSaved = AppState.circles.sumOf { it.savedAmount }
 
     Scaffold(
@@ -79,7 +83,7 @@ fun HomeScreen(navController: NavController) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                 ) {
                     Box(
@@ -90,31 +94,143 @@ fun HomeScreen(navController: NavController) {
                                     colors = listOf(PundarBlue, PundarBlueDark)
                                 )
                             )
-                            .padding(20.dp)
                     ) {
                         Column {
-                            Text(
-                                text = "Welcome, $userName! 👋",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                            Column(modifier = Modifier.padding(24.dp)) {
+                                Text(
+                                    text = "Total Saved",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    text = "₱ ${String.format("%,.0f", totalSaved)}",
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Visibility,
+                                        contentDescription = "View balance",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "View Saved Balance",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 24.dp),
+                                color = Color.White.copy(alpha = 0.15f),
+                                thickness = 0.5.dp
                             )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = "\"Every Peso Keeps Building.\"",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(Modifier.height(16.dp))
 
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min)
+                                    .padding(vertical = 16.dp)
                             ) {
-                                HomeStatItem("Wallet Balance", "₱ ${String.format("%,.0f", AppState.walletBalance.value)}", Color.White)
-                                HomeStatItem("Total Saved", "₱ ${String.format("%,.0f", totalSaved)}", Color.White)
-                                HomeStatItem("Score", "${user.pundarScore}", PundarGold)
+                                // Invested Section
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 20.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White.copy(alpha = 0.15f))
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.invested),
+                                            contentDescription = null
+                                        )
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Invested",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "₱ 124,500",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                VerticalDivider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = Color.White.copy(alpha = 0.15f),
+                                    thickness = 0.5.dp
+                                )
+
+                                // Credit Score Section
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 20.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White.copy(alpha = 0.15f))
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.score1),
+                                            contentDescription = null
+                                        )
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Credit Score",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "850",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -191,17 +307,18 @@ fun HomeScreen(navController: NavController) {
                 PundarCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        JourneyStep("Spend", "✅", PundarSuccess, true)
+                        JourneyStep("Spend", R.drawable.spend, PundarSuccess, true)
                         JourneyArrow()
-                        JourneyStep("Save", "✅", PundarSuccess, true)
+                        JourneyStep("Save", R.drawable.save, PundarSuccess, true)
                         JourneyArrow()
-                        JourneyStep("Grow", "🔄", PundarBlue, true)
+                        JourneyStep("Grow", R.drawable.grow1, PundarBlue, true)
                         JourneyArrow()
-                        JourneyStep("Score", "⭐", PundarGold, true)
+                        JourneyStep("Score", R.drawable.score, PundarGold, true)
                         JourneyArrow()
-                        JourneyStep("Access", "🔒", PundarTextSecondary, false)
+                        JourneyStep("Access", R.drawable.access, PundarTextSecondary, false)
                     }
                 }
             }
@@ -401,9 +518,21 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun JourneyStep(label: String, emoji: String, color: Color, isComplete: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = emoji, fontSize = 18.sp)
+private fun JourneyStep(
+    label: String,
+    @DrawableRes iconRes: Int,
+    color: Color,
+    isComplete: Boolean
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = label,
+            modifier = Modifier.size(24.dp)
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             text = label,
