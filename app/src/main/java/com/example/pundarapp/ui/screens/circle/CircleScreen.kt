@@ -19,6 +19,7 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.data.remote.AuthRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,8 +27,10 @@ fun CircleScreen(navController: NavController) {
     Scaffold(
         topBar = {
             PundarMainTopBar(
-                userInitials = SampleData.currentUser.initials,
-                pundarScore = SampleData.currentUser.pundarScore
+                userName = AuthRepository.getCurrentUserName(),
+                userInitials = AuthRepository.getCurrentUserName().take(2).uppercase(),
+                pundarScore = SampleData.currentUser.pundarScore,
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
             )
         },
         floatingActionButton = {

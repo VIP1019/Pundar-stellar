@@ -41,19 +41,8 @@ fun HomeScreen(navController: NavController) {
     val context = LocalContext.current
     
     var userName by remember { mutableStateOf("User") }
-    var recentActivities by remember { mutableStateOf<List<HomeActivity>>(emptyList()) }
-    var isLoadingActivities by remember { mutableStateOf(true) }
-
     LaunchedEffect(Unit) {
         userName = AuthRepository.getCurrentUserName().split(" ").first()
-        val userId = AuthRepository.getCurrentUserId()
-        if (userId != null) {
-            val result = HomeRepository.getRecentActivities(userId)
-            if (result.isSuccess) {
-                recentActivities = result.getOrDefault(emptyList())
-            }
-        }
-        isLoadingActivities = false
     }
 
     Scaffold(
@@ -112,7 +101,7 @@ fun HomeScreen(navController: NavController) {
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 HomeStatItem("Wallet Balance", "₱ ${String.format("%,.0f", AppState.walletBalance.value)}", Color.White)
-                                HomeStatItem("Total Saved", "₱ 0", Color.White)
+                                HomeStatItem("Total Saved", "₱ ${String.format("%,.0f", AppState.circles.sumOf { it.savedAmount })}", Color.White)
                                 HomeStatItem("Score", "${user.pundarScore}", PundarGold)
                             }
                         }
@@ -218,27 +207,10 @@ fun HomeScreen(navController: NavController) {
                         fontWeight = FontWeight.Bold,
                         color = PundarTextPrimary
                     )
-                    TextButton(onClick = { }) {
-                        Text(
-                            text = "View All",
-                            color = PundarBlue,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
                 }
             }
 
-            if (isLoadingActivities) {
-                item {
-                    Text(
-                        text = "Loading activities...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = PundarTextSecondary,
-                        modifier = Modifier.padding(vertical = 24.dp).fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else if (recentActivities.isEmpty()) {
+            if (AppState.homeActivities.isEmpty()) {
                 item {
                     Text(
                         text = "No recent activity yet.",
@@ -249,7 +221,7 @@ fun HomeScreen(navController: NavController) {
                     )
                 }
             } else {
-                items(recentActivities) { activity ->
+                items(AppState.homeActivities.toList()) { activity ->
                     PundarCard {
                         Row(
                             modifier = Modifier.fillMaxWidth(),

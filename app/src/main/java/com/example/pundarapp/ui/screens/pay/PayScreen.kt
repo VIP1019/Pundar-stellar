@@ -23,6 +23,7 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.data.remote.AuthRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,8 +38,10 @@ fun PayScreen(navController: NavController) {
     Scaffold(
         topBar = {
             PundarMainTopBar(
-                userInitials = com.example.pundarapp.ui.data.SampleData.currentUser.initials,
-                pundarScore = com.example.pundarapp.ui.data.SampleData.currentUser.pundarScore
+                userName = AuthRepository.getCurrentUserName(),
+                userInitials = AuthRepository.getCurrentUserName().take(2).uppercase(),
+                pundarScore = com.example.pundarapp.ui.data.SampleData.currentUser.pundarScore,
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
             )
         },
         floatingActionButton = {
@@ -85,7 +88,6 @@ fun PayScreen(navController: NavController) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Text("Recent Splits", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    TextButton(onClick = { }) { Text("View All", color = PundarBlue) }
                 }
             }
 

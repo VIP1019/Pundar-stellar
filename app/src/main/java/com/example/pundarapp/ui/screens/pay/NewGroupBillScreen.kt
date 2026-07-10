@@ -126,9 +126,9 @@ fun NewGroupBillScreen(navController: NavController) {
                             memberCount = selectedMembers.size,
                             status = BillStatus.PENDING,
                             date = "Today",
-                            yourShare = sharePerMember,
+                            yourShare = if (selectedTabIndex == 0) sharePerMember else selectedMembers.find { it.name == "You" }?.amount ?: 0.0,
                             members = selectedMembers.map { m ->
-                                m.copy(amount = sharePerMember)
+                                m.copy(amount = if (selectedTabIndex == 0) sharePerMember else m.amount)
                             }
                         )
                         AppState.addBill(newBill)
@@ -282,11 +282,32 @@ fun NewGroupBillScreen(navController: NavController) {
                                 Text(member.username, style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
                             }
                         }
-                        if (sharePerMember > 0) {
+                        if (selectedTabIndex == 0 && sharePerMember > 0) {
                             Text(
                                 text = "₱ ${String.format("%,.2f", sharePerMember)}",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
+                            )
+                        } else if (selectedTabIndex == 1) {
+                            OutlinedTextField(
+                                value = if (member.amount > 0) member.amount.toString() else "",
+                                onValueChange = { newVal ->
+                                    val newAmount = newVal.toDoubleOrNull() ?: 0.0
+                                    val index = selectedMembers.indexOf(member)
+                                    if (index >= 0) {
+                                        selectedMembers[index] = member.copy(amount = newAmount)
+                                    }
+                                },
+                                modifier = Modifier.width(100.dp),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.End),
+                                placeholder = { Text("0.00", style = MaterialTheme.typography.bodyMedium) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = PundarBlue,
+                                    unfocusedBorderColor = PundarBorder
+                                ),
+                                shape = RoundedCornerShape(8.dp)
                             )
                         }
                         if (member.name != "You") {
