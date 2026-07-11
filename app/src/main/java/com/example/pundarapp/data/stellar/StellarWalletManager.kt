@@ -5,8 +5,16 @@ import android.util.Log
 import com.example.pundarapp.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.stellar.sdk.AssetTypeNative
 import org.stellar.sdk.KeyPair
+import org.stellar.sdk.Memo
+import org.stellar.sdk.Network
 import org.stellar.sdk.Server
+import org.stellar.sdk.Transaction
+import org.stellar.sdk.TransactionBuilder
+import org.stellar.sdk.operations.PaymentOperation
+import org.stellar.sdk.responses.TransactionResponse
+import java.math.BigDecimal
 import java.net.URL
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -106,6 +114,54 @@ object StellarWalletManager {
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching balance", e)
             0.0
+        }
+    }
+
+    suspend fun sendPayment(
+        senderPublicKey: String,
+        senderEncryptedSeed: String,
+        senderMpin: String,
+        recipientPublicKey: String,
+        amountXlm: String,
+        memo: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        var decryptedSeed: CharArray? = null
+        try {
+            decryptedSeed = decryptSecretSeed(senderEncryptedSeed, senderMpin)
+            val sourceKeyPair = KeyPair.fromSecretSeed(decryptedSeed)
+            val server = Server(HORIZON_URL)
+
+            val sourceAccount = server.accounts().account(senderPublicKey)
+            
+            val truncatedMemo = if (memo.length > 28) memo.substring(0, 28) else memo
+
+            val transaction = TransactionBuilder(sourceAccount, Network.TESTNET)
+                .addOperation(
+                    PaymentOperation.builder()
+                        .destination(recipientPublicKey)
+                        .asset(AssetTypeNative())
+                        .amount(BigDecimal(amountXlm))
+                        .build()
+                )
+                .addMemo(Memo.text(truncatedMemo))
+                .setTimeout(180L)
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .build()
+
+            transaction.sign(sourceKeyPair)
+
+            val response: TransactionResponse = server.submitTransaction(transaction)
+
+            if (response.successful == true) {
+                Result.success(response.hash)
+            } else {
+                Result.failure(Exception("Transaction failed. Check account balance and recipient."))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Payment failed", e)
+            Result.failure(e)
+        } finally {
+            decryptedSeed?.let { clearCharArray(it) }
         }
     }
     

@@ -153,6 +153,18 @@ object AuthRepository {
         return currentUserData?.stellarPublicKey
     }
 
+    suspend fun getCurrentUserEncryptedSeed(): String? {
+        val phone = getCurrentUserPhone()
+        if (phone.isBlank()) return null
+        return try {
+            val doc = usersCollection.document(phone).get().await()
+            doc.getString("encryptedStellarSeed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch encrypted seed", e)
+            null
+        }
+    }
+
     fun getCurrentUserInitials(): String {
         val name = getCurrentUserName()
         if (name == "User" || name.isBlank()) return "U"
@@ -207,7 +219,8 @@ object AuthRepository {
                 if (phone == currentUserData?.id) return@mapNotNull null
                 
                 if (phone.contains(lowerQuery) || name.lowercase().contains(lowerQuery)) {
-                    UserData(id = phone, name = name, phone = phone)
+                    val stellarPublicKey = doc.getString("stellarPublicKey")
+                    UserData(id = phone, name = name, phone = phone, stellarPublicKey = stellarPublicKey)
                 } else {
                     null
                 }

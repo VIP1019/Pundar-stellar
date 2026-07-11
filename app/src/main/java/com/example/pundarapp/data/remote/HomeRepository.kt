@@ -45,4 +45,23 @@ object HomeRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun createActivity(userId: String, activity: HomeActivity): Result<Boolean> {
+        return try {
+            val data = hashMapOf(
+                "user_id" to userId,
+                "icon" to activity.icon,
+                "title" to activity.title,
+                "subtitle" to activity.subtitle,
+                "amount" to activity.amount,
+                "is_positive" to activity.isPositive,
+                "module" to activity.module,
+                "created_at" to System.currentTimeMillis().toString()
+            )
+            db.collection("home_activities").add(data).await()
+            Result.success(true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

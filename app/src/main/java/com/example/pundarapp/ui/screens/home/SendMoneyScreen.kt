@@ -16,6 +16,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.HomeRepository
+import com.example.pundarapp.data.stellar.StellarWalletManager
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.data.AppState
@@ -33,6 +35,123 @@ fun SendMoneyScreen(navController: NavController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isSending by remember { mutableStateOf(false) }
+    
+    var showMpinDialog by remember { mutableStateOf(false) }
+    var mpinInput by remember { mutableStateOf("") }
+
+    if (showMpinDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showMpinDialog = false
+                isSending = false
+            },
+            title = { Text("Confirm Transfer") },
+            text = {
+                Column {
+                    Text("Enter your 4-digit MPIN to confirm sending XLM.")
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = mpinInput,
+                        onValueChange = { if (it.length <= 4) mpinInput = it },
+                        label = { Text("MPIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = mpinInput.length == 4,
+                    onClick = {
+                        showMpinDialog = false
+                        isSending = true
+                        coroutineScope.launch {
+                            try {
+                                // 1. Check if recipient exists
+                                val users = AuthRepository.searchUsers(recipientPhone)
+                                val recipient = users.find { it.phone == recipientPhone.trim() }
+
+                                if (recipient == null) {
+                                    Toast.makeText(context, "User not found with this number.", Toast.LENGTH_SHORT).show()
+                                    isSending = false
+                                    return@launch
+                                }
+                                
+                                val recipientPk = recipient.stellarPublicKey
+                                if (recipientPk.isNullOrBlank()) {
+                                    Toast.makeText(context, "Recipient does not have a Stellar wallet.", Toast.LENGTH_SHORT).show()
+                                    isSending = false
+                                    return@launch
+                                }
+
+                                // 2. Get sender info
+                                val senderPk = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
+                                val senderEncryptedSeed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
+                                
+                                // 3. Send Payment
+                                val result = StellarWalletManager.sendPayment(
+                                    senderPublicKey = senderPk,
+                                    senderEncryptedSeed = senderEncryptedSeed,
+                                    senderMpin = mpinInput,
+                                    recipientPublicKey = recipientPk,
+                                    amountXlm = amount,
+                                    memo = "PAY"
+                                )
+
+                                if (result.isSuccess) {
+                                    val txHash = result.getOrNull() ?: ""
+                                    
+                                    // 4. Refresh balance
+                                    AppState.refreshWalletBalance()
+                                    
+                                    // 5. Log activity
+                                    val activity = HomeActivity(
+                                        icon = "send",
+                                        title = "Sent to ${recipient.name}",
+                                        subtitle = "Tx: ${txHash.take(8)}...",
+                                        amount = "-${amount} XLM",
+                                        isPositive = false,
+                                        module = "Wallet"
+                                    )
+                                    AppState.homeActivities.add(0, activity)
+                                    
+                                    // Persist activity
+                                    val userId = AuthRepository.getCurrentUserId()
+                                    if (userId != null) {
+                                        HomeRepository.createActivity(userId, activity)
+                                    }
+
+                                    Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
+                                    navController.navigateUp()
+                                } else {
+                                    val errorMsg = result.exceptionOrNull()?.message ?: "Payment failed"
+                                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                                    isSending = false
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "An error occurred: ${e.message}", Toast.LENGTH_SHORT).show()
+                                isSending = false
+                            } finally {
+                                mpinInput = "" // Security: clear MPIN from state
+                            }
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showMpinDialog = false 
+                    isSending = false
+                    mpinInput = ""
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -53,41 +172,14 @@ fun SendMoneyScreen(navController: NavController) {
                             Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
                             return@PundarPrimaryButton
                         }
-                        if (sendAmount > AppState.walletBalance.value) {
-                            Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
-                            return@PundarPrimaryButton
-                        }
-
-                        isSending = true
+                        // We check balance again in real time before showing dialog
                         coroutineScope.launch {
-                            // Check if recipient exists
-                            val users = AuthRepository.searchUsers(recipientPhone)
-                            val recipient = users.find { it.phone == recipientPhone.trim() }
-
-                            if (recipient == null) {
-                                Toast.makeText(context, "User not found with this number.", Toast.LENGTH_SHORT).show()
-                                isSending = false
-                                return@launch
+                            val currentBalance = AppState.walletBalance.value
+                            if (sendAmount > currentBalance) {
+                                Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
+                            } else {
+                                showMpinDialog = true
                             }
-
-                            // Deduct balance
-                            AppState.walletBalance.value -= sendAmount
-                            
-                            // Log activity
-                            AppState.homeActivities.add(
-                                0,
-                                HomeActivity(
-                                    icon = "send",
-                                    title = "Sent to ${recipient.name}",
-                                    subtitle = message.ifBlank { "Send Money" },
-                                    amount = "-₱ ${String.format("%,.2f", sendAmount)}",
-                                    isPositive = false,
-                                    module = "Wallet"
-                                )
-                            )
-
-                            Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
-                            navController.navigateUp()
                         }
                     }
                 )
@@ -108,7 +200,7 @@ fun SendMoneyScreen(navController: NavController) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
-                    Text("₱ ${String.format("%,.2f", AppState.walletBalance.value)}", 
+                    Text("${String.format("%,.2f", AppState.walletBalance.value)} XLM",
                         style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = PundarBlue)
                 }
             }

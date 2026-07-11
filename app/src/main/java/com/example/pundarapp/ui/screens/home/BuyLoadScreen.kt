@@ -88,7 +88,7 @@ fun BuyLoadScreen(navController: NavController) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
-                    Text("₱ ${String.format("%,.2f", AppState.walletBalance.value)}", 
+                    Text("${String.format("%,.2f", AppState.walletBalance.value)} XLM",
                         style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = PundarBlue)
                 }
             }
