@@ -15,10 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
 import com.example.pundarapp.ui.data.ContributionStatus
 import com.example.pundarapp.ui.theme.*
 
@@ -34,7 +36,7 @@ fun PundarProgressBar(
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 800),
+        animationSpec = tween(durationMillis = 800, easing = androidx.compose.animation.core.EaseOutCubic),
         label = "progress"
     )
 
@@ -51,6 +53,12 @@ fun PundarProgressBar(
                 .fillMaxWidth(animatedProgress)
                 .clip(RoundedCornerShape(height.dp / 2))
                 .background(color)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = RoundedCornerShape(height.dp / 2),
+                    clip = true,
+                    ambientColor = color.copy(alpha = 0.3f)
+                )
         )
     }
 }
@@ -104,8 +112,17 @@ fun MemberListItem(
     isHighlighted: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(400, easing = androidx.compose.animation.core.EaseOutCubic),
+        label = "memberListScale"
+    )
+
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer(scaleY = scale, transformOrigin = androidx.compose.ui.graphics.TransformOrigin.TopCenter)
+            .shadow(elevation = if (isHighlighted) 4.dp else 1.dp, shape = RoundedCornerShape(12.dp)),
         color = if (isHighlighted) PundarYellowBg else Color.Transparent,
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -233,10 +250,18 @@ fun PundarScoreChip(
         else -> PundarTextSecondary
     }
 
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(600, easing = androidx.compose.animation.core.EaseOutBack),
+        label = "scoreChipScale"
+    )
+
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = color.copy(alpha = 0.1f),
         modifier = modifier
+            .graphicsLayer(scaleX = scale, scaleY = scale)
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(8.dp), clip = false)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

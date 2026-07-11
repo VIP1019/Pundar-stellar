@@ -1,5 +1,7 @@
 package com.example.pundarapp.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,10 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import com.example.pundarapp.ui.screens.home.NotificationData
 import com.example.pundarapp.ui.theme.*
 
@@ -31,9 +35,15 @@ fun PundarMainTopBar(
     onNotificationClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
+    val slideDown by animateFloatAsState(
+        targetValue = 0f,
+        animationSpec = tween(600, easing = androidx.compose.animation.core.EaseOutCubic),
+        label = "topBarSlideDown"
+    )
+
     TopAppBar(
         title = {
-            Column {
+            Column(modifier = Modifier.graphicsLayer(translationY = slideDown)) {
                 Text(
                     text = "Welcome, ${userName.split(" ").first()}! 👋",
                     style = MaterialTheme.typography.titleMedium,
@@ -56,6 +66,7 @@ fun PundarMainTopBar(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(PundarBlue)
+                    .shadow(elevation = 4.dp, shape = CircleShape, ambientColor = PundarBlue.copy(alpha = 0.3f))
             ) {
                 Text(
                     text = userInitials,
@@ -70,7 +81,9 @@ fun PundarMainTopBar(
             Surface(
                 shape = CircleShape,
                 color = PundarTextPrimary,
-                modifier = Modifier.height(32.dp)
+                modifier = Modifier
+                    .height(32.dp)
+                    .shadow(elevation = 3.dp, shape = CircleShape, ambientColor = Color.Black.copy(alpha = 0.1f))
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -112,7 +125,8 @@ fun PundarMainTopBar(
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = PundarSurface,
             titleContentColor = PundarTextPrimary
-        )
+        ),
+        modifier = Modifier.shadow(elevation = 2.dp, ambientColor = Color.Black.copy(alpha = 0.05f))
     )
 }
 
