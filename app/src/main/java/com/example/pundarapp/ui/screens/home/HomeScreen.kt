@@ -1,6 +1,7 @@
 package com.example.pundarapp.ui.screens.home
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.shadow
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
@@ -483,39 +485,43 @@ private fun QuickActionCard(
     Card(
         modifier = modifier
             .height(120.dp)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp), ambientColor = color.copy(alpha = 0.15f)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = PundarSurface),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, hoveredElevation = 12.dp, pressedElevation = 6.dp),
+        border = BorderStroke(1.5.dp, color.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(color.copy(alpha = 0.1f))
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(color.copy(alpha = 0.12f))
             ) {
-                Icon(icon, contentDescription = title, tint = color, modifier = Modifier.size(22.dp))
+                Icon(icon, contentDescription = title, tint = color, modifier = Modifier.size(24.dp))
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+                color = PundarTextPrimary
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.labelSmall,
                 color = PundarTextSecondary,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }

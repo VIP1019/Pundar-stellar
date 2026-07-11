@@ -178,36 +178,64 @@ fun GrowScreen(navController: NavController) {
                 }
             }
 
-            // Main Chart Card — live portfolio value
+            // Main Chart Card — professional yellow-bordered design
             item {
                 PundarAccentCard {
-                    Text("Total Assets Value", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
-                    Spacer(Modifier.height(4.dp))
-                    Text("₱ ${String.format("%,.2f", portfolio.totalValue)}",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.ExtraBold, color = PundarTextPrimary)
-                    Spacer(Modifier.height(8.dp))
-                    StatusBadge(
-                        text = "📈 +${portfolio.totalReturnPercent}% (₱ ${String.format("%,.0f", portfolio.totalReturnAmount)}) All time",
-                        color = PundarGoldDark
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
-                            onClick = { showInvestDialog = true },
-                            modifier = Modifier.weight(1f).height(40.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PundarBlue)
-                        ) { Text("Invest More", color = Color.White, fontWeight = FontWeight.Bold) }
-                        OutlinedButton(
-                            onClick = { showWithdrawDialog = true },
-                            modifier = Modifier.weight(1f).height(40.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTextPrimary)
-                        ) { Text("Withdraw", fontWeight = FontWeight.Bold) }
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Value section
+                        Column(modifier = Modifier.padding(bottom = 16.dp)) {
+                            Text(
+                                text = "Total Assets Value",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = PundarTextSecondary
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = "₱ ${String.format("%,.2f", portfolio.totalValue)}",
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = PundarTextPrimary
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            StatusBadge(
+                                text = "📈 +${portfolio.totalReturnPercent}% (₱ ${String.format("%,.0f", portfolio.totalReturnAmount)}) All time",
+                                color = PundarGoldDark
+                            )
+                        }
+
+                        // Actions
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { showInvestDialog = true },
+                                modifier = Modifier.weight(1f).height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = PundarBlue)
+                            ) {
+                                Text("Invest More", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedButton(
+                                onClick = { showWithdrawDialog = true },
+                                modifier = Modifier.weight(1f).height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTextPrimary)
+                            ) {
+                                Text("Withdraw", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        // Chart
+                        PundarLineChart(
+                            dataPoints = SampleData.portfolioChartData,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                        )
                     }
-                    Spacer(Modifier.height(24.dp))
-                    PundarLineChart(dataPoints = SampleData.portfolioChartData, modifier = Modifier.fillMaxWidth())
                 }
             }
 

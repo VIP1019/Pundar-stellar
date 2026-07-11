@@ -1,5 +1,6 @@
 package com.example.pundarapp.ui.screens.circle
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -125,77 +126,108 @@ fun CircleScreen(navController: NavController) {
             }
 
             items(AppState.circles.toList()) { circle ->
-                PundarCard(
+                PundarAccentCard(
                     modifier = Modifier.clickable { 
                         navController.navigate(Routes.circleDetail(circle.id))
                     }
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Header section with status and members
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 StatusBadge(
                                     text = if (circle.isActive) "Active" else "Completed",
                                     color = if (circle.isActive) PundarBlue else PundarSuccess
                                 )
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = "${circle.memberCount} Members",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = PundarTextSecondary
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = PundarTextSecondary,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = circle.name,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "Target",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = PundarTextSecondary
+                                )
+                                Text(
+                                    text = "₱${String.format("%,.0f", circle.targetAmount)}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = PundarBlue
+                                )
+                            }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
+
+                        // Circle name
+                        Text(
+                            text = circle.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        // Progress section
+                        val progress = (circle.savedAmount / circle.targetAmount).toFloat()
+                        val progressPercent = (progress * 100).toInt()
+
+                        PundarProgressBar(
+                            progress = progress,
+                            color = PundarBlue,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Text(
-                                text = "Total Saved",
-                                style = MaterialTheme.typography.bodySmall,
+                                text = "$progressPercent% Completed",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
                                 color = PundarTextSecondary
                             )
                             Text(
-                                text = "₱ ${String.format("%,.0f", circle.savedAmount)}",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = PundarBlue
+                                text = "₱${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} remaining",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = PundarTextSecondary
                             )
                         }
-                    }
 
-                    Spacer(Modifier.height(16.dp))
-
-                    val progress = (circle.savedAmount / circle.targetAmount).toFloat()
-                    val progressPercent = (progress * 100).toInt()
-
-                    PundarProgressBar(
-                        progress = progress,
-                        color = PundarBlue
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "$progressPercent% Completed",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = PundarTextSecondary
-                        )
-                        Text(
-                            text = "₱ ${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} remaining",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = PundarTextSecondary
-                        )
+                        // Total saved
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(PundarGoldLight, RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Total Saved",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = PundarTextSecondary
+                            )
+                            Text(
+                                text = "₱${String.format("%,.0f", circle.savedAmount)}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = PundarGoldDark
+                            )
+                        }
                     }
                 }
             }
