@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.TrendingUp
@@ -30,6 +31,7 @@ enum class BottomNavItem(
 ) {
     HOME("home", "Home", "home"),
     PAY("pay", "Pay", "pay"),
+    SCAN("scan", "Scan", "scan"),
     CIRCLE("circle", "Circle", "circle"),
     GROW("grow", "Grow", "grow")
 }
@@ -52,19 +54,29 @@ fun PundarBottomBar(
                 selected = selected,
                 onClick = { onNavigate(item.route) },
                 icon = {
-                    val iconRes = when (item) {
-                        BottomNavItem.HOME -> R.drawable.home
-                        BottomNavItem.PAY -> R.drawable.pay
-                        BottomNavItem.CIRCLE -> R.drawable.circle
-                        BottomNavItem.GROW -> R.drawable.grow
-                    }
+                    if (item == BottomNavItem.SCAN) {
+                        Icon(
+                            imageVector = Icons.Filled.QrCodeScanner,
+                            contentDescription = item.label,
+                            tint = if (selected) PundarBlue else PundarTextSecondary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        val iconRes = when (item) {
+                            BottomNavItem.HOME -> R.drawable.home
+                            BottomNavItem.PAY -> R.drawable.pay
+                            BottomNavItem.CIRCLE -> R.drawable.circle
+                            BottomNavItem.GROW -> R.drawable.grow
+                            else -> R.drawable.home // Fallback
+                        }
 
-                    Icon(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = item.label,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(24.dp)
-                    )
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = item.label,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 },
                 label = {
                     Text(

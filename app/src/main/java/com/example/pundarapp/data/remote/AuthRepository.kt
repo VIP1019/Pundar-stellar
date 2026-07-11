@@ -125,6 +125,40 @@ object AuthRepository {
         return currentUserData?.phone ?: ""
     }
 
+    fun getCurrentUserInitials(): String {
+        val name = getCurrentUserName()
+        if (name == "User" || name.isBlank()) return "U"
+        val parts = name.split(" ")
+        if (parts.size == 1) return parts[0].take(1).uppercase()
+        return (parts.first().take(1) + parts.last().take(1)).uppercase()
+    }
+
+    suspend fun changeMpin(currentMpin: String, newMpin: String): Result<Boolean> {
+        return try {
+            val phone = getCurrentUserPhone()
+            if (phone.isBlank()) {
+                return Result.failure(Exception("User not logged in."))
+            }
+
+            val doc = usersCollection.document(phone).get().await()
+            if (!doc.exists()) {
+                return Result.failure(Exception("Account not found."))
+            }
+
+            val storedMpin = doc.getString("mpin") ?: ""
+            if (storedMpin != currentMpin.trim()) {
+                return Result.failure(Exception("Incorrect current MPIN."))
+            }
+
+            usersCollection.document(phone).update("mpin", newMpin.trim()).await()
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "changeMpin failed", e)
+            val friendly = mapFirestoreError(e)
+            Result.failure(Exception(friendly, e))
+        }
+    }
+
     suspend fun logout() {
         currentUserData = null
     }

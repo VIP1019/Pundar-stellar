@@ -59,14 +59,16 @@ fun HomeScreen(navController: NavController) {
         isLoadingActivities = false
     }
 
-    val totalSaved = AppState.circles.sumOf { it.savedAmount }
+    val currentUserName = AuthRepository.getCurrentUserName().split(" ").first()
+    val currentUserInitials = AuthRepository.getCurrentUserInitials()
 
     Scaffold(
         topBar = {
             PundarMainTopBar(
-                userName = userName,
-                userInitials = user.initials,
+                userName = currentUserName,
+                userInitials = currentUserInitials,
                 pundarScore = user.pundarScore,
+                onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) }
             )
         },

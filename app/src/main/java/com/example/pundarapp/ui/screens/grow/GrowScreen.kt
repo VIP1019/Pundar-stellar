@@ -28,6 +28,7 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.data.remote.AuthRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,9 +131,8 @@ fun GrowScreen(navController: NavController) {
                     Text("Based on your PUNDAR Score of ${user.pundarScore}, here's our recommendation:",
                         style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(4.dp))
-                    PundarAllocationBar("PH Equities", 65, PundarBlue)
-                    PundarAllocationBar("US Equities", 20, PundarGold)
-                    PundarAllocationBar("Fixed Income", 15, PundarTextSecondary)
+                    PundarAllocationBar("PH Equities", 80, PundarBlue)
+                    PundarAllocationBar("Fixed Income", 20, PundarTextSecondary)
                     Spacer(Modifier.height(4.dp))
                     Text("This allocation is optimized for moderate growth with your current risk profile.",
                         style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
@@ -151,7 +151,11 @@ fun GrowScreen(navController: NavController) {
 
     Scaffold(
         topBar = {
-            PundarGrowTopBar(userInitials = user.initials, pundarScore = user.pundarScore)
+            PundarGrowTopBar(
+                userInitials = AuthRepository.getCurrentUserInitials(),
+                pundarScore = user.pundarScore,
+                onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) }
+            )
         },
         containerColor = PundarBackground
     ) { padding ->
@@ -215,8 +219,6 @@ fun GrowScreen(navController: NavController) {
             item {
                 PundarCard {
                     PundarAllocationBar("PH Equities", portfolio.phEquitiesPercent, PundarBlue)
-                    Spacer(Modifier.height(16.dp))
-                    PundarAllocationBar("US Equities", portfolio.usEquitiesPercent, PundarGold)
                     Spacer(Modifier.height(16.dp))
                     PundarAllocationBar("Fixed Income", portfolio.fixedIncomePercent, PundarTextSecondary)
                 }

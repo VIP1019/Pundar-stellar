@@ -20,7 +20,10 @@ import com.example.pundarapp.ui.screens.circle.CreateCircleScreen
 import com.example.pundarapp.ui.screens.grow.GrowScreen
 import com.example.pundarapp.ui.screens.grow.StockDetailScreen
 import com.example.pundarapp.ui.screens.home.HomeScreen
+import com.example.pundarapp.ui.screens.home.NotificationScreen
+import com.example.pundarapp.ui.screens.home.ScanScreen
 import com.example.pundarapp.ui.screens.home.UserSettingsScreen
+import com.example.pundarapp.ui.screens.home.ChangeMpinScreen
 import com.example.pundarapp.ui.screens.pay.BillDetailScreen
 import com.example.pundarapp.ui.screens.pay.NewGroupBillScreen
 import com.example.pundarapp.ui.screens.pay.PayScreen
@@ -47,6 +50,9 @@ object Routes {
     fun circleDetail(circleId: String) = "circle/$circleId"
     fun circleInvite(inviteId: String) = "circle/invite/$inviteId"
     const val SETTINGS = "settings"
+    const val NOTIFICATIONS = "notifications"
+    const val SCAN = "scan"
+    const val CHANGE_MPIN = "change_mpin"
     const val SEND_MONEY = "send_money"
     const val BUY_LOAD = "buy_load"
 }
@@ -106,8 +112,17 @@ fun PundarNavigation() {
             composable(Routes.SETTINGS) {
                 UserSettingsScreen(navController = navController)
             }
+            composable(Routes.CHANGE_MPIN) {
+                ChangeMpinScreen(navController = navController)
+            }
+            composable(Routes.NOTIFICATIONS) {
+                NotificationScreen(navController = navController)
+            }
             composable(Routes.PAY) {
                 PayScreen(navController = navController)
+            }
+            composable(Routes.SCAN) {
+                ScanScreen(navController = navController)
             }
             composable(Routes.PAY_NEW_BILL) {
                 NewGroupBillScreen(navController = navController)

@@ -96,7 +96,7 @@ fun UserSettingsScreen(navController: NavController) {
                 icon = Icons.Filled.Security,
                 title = "Change MPIN",
                 subtitle = "Update your 4-digit security code",
-                onClick = { /* TODO */ }
+                onClick = { navController.navigate(Routes.CHANGE_MPIN) }
             )
 
             Spacer(modifier = Modifier.weight(1f))

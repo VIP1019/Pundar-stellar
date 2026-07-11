@@ -25,7 +25,7 @@ import com.example.pundarapp.data.remote.AuthRepository
 @Composable
 fun CircleScreen(navController: NavController) {
     val currentName = AuthRepository.getCurrentUserName()
-    val initials = currentName.take(2).uppercase()
+    val initials = AuthRepository.getCurrentUserInitials()
 
     Scaffold(
         topBar = {
@@ -33,6 +33,7 @@ fun CircleScreen(navController: NavController) {
                 userName = currentName,
                 userInitials = initials,
                 pundarScore = SampleData.currentUser.pundarScore,
+                onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) }
             )
         },

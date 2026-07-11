@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
+import com.example.pundarapp.ui.screens.home.NotificationData
 import com.example.pundarapp.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,7 +91,16 @@ fun PundarMainTopBar(
                     )
                 }
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onNotificationClick) {
+                if (NotificationData.hasUnread()) {
+                    BadgedBox(badge = { Badge() }) {
+                        Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = PundarTextSecondary)
+                    }
+                } else {
+                    Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = PundarTextSecondary)
+                }
+            }
             IconButton(onClick = onSettingsClick) {
                 Icon(
                     Icons.Filled.Settings,
@@ -169,6 +179,7 @@ fun PundarDetailTopBar(
 fun PundarCircleTopBar(
     onBack: () -> Unit = {},
     showNotifications: Boolean = true,
+    onNotificationClick: () -> Unit = {},
     userInitials: String = "JD"
 ) {
     TopAppBar(
@@ -206,8 +217,14 @@ fun PundarCircleTopBar(
             }
             Spacer(Modifier.width(8.dp))
             if (showNotifications) {
-                IconButton(onClick = { }) {
-                    Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = PundarTextSecondary)
+                IconButton(onClick = onNotificationClick) {
+                    if (NotificationData.hasUnread()) {
+                        BadgedBox(badge = { Badge() }) {
+                            Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = PundarTextSecondary)
+                        }
+                    } else {
+                        Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = PundarTextSecondary)
+                    }
                 }
             }
         },
@@ -223,6 +240,7 @@ fun PundarCircleTopBar(
 fun PundarGrowTopBar(
     userInitials: String = "JD",
     pundarScore: Int = 850,
+    onNotificationClick: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     TopAppBar(
@@ -276,7 +294,17 @@ fun PundarGrowTopBar(
                     )
                 }
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onNotificationClick) {
+                if (NotificationData.hasUnread()) {
+                    BadgedBox(badge = { Badge() }) {
+                        Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = PundarTextSecondary)
+                    }
+                } else {
+                    Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = PundarTextSecondary)
+                }
+            }
+            Spacer(Modifier.width(8.dp))
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = PundarSurface,

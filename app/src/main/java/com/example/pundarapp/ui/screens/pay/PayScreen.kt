@@ -40,7 +40,7 @@ fun PayScreen(navController: NavController) {
     val monthTotal = bills.sumOf { it.yourShare }
 
     val currentName = AuthRepository.getCurrentUserName()
-    val initials = currentName.take(2).uppercase()
+    val initials = AuthRepository.getCurrentUserInitials()
 
     Scaffold(
         topBar = {
@@ -48,6 +48,7 @@ fun PayScreen(navController: NavController) {
                 userName = currentName,
                 userInitials = initials,
                 pundarScore = com.example.pundarapp.ui.data.SampleData.currentUser.pundarScore,
+                onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) }
             )
         },

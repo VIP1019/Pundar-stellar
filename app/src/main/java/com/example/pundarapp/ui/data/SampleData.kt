@@ -78,7 +78,6 @@ data class Portfolio(
     val totalReturnPercent: Double,
     val totalReturnAmount: Double,
     val phEquitiesPercent: Int,
-    val usEquitiesPercent: Int,
     val fixedIncomePercent: Int,
     val holdings: List<StockHolding>,
     val activities: List<PortfolioActivity>
@@ -149,9 +148,8 @@ object SampleData {
         totalValue = 124500.00,
         totalReturnPercent = 12.4,
         totalReturnAmount = 15436.00,
-        phEquitiesPercent = 60,
-        usEquitiesPercent = 25,
-        fixedIncomePercent = 15,
+        phEquitiesPercent = 80,
+        fixedIncomePercent = 20,
         holdings = listOf(
             StockHolding(
                 ticker = "AC",
