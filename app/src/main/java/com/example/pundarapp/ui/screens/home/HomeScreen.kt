@@ -56,6 +56,7 @@ fun HomeScreen(navController: NavController) {
                 AppState.homeActivities.addAll(result.getOrDefault(emptyList()))
             }
         }
+        AppState.refreshWalletBalance()
         isLoadingActivities = false
     }
 
@@ -101,12 +102,12 @@ fun HomeScreen(navController: NavController) {
                         Column {
                             Column(modifier = Modifier.padding(24.dp)) {
                                 Text(
-                                    text = "Total Saved",
+                                    text = "Wallet Balance",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = Color.White.copy(alpha = 0.8f)
                                 )
                                 Text(
-                                    text = "₱ ${String.format("%,.0f", totalSaved)}",
+                                    text = "${String.format("%,.2f", AppState.walletBalance.value)} XLM",
                                     style = MaterialTheme.typography.headlineLarge,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = Color.White
@@ -114,17 +115,17 @@ fun HomeScreen(navController: NavController) {
                                 Spacer(Modifier.height(4.dp))
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { }
+                                    modifier = Modifier.clickable { AppState.refreshWalletBalance() }
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Visibility,
-                                        contentDescription = "View balance",
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Refresh balance",
                                         tint = Color.White,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        text = "View Saved Balance",
+                                        text = "Tap to Refresh",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.White
                                     )

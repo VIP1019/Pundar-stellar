@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.PayRepository
+import com.example.pundarapp.data.stellar.StellarWalletManager
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -175,8 +176,20 @@ object AppState {
     val homeActivities = mutableStateListOf<HomeActivity>()
     val walletBalance = mutableStateOf(5000.0)
 
+    fun refreshWalletBalance() {
+        val publicKey = AuthRepository.getCurrentUserStellarPublicKey()
+        if (publicKey == null) {
+            Log.w("AppState", "No Stellar public key found for current user")
+            return
+        }
+        scope.launch {
+            val balance = StellarWalletManager.getXlmBalance(publicKey)
+            walletBalance.value = balance
+        }
+    }
+
     private fun addHomeActivity(activity: HomeActivity) {
         homeActivities.add(0, activity) // newest first
-        if (homeActivities.size > 20) homeActivities.removeLast()
+        if (homeActivities.size > 20) homeActivities.removeAt(homeActivities.lastIndex)
     }
 }

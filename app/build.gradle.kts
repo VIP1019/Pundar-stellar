@@ -40,6 +40,10 @@ android {
         compose = true
         buildConfig = true
     }
+
+    defaultConfig {
+        buildConfigField("String", "STELLAR_PEPPER", "\"${project.findProperty("stellar.pepper") ?: ""}\"")
+    }
 }
 
 dependencies {
@@ -78,6 +82,9 @@ dependencies {
 
     // Guava (for ListenableFuture in CameraX)
     implementation("com.google.guava:guava:31.1-android")
+
+    // Stellar
+    implementation(libs.stellar.sdk)
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)

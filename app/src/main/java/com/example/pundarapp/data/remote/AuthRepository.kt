@@ -1,6 +1,7 @@
 package com.example.pundarapp.data.remote
 
 import android.util.Log
+import com.example.pundarapp.data.stellar.StellarWalletManager
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -15,7 +16,8 @@ object AuthRepository {
     data class UserData(
         val id: String,
         val name: String,
-        val phone: String
+        val phone: String,
+        val stellarPublicKey: String? = null
     )
 
     suspend fun registerWithPhone(phone: String, fullName: String, mpin: String): Result<Boolean> {
@@ -30,13 +32,32 @@ object AuthRepository {
                 return Result.failure(Exception("This mobile number is already registered."))
             }
 
+            // Generate Stellar Wallet
+            val keyPair = StellarWalletManager.generateKeyPair()
+            val publicKey = keyPair.accountId
+            val seed = keyPair.secretSeed
+
+            // Fund account
+            val fundingResult = StellarWalletManager.fundTestnetAccount(publicKey)
+            if (fundingResult.isFailure) {
+                return Result.failure(Exception("Failed to initialize wallet: ${fundingResult.exceptionOrNull()?.message}"))
+            }
+
+            // Encrypt seed
+            val encryptedSeed = StellarWalletManager.encryptSecretSeed(seed, mpin)
+            // Clear seed
+            StellarWalletManager.clearCharArray(seed)
+
             // Store user directly in Firestore
             val userData = hashMapOf(
                 "phone_number" to cleanPhone,
                 "full_name" to fullName.trim(),
                 "mpin" to mpin.trim(),
                 "pundar_score" to 800,
-                "created_at" to System.currentTimeMillis()
+                "created_at" to System.currentTimeMillis(),
+                "stellarPublicKey" to publicKey,
+                "encryptedStellarSeed" to encryptedSeed,
+                "isCustodial" to true
             )
             usersCollection.document(cleanPhone).set(userData).await()
             Log.d(TAG, "registerWithPhone: success")
@@ -45,7 +66,8 @@ object AuthRepository {
             currentUserData = UserData(
                 id = cleanPhone,
                 name = fullName.trim(),
-                phone = cleanPhone
+                phone = cleanPhone,
+                stellarPublicKey = publicKey
             )
 
             Result.success(true)
@@ -79,10 +101,12 @@ object AuthRepository {
 
             // Set session
             val name = doc.getString("full_name") ?: "User"
+            val publicKey = doc.getString("stellarPublicKey")
             currentUserData = UserData(
                 id = cleanPhone,
                 name = name,
-                phone = cleanPhone
+                phone = cleanPhone,
+                stellarPublicKey = publicKey
             )
             Log.d(TAG, "loginWithPhone: success")
 
@@ -123,6 +147,10 @@ object AuthRepository {
 
     fun getCurrentUserPhone(): String {
         return currentUserData?.phone ?: ""
+    }
+
+    fun getCurrentUserStellarPublicKey(): String? {
+        return currentUserData?.stellarPublicKey
     }
 
     fun getCurrentUserInitials(): String {
