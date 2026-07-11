@@ -1,5 +1,7 @@
 package com.example.pundarapp.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,8 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,11 +48,19 @@ fun PundarBottomBar(
     NavigationBar(
         containerColor = PundarSurface,
         contentColor = PundarTextSecondary,
-        tonalElevation = 8.dp,
-        modifier = Modifier.height(80.dp)
+        tonalElevation = 0.dp,
+        modifier = Modifier
+            .height(80.dp)
+            .shadow(elevation = 12.dp, ambientColor = Color.Black.copy(alpha = 0.1f))
     ) {
         BottomNavItem.entries.forEach { item ->
             val selected = currentRoute.startsWith(item.route)
+            
+            val scale by animateFloatAsState(
+                targetValue = if (selected) 1.1f else 1f,
+                animationSpec = tween(300, easing = androidx.compose.animation.core.EaseOutCubic),
+                label = "navItemScale"
+            )
 
             NavigationBarItem(
                 selected = selected,
@@ -59,7 +71,9 @@ fun PundarBottomBar(
                             imageVector = Icons.Filled.QrCodeScanner,
                             contentDescription = item.label,
                             tint = if (selected) PundarBlue else PundarTextSecondary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .size(24.dp)
+                                .graphicsLayer(scaleX = scale, scaleY = scale)
                         )
                     } else {
                         val iconRes = when (item) {
@@ -74,7 +88,9 @@ fun PundarBottomBar(
                             painter = painterResource(id = iconRes),
                             contentDescription = item.label,
                             tint = Color.Unspecified,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .size(24.dp)
+                                .graphicsLayer(scaleX = scale, scaleY = scale)
                         )
                     }
                 },
@@ -87,7 +103,7 @@ fun PundarBottomBar(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = Color.Transparent
+                    indicatorColor = if (selected) PundarBlue.copy(alpha = 0.1f) else Color.Transparent
                 )
             )
         }
