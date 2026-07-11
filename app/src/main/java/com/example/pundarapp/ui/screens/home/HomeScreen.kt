@@ -117,7 +117,7 @@ fun HomeScreen(navController: NavController) {
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Button(
-                                onClick = { navController.navigate(Routes.PAY_TRANSFER) },
+                                onClick = { navController.navigate(Routes.SEND_MONEY) },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(48.dp),
@@ -168,48 +168,45 @@ fun HomeScreen(navController: NavController) {
             // ── Quick Stats Section ─────────────────────────────────
             item {
                 Row(
-                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(horizontal = 20.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color.White.copy(alpha = 0.15f))
-                                            .padding(8.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.score1),
-                                            contentDescription = null
-                                        )
-                                    }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text = "Credit Score",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color.White.copy(alpha = 0.8f)
-                                        )
-                                        Text(
-                                            text = "850",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                    }
-                                    Spacer(Modifier.weight(1f))
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        }
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    PundarCard(
+                        modifier = Modifier.weight(1f),
+                        accentColor = PundarGold
+                    ) {
+                        Text(
+                            text = "Total Saved",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = PundarTextSecondary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "₱${String.format("%,.2f", totalSaved)}",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = PundarTextPrimary,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+
+                    PundarCard(
+                        modifier = Modifier.weight(1f),
+                        accentColor = PundarBlue
+                    ) {
+                        Text(
+                            text = "Credit Score",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = PundarTextSecondary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = user.pundarScore.toString(),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = PundarBlue,
+                            fontWeight = FontWeight.ExtraBold
+                        )
                     }
                 }
             }
