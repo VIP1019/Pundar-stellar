@@ -76,6 +76,9 @@ dependencies {
     // ML Kit Barcode Scanning
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
 
+    // Guava (for ListenableFuture in CameraX)
+    implementation("com.google.guava:guava:31.1-android")
+
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 }

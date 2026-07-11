@@ -61,6 +61,7 @@ fun HomeScreen(navController: NavController) {
 
     val currentUserName = AuthRepository.getCurrentUserName().split(" ").first()
     val currentUserInitials = AuthRepository.getCurrentUserInitials()
+    val totalSaved = AppState.circles.sumOf { it.savedAmount }
 
     Scaffold(
         topBar = {
