@@ -72,19 +72,23 @@ fun PayScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Column {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        "PUNDAR Pay",
-                        style = MaterialTheme.typography.displayMedium,
+                        "Pay",
+                        style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = PundarTextPrimary
+                        color = PundarTextPrimary,
+                        fontSize = 56.sp,
+                        lineHeight = 64.sp
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                     Text(
                         "Intelligent Settlement. Spend together, settle instantly on Stellar rails.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = PundarTextSecondary,
-                        lineHeight = 24.dp
+                        lineHeight = 26.sp,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
