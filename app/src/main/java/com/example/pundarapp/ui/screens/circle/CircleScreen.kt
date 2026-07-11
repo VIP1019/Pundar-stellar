@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -60,22 +61,36 @@ fun CircleScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
-                Text(
-                    text = "PUNDAR Circle",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = PundarTextPrimary
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Smart-contract-secured paluwagan savings, with no organizer risk",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = PundarTextSecondary
-                )
+                Column {
+                    Text(
+                        text = "Circle",
+                        style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = PundarTextPrimary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Shield,
+                            contentDescription = "Safe",
+                            tint = PundarGold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Probably Safe Paluwagan",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = PundarTextSecondary
+                        )
+                    }
+                }
             }
 
             // Invitations

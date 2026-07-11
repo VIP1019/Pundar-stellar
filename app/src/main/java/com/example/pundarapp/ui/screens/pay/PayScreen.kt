@@ -72,11 +72,85 @@ fun PayScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text("PUNDAR Pay", style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.ExtraBold, color = PundarTextPrimary)
-                Spacer(Modifier.height(4.dp))
-                Text("Intelligent, transparent settlement of shared expenses",
-                    style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                Column {
+                    Text(
+                        "PUNDAR Pay",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = PundarTextPrimary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Intelligent Settlement. Spend together, settle instantly on Stellar rails.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = PundarTextSecondary,
+                        lineHeight = 24.dp
+                    )
+                }
+            }
+
+            // Action buttons
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { navController.navigate(Routes.PAY_NEW_BILL) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PundarBlue)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PersonAdd,
+                            contentDescription = "Create",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Create Group\nExpense",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Button(
+                        onClick = { /* Handle instant settle */ },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PundarGold)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreHoriz,
+                            contentDescription = "Settle",
+                            tint = PundarTextPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Instant Settle",
+                            color = PundarTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            }
+
+            // Section heading
+            item {
+                Text(
+                    "Active Group Expenses",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = PundarTextPrimary
+                )
             }
 
             // Summary card — professional blue-bordered design
