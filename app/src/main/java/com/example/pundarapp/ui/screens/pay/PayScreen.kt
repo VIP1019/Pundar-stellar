@@ -84,7 +84,7 @@ fun PayScreen(navController: NavController) {
                         "Intelligent Settlement. Spend together, settle instantly on Stellar rails.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = PundarTextSecondary,
-                        lineHeight = 24.dp
+                        lineHeight = 24.sp
                     )
                 }
             }

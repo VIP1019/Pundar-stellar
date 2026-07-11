@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,7 +122,7 @@ fun MemberListItem(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .graphicsLayer(scaleY = scale, transformOrigin = androidx.compose.ui.graphics.TransformOrigin.TopCenter)
+            .graphicsLayer(scaleY = scale, transformOrigin = TransformOrigin(0.5f, 0f))
             .shadow(elevation = if (isHighlighted) 4.dp else 1.dp, shape = RoundedCornerShape(12.dp)),
         color = if (isHighlighted) PundarYellowBg else Color.Transparent,
         shape = RoundedCornerShape(12.dp)

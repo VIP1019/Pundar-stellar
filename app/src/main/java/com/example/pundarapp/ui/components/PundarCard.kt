@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -60,7 +62,7 @@ fun PundarAccentCard(
 ) {
     val scale by animateFloatAsState(
         targetValue = 1f,
-        animationSpec = tween(500, delay = 100, easing = androidx.compose.animation.core.EaseOutCubic),
+        animationSpec = tween(500, delayMillis = 100, easing = androidx.compose.animation.core.EaseOutCubic),
         label = "accentCardScale"
     )
 
