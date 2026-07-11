@@ -1,24 +1,26 @@
 package com.example.pundarapp.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.pundarapp.ui.theme.*
 
+// ── Glass Card (primary surface) ────────────────────────────────
 @Composable
 fun PundarCard(
     modifier: Modifier = Modifier,
@@ -27,79 +29,145 @@ fun PundarCard(
 ) {
     val scale by animateFloatAsState(
         targetValue = 1f,
-        animationSpec = tween(500, easing = androidx.compose.animation.core.EaseOutCubic),
-        label = "cardScale"
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness    = Spring.StiffnessMedium
+        ),
+        label = "cardEntrance"
     )
 
-    Card(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer(scaleX = scale, scaleY = scale)
-            .shadow(elevation = 6.dp, shape = RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = PundarSurface
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            hoveredElevation = 8.dp,
-            pressedElevation = 4.dp
-        ),
-        border = accentColor?.let { BorderStroke(2.5.dp, it) }
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            content = content
-        )
+        // Glow shadow layer
+        if (accentColor != null) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .shadow(
+                        elevation   = 16.dp,
+                        shape       = RoundedCornerShape(20.dp),
+                        ambientColor = accentColor.copy(alpha = 0.25f),
+                        spotColor   = accentColor.copy(alpha = 0.25f),
+                        clip        = false
+                    )
+            )
+        }
+
+        Card(
+            shape  = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            border = BorderStroke(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        accentColor?.copy(alpha = 0.6f) ?: GlassBorder,
+                        GlassWhite
+                    )
+                )
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            SpaceDeep,
+                            Color(0xFF0E1825)
+                        )
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                content = content
+            )
+        }
     }
 }
 
+// ── Accent/Gradient Card ─────────────────────────────────────────
 @Composable
 fun PundarAccentCard(
     modifier: Modifier = Modifier,
-    accentColor: Color = PundarGold,
+    accentColor: Color = PremiumGoldWarm,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(500, delayMillis = 100, easing = androidx.compose.animation.core.EaseOutCubic),
-        label = "accentCardScale"
-    )
-
-    Card(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .graphicsLayer(scaleX = scale, scaleY = scale)
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp), ambientColor = accentColor.copy(alpha = 0.2f)),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = PundarSurface
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            hoveredElevation = 10.dp,
-            pressedElevation = 6.dp
-        ),
-        border = BorderStroke(2.5.dp, accentColor)
+            .shadow(
+                elevation    = 20.dp,
+                shape        = RoundedCornerShape(20.dp),
+                ambientColor = accentColor.copy(alpha = 0.3f),
+                spotColor    = accentColor.copy(alpha = 0.3f),
+                clip         = false
+            )
+    ) {
+        Card(
+            shape  = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            border = BorderStroke(
+                1.5.dp,
+                Brush.linearGradient(
+                    colors = listOf(accentColor.copy(alpha = 0.8f), accentColor.copy(alpha = 0.2f))
+                )
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(SpaceDeep, Color(0xFF0E1825))
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                content = content
+            )
+        }
+    }
+}
+
+// ── Glassmorphism Card ───────────────────────────────────────────
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    cornerRadius: Dp = 20.dp,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        shape  = RoundedCornerShape(cornerRadius),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, GlassBorder),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        GlassWhiteMid,
+                        GlassWhite
+                    )
+                )
+            )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             content = content
         )
     }
 }
 
-private fun <T> shadow(
-    elevation: androidx.compose.ui.unit.Dp,
-    shape: androidx.compose.foundation.shape.RoundedCornerShape,
-    ambientColor: Color
-): Modifier {
-    return Modifier.graphicsLayer {
-        this.shadowElevation = elevation.toPx()
-    }
-}
-
-// ── Buttons ──────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+//  BUTTONS
+// ════════════════════════════════════════════════════════════════
 
 @Composable
 fun PundarPrimaryButton(
@@ -109,39 +177,49 @@ fun PundarPrimaryButton(
     enabled: Boolean = true
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed = interactionSource.collectIsPressedAsState()
-    
+    val isPressed by interactionSource.collectIsPressedAsState()
+
     val scale by animateFloatAsState(
-        targetValue = if (isPressed.value) 0.96f else 1f,
-        animationSpec = tween(150),
-        label = "buttonScale"
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "btnScale"
     )
 
-    Button(
-        onClick = onClick,
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
             .graphicsLayer(scaleX = scale, scaleY = scale)
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp), ambientColor = PundarGold.copy(alpha = 0.3f)),
-        enabled = enabled,
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = PundarGold,
-            contentColor = PundarTextPrimary,
-            disabledContainerColor = PundarGold.copy(alpha = 0.4f)
-        ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp
-        ),
-        interactionSource = interactionSource
+            .shadow(
+                elevation    = if (enabled) 12.dp else 0.dp,
+                shape        = RoundedCornerShape(16.dp),
+                ambientColor = PremiumGoldWarm.copy(alpha = 0.4f),
+                spotColor    = PremiumGoldWarm.copy(alpha = 0.4f)
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (enabled)
+                    Brush.horizontalGradient(colors = listOf(PremiumGoldWarm, PremiumGold))
+                else
+                    Brush.horizontalGradient(colors = listOf(SpaceMedium, SpaceMedium))
+            )
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Button(
+            onClick = onClick,
+            modifier = Modifier.fillMaxSize(),
+            enabled = enabled,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
+            interactionSource = interactionSource
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (enabled) SpaceBlack else TextTertiary
+            )
+        }
     }
 }
 
@@ -152,12 +230,11 @@ fun PundarSecondaryButton(
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed = interactionSource.collectIsPressedAsState()
-    
+    val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed.value) 0.96f else 1f,
-        animationSpec = tween(150),
-        label = "secondaryButtonScale"
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "secBtnScale"
     )
 
     OutlinedButton(
@@ -165,13 +242,13 @@ fun PundarSecondaryButton(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
-            .graphicsLayer(scaleX = scale, scaleY = scale)
-            .shadow(elevation = 4.dp, shape = RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.05f)),
+            .graphicsLayer(scaleX = scale, scaleY = scale),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, PundarBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = PundarTextPrimary
+        border = BorderStroke(
+            1.5.dp,
+            Brush.horizontalGradient(colors = listOf(ElectricBlue.copy(0.6f), NeonCyan.copy(0.6f)))
         ),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
         interactionSource = interactionSource
     ) {
         Text(
@@ -189,37 +266,44 @@ fun PundarBlueButton(
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed = interactionSource.collectIsPressedAsState()
-    
+    val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed.value) 0.96f else 1f,
-        animationSpec = tween(150),
-        label = "blueButtonScale"
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "blueBtnScale"
     )
 
-    Button(
-        onClick = onClick,
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
             .graphicsLayer(scaleX = scale, scaleY = scale)
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp), ambientColor = PundarBlue.copy(alpha = 0.3f)),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = PundarBlue,
-            contentColor = Color.White
-        ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp
-        ),
-        interactionSource = interactionSource
+            .shadow(
+                elevation    = 12.dp,
+                shape        = RoundedCornerShape(16.dp),
+                ambientColor = ElectricBlue.copy(0.35f),
+                spotColor    = ElectricBlue.copy(0.35f)
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(colors = listOf(ElectricBlueDeep, ElectricBlue))
+            )
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Button(
+            onClick = onClick,
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
+            interactionSource = interactionSource
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextOnDark
+            )
+        }
     }
 }
 
@@ -228,34 +312,29 @@ fun PundarSmallButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = PundarBlueSubtle,
-    contentColor: Color = PundarBlue
+    containerColor: Color = SpaceMedium,
+    contentColor: Color  = ElectricBlue
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed = interactionSource.collectIsPressedAsState()
-    
+    val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed.value) 0.92f else 1f,
-        animationSpec = tween(150),
-        label = "smallButtonScale"
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "smallBtnScale"
     )
 
     Button(
         onClick = onClick,
         modifier = modifier
             .height(36.dp)
-            .graphicsLayer(scaleX = scale, scaleY = scale)
-            .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp), ambientColor = contentColor.copy(alpha = 0.2f)),
+            .graphicsLayer(scaleX = scale, scaleY = scale),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
-            contentColor = contentColor
+            contentColor   = contentColor
         ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp
-        ),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         interactionSource = interactionSource
     ) {
         Text(

@@ -3,7 +3,7 @@ package com.example.pundarapp.ui.theme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
@@ -11,57 +11,63 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val PundarColorScheme = lightColorScheme(
-    primary = PundarBlue,
-    onPrimary = PundarTextOnPrimary,
-    primaryContainer = PundarBlueSubtle,
-    onPrimaryContainer = PundarBlueDark,
+// ── Futuristic Dark Color Scheme ────────────────────────────────
+private val PundarDarkColorScheme = darkColorScheme(
+    primary              = ElectricBlue,
+    onPrimary            = SpaceBlack,
+    primaryContainer     = CardBlueStart,
+    onPrimaryContainer   = NeonBlue,
 
-    secondary = PundarGold,
-    onSecondary = PundarTextOnGold,
-    secondaryContainer = PundarYellowBg,
-    onSecondaryContainer = PundarTextPrimary,
+    secondary            = PremiumGoldWarm,
+    onSecondary          = SpaceBlack,
+    secondaryContainer   = CardGoldStart,
+    onSecondaryContainer = PremiumGold,
 
-    tertiary = PundarSuccess,
-    onTertiary = Color.White,
-    tertiaryContainer = PundarSuccessLight,
-    onTertiaryContainer = Color(0xFF14532D),
+    tertiary             = NeonGreen,
+    onTertiary           = SpaceBlack,
+    tertiaryContainer    = Color(0xFF0A2A1A),
+    onTertiaryContainer  = NeonGreen,
 
-    error = PundarError,
-    onError = Color.White,
-    errorContainer = PundarErrorLight,
-    onErrorContainer = Color(0xFF7F1D1D),
+    error                = ErrorRed,
+    onError              = SpaceBlack,
+    errorContainer       = Color(0xFF2A0A0A),
+    onErrorContainer     = ErrorRed,
 
-    background = PundarBackground,
-    onBackground = PundarTextPrimary,
+    background           = SpaceNavy,
+    onBackground         = TextPrimary,
 
-    surface = PundarSurface,
-    onSurface = PundarTextPrimary,
-    surfaceVariant = PundarSurfaceVariant,
-    onSurfaceVariant = PundarTextSecondary,
+    surface              = SpaceDeep,
+    onSurface            = TextPrimary,
+    surfaceVariant       = SpaceMedium,
+    onSurfaceVariant     = TextSecondary,
 
-    outline = PundarBorder,
-    outlineVariant = PundarDivider,
+    outline              = SpaceBorder,
+    outlineVariant       = SpaceLight,
 
-    inverseSurface = PundarTextPrimary,
-    inverseOnSurface = PundarSurface,
-    inversePrimary = PundarBlueLight,
+    inverseSurface       = TextPrimary,
+    inverseOnSurface     = SpaceDeep,
+    inversePrimary       = ElectricBlueDim,
 
-    surfaceTint = PundarBlue,
+    surfaceTint          = ElectricBlue,
+    scrim                = Color(0xCC050810),
 )
 
 @Composable
 fun PundarAppTheme(
     content: @Composable () -> Unit
 ) {
-    val colorScheme = PundarColorScheme
-
+    val colorScheme = PundarDarkColorScheme
     val view = LocalView.current
+
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = Color.Transparent.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+            window.navigationBarColor = SpaceBlack.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars  = false  // white icons on dark bg
+                isAppearanceLightNavigationBars = false
+            }
         }
     }
 

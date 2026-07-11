@@ -2,52 +2,119 @@ package com.example.pundarapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ── PUNDAR Premium Brand Colors (International Contest Standard) ──
+// ═══════════════════════════════════════════════════════════════════
+//  PUNDAR — Futuristic Dark Design System  (International Edition)
+//  Inspired by Revolut · Apple Pay · Nubank · Linear
+// ═══════════════════════════════════════════════════════════════════
 
-// Primary Blue - Deep, sophisticated
-val PundarBlue = Color(0xFF0F3A7D)
-val PundarBlueDark = Color(0xFF082A5C)
-val PundarBlueLight = Color(0xFF4A70C0)
-val PundarBlueSubtle = Color(0xFFF0F4FC)
+// ── Deep Space Backgrounds ──────────────────────────────────────
+val SpaceBlack       = Color(0xFF050810)   // Deepest background
+val SpaceNavy        = Color(0xFF080D1A)   // Primary background
+val SpaceDeep        = Color(0xFF0C1220)   // Card background
+val SpaceDark        = Color(0xFF111827)   // Elevated surface
+val SpaceMedium      = Color(0xFF1A2235)   // Input/secondary surface
+val SpaceLight       = Color(0xFF1E2A3D)   // Hover / subtle surface
+val SpaceBorder      = Color(0xFF1F2D44)   // Border / divider
 
-// Accent Gold - Warm, elegant
-val PundarGold = Color(0xFFD4AF37)
-val PundarGoldDark = Color(0xFFC19A2B)
-val PundarGoldLight = Color(0xFFFBF5EA)
-val PundarYellow = Color(0xFFE6B800)
-val PundarYellowBg = Color(0xFFFFFAF0)
+// ── Electric Blue — Primary Brand ──────────────────────────────
+val ElectricBlue     = Color(0xFF00B4FF)   // Vivid electric blue
+val ElectricBlueDeep = Color(0xFF0080FF)   // Deeper blue CTA
+val ElectricBlueDim  = Color(0xFF1A6EB5)   // Muted blue
+val NeonBlue         = Color(0xFF00D4FF)   // Neon glow accent
+val PrimaryGlow      = Color(0x4400B4FF)   // Blue glow (68% alpha)
+val PrimaryGlowSoft  = Color(0x2200B4FF)   // Soft blue glow
 
-// Backgrounds & Surfaces - Premium white and creams
-val PundarBackground = Color(0xFFFAFAFA)
-val PundarSurface = Color(0xFFFFFFFF)
-val PundarSurfaceVariant = Color(0xFFF8F9FB)
+// ── Neon Cyan — Secondary Accent ───────────────────────────────
+val NeonCyan         = Color(0xFF00F5FF)   // Vivid cyan
+val NeonCyanDim      = Color(0xFF00C8D7)   // Dimmer cyan
+val CyanGlow         = Color(0x3300F5FF)
 
-// Text - Professional, readable grays
-val PundarTextPrimary = Color(0xFF1F2937)
-val PundarTextSecondary = Color(0xFF6B7280)
-val PundarTextTertiary = Color(0xFF9CA3AF)
-val PundarTextOnPrimary = Color(0xFFFFFFFF)
-val PundarTextOnGold = Color(0xFF2D2D2D)
+// ── Electric Purple — Tertiary Accent ──────────────────────────
+val ElectricPurple   = Color(0xFF8B5CF6)   // Violet accent
+val NeonPurple       = Color(0xFFA855F7)   // Bright purple
+val PurpleGlow       = Color(0x338B5CF6)
 
-// Semantic Colors
-val PundarSuccess = Color(0xFF10B981)
-val PundarSuccessLight = Color(0xFFECFDF5)
-val PundarError = Color(0xFFDC2626)
-val PundarErrorLight = Color(0xFFFEE2E2)
-val PundarWarning = Color(0xFFEA8D3A)
-val PundarWarningLight = Color(0xFFFEF3C7)
-val PundarInfo = Color(0xFF2563EB)
-val PundarInfoLight = Color(0xFFEFF6FF)
+// ── Gold — Premium Tier ─────────────────────────────────────────
+val PremiumGold      = Color(0xFFFFD700)   // Vivid gold
+val PremiumGoldWarm  = Color(0xFFFFB830)   // Warm gold
+val PremiumGoldDim   = Color(0xFFCC9A00)   // Deep gold
+val GoldGlow         = Color(0x44FFD700)
 
-// Borders & Dividers - Subtle
-val PundarBorder = Color(0xFFE5E7EB)
-val PundarDivider = Color(0xFFF3F4F6)
+// ── Neon Green — Success / Positive ────────────────────────────
+val NeonGreen        = Color(0xFF00FF87)   // Vivid success green
+val NeonGreenDim     = Color(0xFF00D66F)   // Dimmer success
+val GreenGlow        = Color(0x3300FF87)
+val SuccessDeep      = Color(0xFF10B981)   // Traditional success
 
-// Chart Colors - Professional palette
-val PundarChartLine = Color(0xFF0F3A7D)
-val PundarChartGradientStart = Color(0x400F3A7D)
-val PundarChartGradientEnd = Color(0x000F3A7D)
+// ── Semantic ────────────────────────────────────────────────────
+val ErrorRed         = Color(0xFFFF4757)   // Vivid error
+val ErrorRedDim      = Color(0xFFDC2626)   // Traditional error
+val ErrorGlow        = Color(0x33FF4757)
+val WarningAmber     = Color(0xFFFFB020)   // Warning
+val WarningGlow      = Color(0x33FFB020)
 
-// Misc
-val PundarOverlay = Color(0x80000000)
-val PundarBadge = Color(0xFFDC2626)
+// ── Text / On-Dark ──────────────────────────────────────────────
+val TextPrimary      = Color(0xFFF1F5F9)   // Near-white text
+val TextSecondary    = Color(0xFF94A3B8)   // Muted blue-grey
+val TextTertiary     = Color(0xFF64748B)   // Very muted
+val TextOnDark       = Color(0xFFFFFFFF)   // Pure white on dark
+val TextDisabled     = Color(0xFF374151)   // Disabled text
+
+// ── Glassmorphism ───────────────────────────────────────────────
+val GlassWhite       = Color(0x0FFFFFFF)   // Glass bg base (6% white)
+val GlassWhiteMid    = Color(0x1AFFFFFF)   // Glass bg mid (10% white)
+val GlassBorder      = Color(0x26FFFFFF)   // Glass border (15% white)
+val GlassBorderBright= Color(0x40FFFFFF)   // Brighter glass border (25%)
+val GlassShimmer     = Color(0x0AFFFFFF)   // Shimmer highlight
+
+// ── Gradient Stops (helpers) ────────────────────────────────────
+val GradStart        = Color(0xFF0C1220)
+val GradMid          = Color(0xFF0A1628)
+val GradEnd          = Color(0xFF050810)
+
+// ── Card Accent Gradients ───────────────────────────────────────
+val CardBlueStart    = Color(0xFF0F2150)
+val CardBlueEnd      = Color(0xFF1A3570)
+val CardPurpleStart  = Color(0xFF1A0A3D)
+val CardPurpleEnd    = Color(0xFF2D1560)
+val CardGoldStart    = Color(0xFF2A1A00)
+val CardGoldEnd      = Color(0xFF3D2600)
+
+// ── Chart Colors ────────────────────────────────────────────────
+val ChartBlue        = ElectricBlue
+val ChartGradStart   = Color(0x6600B4FF)
+val ChartGradEnd     = Color(0x0000B4FF)
+
+// ── Legacy aliases (keep for compatibility with unmodified screens) ──
+val PundarBlue            = ElectricBlueDeep
+val PundarBlueDark        = Color(0xFF0050CC)
+val PundarBlueLight       = NeonBlue
+val PundarBlueSubtle      = SpaceMedium
+val PundarGold            = PremiumGoldWarm
+val PundarGoldDark        = PremiumGoldDim
+val PundarGoldLight       = CardGoldEnd
+val PundarYellow          = PremiumGold
+val PundarYellowBg        = CardGoldEnd
+val PundarBackground      = SpaceNavy
+val PundarSurface         = SpaceDeep
+val PundarSurfaceVariant  = SpaceMedium
+val PundarTextPrimary     = TextPrimary
+val PundarTextSecondary   = TextSecondary
+val PundarTextTertiary    = TextTertiary
+val PundarTextOnPrimary   = TextOnDark
+val PundarTextOnGold      = SpaceBlack
+val PundarSuccess         = NeonGreen
+val PundarSuccessLight    = Color(0xFF0A2A1A)
+val PundarError           = ErrorRed
+val PundarErrorLight      = Color(0xFF2A0A0A)
+val PundarWarning         = WarningAmber
+val PundarWarningLight    = Color(0xFF2A1A00)
+val PundarInfo            = ElectricBlue
+val PundarInfoLight       = SpaceMedium
+val PundarBorder          = SpaceBorder
+val PundarDivider         = SpaceLight
+val PundarChartLine       = ElectricBlue
+val PundarChartGradientStart = ChartGradStart
+val PundarChartGradientEnd   = ChartGradEnd
+val PundarOverlay         = Color(0xCC000000)
+val PundarBadge           = ErrorRed
