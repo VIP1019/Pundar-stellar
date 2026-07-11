@@ -167,8 +167,8 @@ fun GrowScreen(navController: NavController) {
             item {
                 Row(modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Your Portfolio", style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.ExtraBold, color = PundarBlueDark)
+                    Text("Grow", style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.ExtraBold, color = PundarTextPrimary, fontSize = 48.sp)
                     PundarSmallButton(
                         text = "Optimize",
                         onClick = { showOptimizeDialog = true },

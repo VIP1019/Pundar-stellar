@@ -85,119 +85,90 @@ fun HomeScreen(navController: NavController) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Welcome Banner ─────────────────────────────────
+            // ── Premium Wallet Card ─────────────────────────────────
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(elevation = 12.dp, shape = RoundedCornerShape(20.dp), ambientColor = Color.Black.copy(alpha = 0.08f)),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = PundarBlue),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(PundarBlue, PundarBlueDark)
-                                )
-                            )
-                    ) {
-                        Column {
-                            Column(modifier = Modifier.padding(24.dp)) {
-                                Text(
-                                    text = "Wallet Balance",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Color.White.copy(alpha = 0.8f)
-                                )
-                                Text(
-                                    text = "${String.format("%,.2f", AppState.walletBalance.value)} XLM",
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { AppState.refreshWalletBalance() }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = "Refresh balance",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        text = "Tap to Refresh",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 24.dp),
-                                color = Color.White.copy(alpha = 0.15f),
-                                thickness = 0.5.dp
-                            )
-
-                            Row(
+                    Column(modifier = Modifier.padding(28.dp)) {
+                        Text(
+                            text = "Available Balance",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = "₱${String.format("%,.2f", AppState.walletBalance.value)}",
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            fontSize = 42.sp
+                        )
+                        Spacer(Modifier.height(20.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { navController.navigate(Routes.PAY_TRANSFER) },
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(IntrinsicSize.Min)
-                                    .padding(vertical = 16.dp)
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = PundarGold)
                             ) {
-                                // Invested Section
-                                Row(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(horizontal = 20.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color.White.copy(alpha = 0.15f))
-                                            .padding(8.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.invested),
-                                            contentDescription = null
-                                        )
-                                    }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text = "Invested",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color.White.copy(alpha = 0.8f)
-                                        )
-                                        Text(
-                                            text = "₱ 124,500",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                    }
-                                    Spacer(Modifier.weight(1f))
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-
-                                VerticalDivider(
-                                    modifier = Modifier.padding(vertical = 4.dp),
-                                    color = Color.White.copy(alpha = 0.15f),
-                                    thickness = 0.5.dp
+                                Icon(
+                                    imageVector = Icons.Default.SendToMobile,
+                                    contentDescription = "Transfer",
+                                    tint = PundarTextPrimary,
+                                    modifier = Modifier.size(18.dp)
                                 )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "Transfer",
+                                    color = PundarTextPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Button(
+                                onClick = { AppState.refreshWalletBalance() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.15f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "Refresh",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
-                                // Credit Score Section
-                                Row(
-                                    modifier = Modifier
+            // ── Quick Stats Section ─────────────────────────────────
+            item {
+                Row(
+                    modifier = Modifier
                                         .weight(1f)
                                         .padding(horizontal = 20.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -484,44 +455,47 @@ private fun QuickActionCard(
 ) {
     Card(
         modifier = modifier
-            .height(120.dp)
+            .height(140.dp)
             .clickable(onClick = onClick)
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp), ambientColor = color.copy(alpha = 0.15f)),
-        shape = RoundedCornerShape(16.dp),
+            .shadow(elevation = 6.dp, shape = RoundedCornerShape(18.dp), ambientColor = Color.Black.copy(alpha = 0.06f)),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = PundarSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, hoveredElevation = 12.dp, pressedElevation = 6.dp),
-        border = BorderStroke(1.5.dp, color.copy(alpha = 0.3f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.2.dp, color.copy(alpha = 0.2f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(14.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(color.copy(alpha = 0.12f))
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(color.copy(alpha = 0.1f))
             ) {
-                Icon(icon, contentDescription = title, tint = color, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = title, tint = color, modifier = Modifier.size(26.dp))
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center,
-                color = PundarTextPrimary
+                color = PundarTextPrimary,
+                fontSize = 13.sp
             )
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.labelSmall,
                 color = PundarTextSecondary,
                 textAlign = TextAlign.Center,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Medium,
+                fontSize = 11.sp
             )
         }
     }

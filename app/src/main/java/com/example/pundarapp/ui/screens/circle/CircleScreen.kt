@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
@@ -65,14 +66,16 @@ fun CircleScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
-                Column {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "Circle",
                         style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = PundarTextPrimary
+                        color = PundarTextPrimary,
+                        fontSize = 56.sp,
+                        lineHeight = 64.sp
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -81,13 +84,15 @@ fun CircleScreen(navController: NavController) {
                             imageVector = Icons.Filled.Shield,
                             contentDescription = "Safe",
                             tint = PundarGold,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(10.dp))
                         Text(
                             text = "Probably Safe Paluwagan",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = PundarTextSecondary
+                            color = PundarTextSecondary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -134,9 +139,10 @@ fun CircleScreen(navController: NavController) {
             item {
                 Text(
                     text = "Active Circles",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = PundarTextPrimary
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = PundarTextPrimary,
+                    fontSize = 20.sp
                 )
             }
 
