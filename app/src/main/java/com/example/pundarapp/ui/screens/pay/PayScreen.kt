@@ -79,28 +79,26 @@ fun PayScreen(navController: NavController) {
                     style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
             }
 
-            // Summary card — redesigned with your custom PNG drawables
+            // Summary card — professional blue-bordered design
             item {
                 PundarCard(accentColor = PundarBlue) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(vertical = 8.dp)
                     ) {
-                        // Left side: Total Balance info
-                        Column {
+                        // Top section: Total info
+                        Column(modifier = Modifier.padding(bottom = 20.dp)) {
                             Text(
                                 text = "TOTAL",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = PundarTextSecondary,
                                 fontWeight = FontWeight.Bold
                             )
-                            Spacer(Modifier.height(2.dp))
+                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = "₱${String.format("%,.2f", monthTotal)}",
-                                style = MaterialTheme.typography.headlineLarge,
+                                style = MaterialTheme.typography.displaySmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = PundarBlue
                             )
@@ -108,89 +106,91 @@ fun PayScreen(navController: NavController) {
                             Text(
                                 text = "This Month",
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = PundarTextPrimary
                             )
                         }
 
-                        // Right side: Settled and Pending stats
+                        HorizontalDivider(
+                            color = PundarDivider,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+
+                        // Bottom section: Stats in grid
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // Settled Column Item
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.settled),
-                                    contentDescription = "Settled",
-                                    modifier = Modifier.size(40.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = "SETTLED",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = PundarTextSecondary,
-                                        fontWeight = FontWeight.Bold
+                            // Settled stat
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.settled),
+                                        contentDescription = "Settled",
+                                        modifier = Modifier.size(24.dp)
                                     )
-                                    Text(
-                                        text = "$settledCount ${if (settledCount == 1) "BILL" else "BILLS"}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = PundarSuccess
-                                    )
-                                    Text(
-                                        text = "View All",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = PundarBlue,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.clickable { /* Filter list to settled */ }
-                                    )
+                                    Column {
+                                        Text(
+                                            text = "SETTLED",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = PundarTextSecondary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "$settledCount BILLS",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = PundarSuccess
+                                        )
+                                    }
                                 }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "View All",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = PundarBlue,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable { }
+                                )
                             }
 
-                            // Vertical Divider
-                            VerticalDivider(
-                                modifier = Modifier
-                                    .height(48.dp)
-                                    .padding(horizontal = 4.dp),
-                                color = Color.LightGray.copy(alpha = 0.5f),
-                                thickness = 1.dp
-                            )
-
-                            // Pending Column Item
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.pending),
-                                    contentDescription = "Pending",
-                                    modifier = Modifier.size(40.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = "PENDINGS",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = PundarTextSecondary,
-                                        fontWeight = FontWeight.Bold
+                            // Pending stat
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.pending),
+                                        contentDescription = "Pending",
+                                        modifier = Modifier.size(24.dp)
                                     )
-                                    Text(
-                                        text = "$pendingCount ${if (pendingCount == 1) "BILL" else "BILLS"}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = PundarWarning
-                                    )
-                                    Text(
-                                        text = "View All",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = PundarBlue,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.clickable { /* Filter list to pending */ }
-                                    )
+                                    Column {
+                                        Text(
+                                            text = "PENDING",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = PundarTextSecondary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "$pendingCount BILLS",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = PundarWarning
+                                        )
+                                    }
                                 }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "View All",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = PundarBlue,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable { }
+                                )
                             }
                         }
                     }
