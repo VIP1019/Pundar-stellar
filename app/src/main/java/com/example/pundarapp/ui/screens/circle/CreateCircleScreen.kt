@@ -30,6 +30,9 @@ import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +44,7 @@ fun CreateCircleScreen(navController: NavController) {
     var targetDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
     var maxMembers by remember { mutableStateOf("10") }
-    
+
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<CircleMember>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
@@ -65,7 +68,7 @@ fun CreateCircleScreen(navController: NavController) {
             searchResults = emptyList()
             return@LaunchedEffect
         }
-        
+
         isSearching = true
         val users = AuthRepository.searchUsers(searchQuery)
         searchResults = users.map { u ->
@@ -117,7 +120,27 @@ fun CreateCircleScreen(navController: NavController) {
     ) { padding ->
         // Date Picker Dialog
         if (showDatePicker) {
-            val datePickerState = rememberDatePickerState()
+            val datePickerState = rememberDatePickerState(
+                selectableDates = object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                        // Convert evaluating UTC timestamp to LocalDate (DatePicker uses UTC internally)
+                        val selectableDate = Instant.ofEpochMilli(utcTimeMillis)
+                            .atZone(ZoneId.of("UTC"))
+                            .toLocalDate()
+
+                        // Get tomorrow's local date
+                        val tomorrow = LocalDate.now().plusDays(1)
+
+                        // Selectable if date is tomorrow or later
+                        return !selectableDate.isBefore(tomorrow)
+                    }
+
+                    override fun isSelectableYear(year: Int): Boolean {
+                        // Prevent selecting past years
+                        return year >= LocalDate.now().year
+                    }
+                }
+            )
             DatePickerDialog(
                 onDismissRequest = { showDatePicker = false },
                 confirmButton = {
@@ -252,7 +275,7 @@ fun CreateCircleScreen(navController: NavController) {
                 Spacer(Modifier.height(8.dp))
                 Text("Invite Members (${selectedMembers.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -327,8 +350,8 @@ fun CreateCircleScreen(navController: NavController) {
                 }
                 items(searchResults) { contact ->
                     Surface(
-                        modifier = Modifier.fillMaxWidth().clickable { 
-                            selectedMembers.add(contact) 
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            selectedMembers.add(contact)
                             searchQuery = ""
                         },
                         shape = RoundedCornerShape(12.dp),
@@ -371,7 +394,7 @@ fun CreateCircleScreen(navController: NavController) {
                     )
                 }
             }
-            
+
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
