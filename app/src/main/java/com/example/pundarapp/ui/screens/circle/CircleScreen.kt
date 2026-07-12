@@ -43,6 +43,7 @@ private val EaseInOutSine = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
 fun CircleScreen(navController: NavController) {
     val currentName = AuthRepository.getCurrentUserName()
     val initials    = AuthRepository.getCurrentUserInitials()
+    val userSession by AuthRepository.currentUserState
     val invitation  = AppState.pendingInvitation.value
 
     Scaffold(
@@ -50,6 +51,7 @@ fun CircleScreen(navController: NavController) {
             PundarMainTopBar(
                 userName            = currentName,
                 userInitials        = initials,
+                profileImageUrl     = userSession?.profileImageUrl,
                 pundarScore         = SampleData.currentUser.pundarScore,
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 onSettingsClick     = { navController.navigate(Routes.SETTINGS) }

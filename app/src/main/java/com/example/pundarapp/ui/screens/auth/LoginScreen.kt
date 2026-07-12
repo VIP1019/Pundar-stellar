@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.PundarPrimaryButton
+import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.components.Icon3DWarning
@@ -301,6 +302,9 @@ fun LoginScreen(navController: NavController) {
                                 val result = AuthRepository.loginWithPhone(phone, mpin)
                                 isLoading = false
                                 if (result.isSuccess) {
+                                    AppState.refreshWalletBalance()
+                                    AppState.refreshNotifications()
+                                    AppState.loadFavorites()
                                     navController.navigate(Routes.HOME) {
                                         popUpTo(Routes.LOGIN) { inclusive = true }
                                     }

@@ -29,6 +29,7 @@ import com.example.pundarapp.ui.theme.*
 fun PundarMainTopBar(
     userName: String = "User",
     userInitials: String = "JD",
+    profileImageUrl: String? = null,
     pundarScore: Int = 850,
     onNotificationClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
@@ -51,35 +52,13 @@ fun PundarMainTopBar(
             }
         },
         navigationIcon = {
-            // Avatar with electric ring
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .padding(start = 12.dp, end = 6.dp)
-                    .size(42.dp)
-                    .shadow(8.dp, CircleShape, ambientColor = ElectricBlue.copy(0.4f), spotColor = ElectricBlue.copy(0.4f))
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(ElectricBlueDeep, ElectricPurple)
-                        )
-                    )
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(SpaceDeep)
-                ) {
-                    Text(
-                        text = userInitials,
-                        color = ElectricBlue,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 14.sp
-                    )
-                }
-            }
+            PundarAvatar(
+                initials = userInitials,
+                imageUrl = profileImageUrl,
+                modifier = Modifier.padding(start = 12.dp, end = 6.dp),
+                size = 42.dp,
+                showRing = true
+            )
         },
         actions = {
             // Score pill
@@ -207,7 +186,8 @@ fun PundarCircleTopBar(
     onBack: () -> Unit = {},
     showNotifications: Boolean = true,
     onNotificationClick: () -> Unit = {},
-    userInitials: String = "JD"
+    userInitials: String = "JD",
+    profileImageUrl: String? = null
 ) {
     TopAppBar(
         title = {
@@ -229,22 +209,13 @@ fun PundarCircleTopBar(
             }
         },
         actions = {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(listOf(ElectricBlueDeep, ElectricPurple))
-                    )
-            ) {
-                Text(
-                    text = userInitials,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
-            }
+            PundarAvatar(
+                initials = userInitials,
+                imageUrl = profileImageUrl,
+                size = 36.dp,
+                showRing = true,
+                initialsFontSize = 13.sp
+            )
             if (showNotifications) {
                 IconButton(onClick = onNotificationClick) {
                     if (NotificationData.hasUnread()) {
@@ -268,6 +239,7 @@ fun PundarCircleTopBar(
 @Composable
 fun PundarGrowTopBar(
     userInitials: String = "JD",
+    profileImageUrl: String? = null,
     pundarScore: Int = 850,
     onNotificationClick: () -> Unit = {},
     onBack: () -> Unit = {}
@@ -275,15 +247,14 @@ fun PundarGrowTopBar(
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(ElectricBlueDeep, ElectricPurple)))
-                ) {
-                    Text(text = userInitials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
+                PundarAvatar(
+                    initials = userInitials,
+                    imageUrl = profileImageUrl,
+                    size = 36.dp,
+                    showRing = true,
+                    initialsFontSize = 13.sp,
+                    innerBackground = SpaceDeep
+                )
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = "PUNDAR",

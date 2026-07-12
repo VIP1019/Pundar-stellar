@@ -1,8 +1,12 @@
 package com.example.pundarapp.ui.data
 
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import com.example.pundarapp.data.qr.QrPayload
 import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.AppNotification
+import com.example.pundarapp.data.remote.NotificationRepository
 import com.example.pundarapp.data.remote.PayRepository
 import com.example.pundarapp.data.stellar.StellarWalletManager
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -33,13 +37,15 @@ object AppState {
                     bills.clear()
                     bills.addAll(remoteBills)
                 }
+                refreshNotifications()
+                loadFavorites()
             }
         }
     }
 
     fun addBill(bill: GroupBill) {
         bills.add(0, bill) // newest first
-        
+
         scope.launch {
             if (AuthRepository.isUserLoggedIn()) {
                 PayRepository.createBill(bill)
@@ -146,6 +152,37 @@ object AppState {
 
     // ── GROW ────────────────────────────────────────────────────────
     val portfolio = mutableStateOf(SampleData.portfolio)
+    val favoriteStocks = mutableStateOf(setOf<String>())
+
+    fun loadFavorites() {
+        scope.launch {
+            val userId = AuthRepository.getCurrentUserId() ?: return@launch
+            val favorites = com.example.pundarapp.data.remote.GrowRepository.getFavorites(userId)
+            favoriteStocks.value = favorites
+        }
+    }
+
+    fun toggleFavorite(ticker: String) {
+        // Optimistic UI: flip state immediately, then persist
+        val wasFavorite = ticker in favoriteStocks.value
+        favoriteStocks.value = if (wasFavorite) {
+            favoriteStocks.value - ticker
+        } else {
+            favoriteStocks.value + ticker
+        }
+        scope.launch {
+            val userId = AuthRepository.getCurrentUserId() ?: return@launch
+            val result = com.example.pundarapp.data.remote.GrowRepository.toggleFavorite(userId, ticker)
+            if (result.isFailure) {
+                // Rollback on failure
+                favoriteStocks.value = if (wasFavorite) {
+                    favoriteStocks.value + ticker
+                } else {
+                    favoriteStocks.value - ticker
+                }
+            }
+        }
+    }
 
     fun invest(amount: Double) {
         val old = portfolio.value
@@ -175,6 +212,24 @@ object AppState {
     // ── HOME ACTIVITY FEED ──────────────────────────────────────────
     val homeActivities = mutableStateListOf<HomeActivity>()
     val walletBalance = mutableStateOf(5000.0)
+    val homeRefreshTrigger = mutableIntStateOf(0)
+    val pendingQrPayload = mutableStateOf<QrPayload?>(null)
+
+    fun requestHomeRefresh() {
+        homeRefreshTrigger.intValue++
+    }
+
+    fun clearSession() {
+        bills.clear()
+        circles.clear()
+        homeActivities.clear()
+        recentNotifications.clear()
+        favoriteStocks.value = emptySet()
+        pendingInvitation.value = null
+        pendingQrPayload.value = null
+        walletBalance.value = 5000.0
+        portfolio.value = SampleData.portfolio
+    }
 
     fun refreshWalletBalance() {
         val publicKey = AuthRepository.getCurrentUserStellarPublicKey()
@@ -187,6 +242,48 @@ object AppState {
             walletBalance.value = balance
         }
     }
+
+    // ── NOTIFICATIONS ───────────────────────────────────────────────
+    val recentNotifications = mutableStateListOf<AppNotification>()
+
+    fun refreshNotifications() {
+        val userId = AuthRepository.getCurrentUserId() ?: return
+        scope.launch {
+            NotificationRepository.seedDefaultsIfEmpty(userId)
+            val result = NotificationRepository.fetchAll(userId)
+            result.onSuccess { list ->
+                recentNotifications.clear()
+                recentNotifications.addAll(list)
+            }
+        }
+    }
+
+    fun markNotificationRead(notificationId: String) {
+        val idx = recentNotifications.indexOfFirst { it.id == notificationId }
+        if (idx >= 0) {
+            val updated = recentNotifications[idx].copy(isRead = true)
+            recentNotifications[idx] = updated
+            val userId = AuthRepository.getCurrentUserId() ?: return
+            scope.launch {
+                NotificationRepository.markRead(userId, notificationId)
+            }
+        }
+    }
+
+    fun markAllNotificationsRead() {
+        val userId = AuthRepository.getCurrentUserId() ?: return
+        for (i in recentNotifications.indices) {
+            val n = recentNotifications[i]
+            if (!n.isRead) {
+                recentNotifications[i] = n.copy(isRead = true)
+            }
+        }
+        scope.launch {
+            NotificationRepository.markAllRead(userId)
+        }
+    }
+
+    fun unreadNotificationCount(): Int = recentNotifications.count { !it.isRead }
 
     private fun addHomeActivity(activity: HomeActivity) {
         homeActivities.add(0, activity) // newest first

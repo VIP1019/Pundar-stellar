@@ -1,7 +1,9 @@
 package com.example.pundarapp.data.remote
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import com.example.pundarapp.data.stellar.StellarWalletManager
+import com.example.pundarapp.ui.data.AppState
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -10,14 +12,15 @@ object AuthRepository {
     private val db = FirebaseFirestore.getInstance()
     private val usersCollection = db.collection("users")
 
-    // In-memory session (simple dev approach - no Firebase Auth needed)
-    private var currentUserData: UserData? = null
+    /** Observable session — screens recompose when this changes. */
+    val currentUserState = mutableStateOf<UserData?>(null)
 
     data class UserData(
         val id: String,
         val name: String,
         val phone: String,
-        val stellarPublicKey: String? = null
+        val stellarPublicKey: String? = null,
+        val profileImageUrl: String? = null
     )
 
     suspend fun registerWithPhone(phone: String, fullName: String, mpin: String): Result<Boolean> {
@@ -63,7 +66,7 @@ object AuthRepository {
             Log.d(TAG, "registerWithPhone: success")
 
             // Auto-login: set session
-            currentUserData = UserData(
+            currentUserState.value = UserData(
                 id = cleanPhone,
                 name = fullName.trim(),
                 phone = cleanPhone,
@@ -102,11 +105,13 @@ object AuthRepository {
             // Set session
             val name = doc.getString("full_name") ?: "User"
             val publicKey = doc.getString("stellarPublicKey")
-            currentUserData = UserData(
+            val profileImage = doc.getString("profile_image_url")
+            currentUserState.value = UserData(
                 id = cleanPhone,
                 name = name,
                 phone = cleanPhone,
-                stellarPublicKey = publicKey
+                stellarPublicKey = publicKey,
+                profileImageUrl = profileImage
             )
             Log.d(TAG, "loginWithPhone: success")
 
@@ -133,25 +138,17 @@ object AuthRepository {
         }
     }
 
-    fun isUserLoggedIn(): Boolean {
-        return currentUserData != null
-    }
+    fun isUserLoggedIn(): Boolean = currentUserState.value != null
 
-    fun getCurrentUserId(): String? {
-        return currentUserData?.id
-    }
+    fun getCurrentUserId(): String? = currentUserState.value?.id
 
-    fun getCurrentUserName(): String {
-        return currentUserData?.name ?: "User"
-    }
+    fun getCurrentUserName(): String = currentUserState.value?.name ?: "User"
 
-    fun getCurrentUserPhone(): String {
-        return currentUserData?.phone ?: ""
-    }
+    fun getCurrentUserPhone(): String = currentUserState.value?.phone ?: ""
 
-    fun getCurrentUserStellarPublicKey(): String? {
-        return currentUserData?.stellarPublicKey
-    }
+    fun getCurrentUserStellarPublicKey(): String? = currentUserState.value?.stellarPublicKey
+
+    fun getCurrentUserProfileImageUrl(): String? = currentUserState.value?.profileImageUrl
 
     suspend fun getCurrentUserEncryptedSeed(): String? {
         val phone = getCurrentUserPhone()
@@ -173,8 +170,21 @@ object AuthRepository {
         return (parts.first().take(1) + parts.last().take(1)).uppercase()
     }
 
-    suspend fun changeMpin(currentMpin: String, newMpin: String): Result<Boolean> {
+    suspend fun changeMpin(currentMpin: String, newMpin: String, confirmMpin: String): Result<Boolean> {
         return try {
+            if (currentMpin.length != 4) {
+                return Result.failure(Exception("Current PIN must be 4 digits."))
+            }
+            if (newMpin.length != 4) {
+                return Result.failure(Exception("New PIN must be 4 digits."))
+            }
+            if (newMpin != confirmMpin) {
+                return Result.failure(Exception("New PIN and confirmation do not match."))
+            }
+            if (newMpin == currentMpin) {
+                return Result.failure(Exception("New PIN must be different from your current PIN."))
+            }
+
             val phone = getCurrentUserPhone()
             if (phone.isBlank()) {
                 return Result.failure(Exception("User not logged in."))
@@ -187,7 +197,7 @@ object AuthRepository {
 
             val storedMpin = doc.getString("mpin") ?: ""
             if (storedMpin != currentMpin.trim()) {
-                return Result.failure(Exception("Incorrect current MPIN."))
+                return Result.failure(Exception("Incorrect current PIN."))
             }
 
             usersCollection.document(phone).update("mpin", newMpin.trim()).await()
@@ -200,7 +210,22 @@ object AuthRepository {
     }
 
     suspend fun logout() {
-        currentUserData = null
+        currentUserState.value = null
+        AppState.clearSession()
+    }
+
+    suspend fun updateProfileImageUrl(imageUrl: String): Result<Boolean> {
+        return try {
+            val phone = getCurrentUserPhone()
+            if (phone.isBlank()) return Result.failure(Exception("User not logged in."))
+            val trimmed = imageUrl.trim()
+            usersCollection.document(phone).update("profile_image_url", trimmed).await()
+            currentUserState.value = currentUserState.value?.copy(profileImageUrl = trimmed.ifBlank { null })
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "updateProfileImageUrl failed", e)
+            Result.failure(e)
+        }
     }
 
     suspend fun searchUsers(query: String): List<UserData> {
@@ -216,7 +241,7 @@ object AuthRepository {
                 val name = doc.getString("full_name") ?: return@mapNotNull null
                 
                 // Exclude current user from search results
-                if (phone == currentUserData?.id) return@mapNotNull null
+                if (phone == currentUserState.value?.id) return@mapNotNull null
                 
                 if (phone.contains(lowerQuery) || name.lowercase().contains(lowerQuery)) {
                     val stellarPublicKey = doc.getString("stellarPublicKey")

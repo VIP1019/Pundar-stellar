@@ -29,11 +29,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.example.pundarapp.data.qr.QrPayload
+import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.QrPaymentRepository
 import com.example.pundarapp.ui.components.PundarDetailTopBar
-import com.example.pundarapp.ui.theme.PundarBackground
-import com.example.pundarapp.ui.theme.PundarBlue
-import com.example.pundarapp.ui.theme.PundarTextPrimary
-import com.example.pundarapp.ui.theme.PundarTextSecondary
+import com.example.pundarapp.ui.data.AppState
+import com.example.pundarapp.ui.navigation.Routes
+import com.example.pundarapp.ui.theme.*
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -69,6 +71,7 @@ fun ScanScreen(navController: NavController) {
     }
 
     var scannedResult by remember { mutableStateOf<String?>(null) }
+    var scanError by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -202,21 +205,42 @@ fun ScanScreen(navController: NavController) {
                 ) {
                     if (scannedResult != null) {
                         Text(
-                            text = "Scanned: $scannedResult",
+                            text = when {
+                                scanError != null -> scanError!!
+                                else -> "QR detected"
+                            },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = PundarTextPrimary
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Payment functionality will be added in a future update.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = PundarTextSecondary,
+                            color = if (scanError != null) MaterialTheme.colorScheme.error else PundarTextPrimary,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { scannedResult = null }) {
-                            Text("Scan Again")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (scanError == null) {
+                            Text(
+                                text = "Opening payment confirmation...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = PundarTextSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                            LaunchedEffect(scannedResult) {
+                                val raw = scannedResult ?: return@LaunchedEffect
+                                val payload = QrPayload.decode(raw)
+                                if (payload == null) {
+                                    scanError = "Invalid QR code. This is not a PUNDAR QR."
+                                    return@LaunchedEffect
+                                }
+                                QrPaymentRepository.validatePayload(payload).onFailure {
+                                    scanError = it.message ?: "Invalid QR code."
+                                    return@LaunchedEffect
+                                }
+                                AppState.pendingQrPayload.value = payload
+                                navController.navigate(Routes.QR_SEND_CONFIRM)
+                                scannedResult = null
+                            }
+                        } else {
+                            Button(onClick = { scannedResult = null; scanError = null }) {
+                                Text("Scan Again")
+                            }
                         }
                     } else {
                         Text(
@@ -227,7 +251,7 @@ fun ScanScreen(navController: NavController) {
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Align the QR code within the frame.",
+                            text = "QR scanning is ready. Scan a PUNDAR Receive or Bill QR to pay.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = PundarTextSecondary,
                             textAlign = TextAlign.Center

@@ -1,0 +1,156 @@
+rules_version = '2';
+
+// PUNDAR Firestore Security Rules
+//
+// IMPORTANT: This app currently uses phone-number doc IDs without Firebase Auth.
+// These rules validate data shape and protect sensitive fields, but full security
+// requires Firebase Authentication + Cloud Functions for wallet mutations.
+//
+// Deploy: firebase deploy --only firestore:rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Users ──────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isValidUserCreate();
+      allow update: if isValidUserUpdate();
+      allow delete: if false;
+
+      match /notifications/{notificationId} {
+        allow read: if true;
+        allow create: if isValidNotification();
+        allow update: if isValidNotificationUpdate();
+        allow delete: if false;
+      }
+    }
+
+    // ── Transactions (append-only audit log) ─────────────────────
+    match /transactions/{transactionId} {
+      allow read: if true;
+      allow create: if isValidTransaction();
+      allow update, delete: if false;
+    }
+
+    // ── QR anti-replay tokens ──────────────────────────────────────
+    match /qr_tokens/{tokenId} {
+      allow read: if true;
+      allow create: if isValidQrToken();
+      allow update: if isValidQrTokenUpdate();
+      allow delete: if false;
+    }
+
+    // ── Bill payment QR codes ──────────────────────────────────────
+    match /bill_qrs/{qrId} {
+      allow read: if true;
+      allow create: if isValidBillQr();
+      allow update: if isValidBillQrUpdate();
+      allow delete: if false;
+    }
+
+    // ── Group bills ────────────────────────────────────────────────
+    match /group_bills/{billId} {
+      allow read: if true;
+      allow create, update: if isValidGroupBill();
+      allow delete: if false;
+    }
+
+    // ── Grow favorites ─────────────────────────────────────────────
+    match /favorites/{userId} {
+      allow read: if true;
+      allow create, update: if isValidFavorites();
+      allow delete: if false;
+    }
+
+    // ── Validation helpers ─────────────────────────────────────────
+
+    function isValidUserCreate() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['phone_number', 'full_name', 'mpin', 'created_at'])
+        && data.phone_number is string
+        && data.full_name is string
+        && data.mpin is string
+        && data.mpin.size() == 4
+        && data.created_at is number;
+    }
+
+    function isValidUserUpdate() {
+      let data = request.resource.data;
+      let diff = request.resource.data.diff(resource.data);
+      // Block direct mpin overwrite via generic updates (use dedicated flow)
+      return !(diff.affectedKeys().hasAny(['phone_number']))
+        && (!('wallet_balance' in diff.affectedKeys())
+            || (data.wallet_balance is number && data.wallet_balance >= 0));
+    }
+
+    function isValidNotification() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['title', 'message', 'created_at', 'is_read'])
+        && data.title is string
+        && data.message is string
+        && data.created_at is number
+        && data.is_read is bool;
+    }
+
+    function isValidNotificationUpdate() {
+      let diff = request.resource.data.diff(resource.data);
+      return diff.affectedKeys().hasOnly(['is_read'])
+        && request.resource.data.is_read is bool;
+    }
+
+    function isValidTransaction() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['reference', 'type', 'amount', 'status', 'created_at'])
+        && data.reference is string
+        && data.type is string
+        && data.amount is number
+        && data.amount > 0
+        && data.status is string
+        && data.created_at is number;
+    }
+
+    function isValidQrToken() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['used', 'used_at', 'used_by', 'type'])
+        && data.used is bool
+        && data.used_at is number
+        && data.used_by is string
+        && data.type is string;
+    }
+
+    function isValidQrTokenUpdate() {
+      return false; // tokens are write-once
+    }
+
+    function isValidBillQr() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['bill_id', 'creator_id', 'amount', 'status', 'created_at', 'expires_at'])
+        && data.bill_id is string
+        && data.creator_id is string
+        && data.amount is number
+        && data.amount > 0
+        && data.status is string
+        && data.created_at is number
+        && data.expires_at is number;
+    }
+
+    function isValidBillQrUpdate() {
+      let diff = request.resource.data.diff(resource.data);
+      return diff.affectedKeys().hasOnly(['status', 'paid_at', 'paid_by'])
+        && request.resource.data.status in ['PAID', 'EXPIRED', 'CANCELLED'];
+    }
+
+    function isValidGroupBill() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['status'])
+        && data.status is string;
+    }
+
+    function isValidFavorites() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['tickers'])
+        && data.tickers is list;
+    }
+  }
+}

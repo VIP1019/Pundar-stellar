@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -174,13 +176,15 @@ fun PundarPrimaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isLoading: Boolean = false
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val canClick = enabled && !isLoading
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
+        targetValue = if (isPressed && canClick) 0.96f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "btnScale"
     )
@@ -191,14 +195,14 @@ fun PundarPrimaryButton(
             .height(56.dp)
             .graphicsLayer(scaleX = scale, scaleY = scale)
             .shadow(
-                elevation    = if (enabled) 12.dp else 0.dp,
+                elevation    = if (canClick) 12.dp else 0.dp,
                 shape        = RoundedCornerShape(16.dp),
                 ambientColor = PremiumGoldWarm.copy(alpha = 0.4f),
                 spotColor    = PremiumGoldWarm.copy(alpha = 0.4f)
             )
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (enabled)
+                if (canClick)
                     Brush.horizontalGradient(colors = listOf(PremiumGoldWarm, PremiumGold))
                 else
                     Brush.horizontalGradient(colors = listOf(SpaceMedium, SpaceMedium))
@@ -207,18 +211,26 @@ fun PundarPrimaryButton(
         Button(
             onClick = onClick,
             modifier = Modifier.fillMaxSize(),
-            enabled = enabled,
+            enabled = canClick,
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
             elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
             interactionSource = interactionSource
         ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (enabled) SpaceBlack else TextTertiary
-            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = SpaceBlack,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (canClick) SpaceBlack else TextTertiary
+                )
+            }
         }
     }
 }
@@ -256,6 +268,63 @@ fun PundarSecondaryButton(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
+    }
+}
+
+@Composable
+fun PundarOutlinedButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "outlinedBtnScale"
+    )
+
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier
+            .height(56.dp)
+            .graphicsLayer(scaleX = scale, scaleY = scale),
+        enabled = enabled,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.5.dp, ElectricBlue.copy(alpha = if (enabled) 0.6f else 0.3f)),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+        interactionSource = interactionSource
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+fun PundarTextButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.height(48.dp),
+        enabled = enabled,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = ElectricBlue)
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = ElectricBlue)
     }
 }
 

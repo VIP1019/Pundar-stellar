@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.navigation.Routes
@@ -44,6 +45,9 @@ private val EaseOutExpo  = CubicBezierEasing(0.16f, 1f,    0.3f,  1f)
 @Composable
 fun GrowScreen(navController: NavController) {
     val portfolio by AppState.portfolio
+    val favorites by AppState.favoriteStocks
+    val userSession by AuthRepository.currentUserState
+    val userInitials = AuthRepository.getCurrentUserInitials()
 
     // ── Dialog visibility ────────────────────────────────────────
     var showInvestDialog   by remember { mutableStateOf(false) }
@@ -57,7 +61,8 @@ fun GrowScreen(navController: NavController) {
         containerColor = SpaceNavy,
         topBar = {
             PundarGrowTopBar(
-                userInitials       = SampleData.currentUser.initials,
+                userInitials       = userInitials,
+                profileImageUrl    = userSession?.profileImageUrl,
                 pundarScore        = SampleData.currentUser.pundarScore,
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) }
             )
@@ -95,10 +100,12 @@ fun GrowScreen(navController: NavController) {
             item {
                 HoldingsSection(
                     holdings        = portfolio.holdings,
+                    favorites       = favorites,
                     onOptimize      = { showOptimizeDialog = true },
                     onHoldingClick  = { ticker ->
                         navController.navigate(Routes.stockDetail(ticker))
-                    }
+                    },
+                    onToggleFavorite = { ticker -> AppState.toggleFavorite(ticker) }
                 )
             }
         }
@@ -699,8 +706,10 @@ private fun ActivityRow(activity: PortfolioActivity, index: Int) {
 @Composable
 private fun HoldingsSection(
     holdings:       List<StockHolding>,
+    favorites:      Set<String>,
     onOptimize:     () -> Unit,
-    onHoldingClick: (String) -> Unit
+    onHoldingClick: (String) -> Unit,
+    onToggleFavorite: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
 
@@ -791,14 +800,16 @@ private fun HoldingsSection(
                     fontWeight = FontWeight.SemiBold,
                     modifier  = Modifier.weight(1f)
                 )
+                Spacer(Modifier.width(36.dp))
             }
 
-            // Holding rows
             holdings.forEachIndexed { index, holding ->
                 HoldingRow(
-                    holding        = holding,
-                    index          = index,
-                    onHoldingClick = onHoldingClick
+                    holding          = holding,
+                    index            = index,
+                    isFavorite       = holding.ticker in favorites,
+                    onHoldingClick   = onHoldingClick,
+                    onToggleFavorite = { onToggleFavorite(holding.ticker) }
                 )
                 if (index < holdings.lastIndex) {
                     Divider(
@@ -825,7 +836,9 @@ private val avatarGradients = listOf(
 private fun HoldingRow(
     holding:        StockHolding,
     index:          Int,
-    onHoldingClick: (String) -> Unit
+    isFavorite:     Boolean,
+    onHoldingClick: (String) -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     // Staggered entrance
     var visible by remember { mutableStateOf(false) }
@@ -924,6 +937,18 @@ private fun HoldingRow(
                 color      = returnColor,
                 fontSize   = 12.sp,
                 fontWeight = FontWeight.Bold
+            )
+        }
+
+        IconButton(
+            onClick = onToggleFavorite,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+                contentDescription = if (isFavorite) "Remove favorite" else "Add favorite",
+                tint = if (isFavorite) PremiumGoldWarm else TextTertiary,
+                modifier = Modifier.size(20.dp)
             )
         }
     }

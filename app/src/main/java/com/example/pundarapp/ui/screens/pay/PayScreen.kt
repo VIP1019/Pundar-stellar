@@ -45,7 +45,8 @@ fun PayScreen(navController: NavController) {
     val settledCount  = bills.count { it.status == BillStatus.SETTLED }
     val pendingCount  = bills.count { it.status == BillStatus.PENDING || it.status == BillStatus.PARTIAL }
     val monthTotal    = bills.sumOf { it.yourShare }
-    val currentName   = AuthRepository.getCurrentUserName()
+    val userSession by AuthRepository.currentUserState
+    val currentName   = userSession?.name ?: "User"
     val initials      = AuthRepository.getCurrentUserInitials()
 
     Scaffold(
@@ -53,6 +54,7 @@ fun PayScreen(navController: NavController) {
             PundarMainTopBar(
                 userName            = currentName,
                 userInitials        = initials,
+                profileImageUrl     = userSession?.profileImageUrl,
                 pundarScore         = SampleData.currentUser.pundarScore,
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 onSettingsClick     = { navController.navigate(Routes.SETTINGS) }
@@ -186,19 +188,38 @@ private fun PayStatsCard(settled: Int, pending: Int, total: Double) {
                 .background(Brush.horizontalGradient(listOf(Color.Transparent, GlassBorder, Color.Transparent))))
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                PayStatPill("✅  $settled", "Settled", NeonGreen)
+                PayStatPill(settled, "Settled", Icons.Filled.CheckCircle, NeonGreen)
                 Box(Modifier.width(1.dp).height(36.dp).background(SpaceBorder))
-                PayStatPill("⏳  $pending", "Pending", WarningAmber)
+                PayStatPill(pending, "Pending", Icons.Filled.Schedule, WarningAmber)
             }
         }
     }
 }
 
 @Composable
-private fun PayStatPill(value: String, label: String, color: Color) {
+private fun PayStatPill(
+    count: Int,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = color)
-        Spacer(Modifier.height(2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FuturisticIconCircle(
+                icon = icon,
+                tint = color,
+                size = 30.dp,
+                iconSize = 15.dp
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = count.toString(),
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 18.sp,
+                color = color
+            )
+        }
+        Spacer(Modifier.height(4.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
     }
 }
@@ -222,7 +243,7 @@ private fun PayActionRow(navController: NavController) {
             brush = Brush.horizontalGradient(listOf(PremiumGoldDim, PremiumGoldWarm)),
             tint  = SpaceBlack,
             modifier = Modifier.weight(1f)
-        ) { /* settle action */ }
+        ) { navController.navigate(Routes.INSTANT_SETTLE) }
     }
 }
 
@@ -335,7 +356,7 @@ private fun PayEmptyState() {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🧾", fontSize = 36.sp)
+            Icon3DReceipt(size = 56.dp)
             Spacer(Modifier.height(10.dp))
             Text("No bills yet.", fontWeight = FontWeight.SemiBold, color = TextSecondary)
             Spacer(Modifier.height(4.dp))

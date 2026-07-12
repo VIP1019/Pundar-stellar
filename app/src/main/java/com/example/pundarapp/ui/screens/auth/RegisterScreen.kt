@@ -23,6 +23,7 @@ import androidx.navigation.NavController
 import com.example.pundarapp.R
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.PundarPrimaryButton
+import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.launch
@@ -176,8 +177,10 @@ fun RegisterScreen(navController: NavController) {
                         val result = AuthRepository.registerWithPhone(phone, fullName, mpin)
                         isLoading = false
                         if (result.isSuccess) {
-                            // After register, auto login
                             AuthRepository.loginWithPhone(phone, mpin)
+                            AppState.refreshWalletBalance()
+                            AppState.refreshNotifications()
+                            AppState.loadFavorites()
                             navController.navigate(Routes.HOME) {
                                 popUpTo(Routes.LOGIN) { inclusive = true }
                                 popUpTo(Routes.REGISTER) { inclusive = true }

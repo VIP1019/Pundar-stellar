@@ -8,9 +8,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,142 +20,191 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.pundarapp.data.remote.AppNotification
 import com.example.pundarapp.ui.components.PundarCard
 import com.example.pundarapp.ui.components.PundarDetailTopBar
+import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
-data class Notification(
-    val id: String,
-    val title: String,
-    val message: String,
-    val time: String,
-    var isRead: Boolean = false
-)
-
-object NotificationData {
-    val notifications = mutableStateListOf(
-        Notification("1", "Goal Reached!", "You've successfully reached your saving goal for 'Boracay Trip'.", "2 hrs ago", false),
-        Notification("2", "Circle Update", "Maria deposited ₱5,000 to your Emergency Fund circle.", "5 hrs ago", false),
-        Notification("3", "Bill Settled", "John settled his share of ₱1,200 for the Dinner bill.", "1 day ago", true)
-    )
-
-    fun hasUnread(): Boolean {
-        return notifications.any { !it.isRead }
+private fun formatTimestamp(ts: Long): String {
+    if (ts <= 0L) return ""
+    val now = System.currentTimeMillis()
+    val diff = now - ts
+    return when {
+        diff < TimeUnit.MINUTES.toMillis(1) -> "Just now"
+        diff < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diff)} min ago"
+        diff < TimeUnit.DAYS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toHours(diff)} hrs ago"
+        diff < TimeUnit.DAYS.toMillis(7) -> "${TimeUnit.MILLISECONDS.toDays(diff)} days ago"
+        else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(ts))
     }
+}
+
+private fun iconForKind(kind: String) = when (kind.uppercase()) {
+    "SAVINGS" -> Icons.Filled.Savings
+    "GOAL" -> Icons.Filled.Flag
+    "INVESTMENT" -> Icons.Filled.TrendingUp
+    "BILL" -> Icons.Filled.Receipt
+    "SECURITY" -> Icons.Filled.Security
+    else -> Icons.Filled.Notifications
+}
+
+private fun colorForKind(kind: String) = when (kind.uppercase()) {
+    "SAVINGS" -> NeonGreen
+    "GOAL" -> PremiumGoldWarm
+    "INVESTMENT" -> ElectricBlue
+    "BILL" -> WarningAmber
+    "SECURITY" -> ErrorRed
+    else -> PundarBlue
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(navController: NavController) {
+    val notifications = AppState.recentNotifications
+    val scope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+    val pullState = rememberPullToRefreshState()
+    val unreadCount = AppState.unreadNotificationCount()
+
+    LaunchedEffect(Unit) {
+        AppState.refreshNotifications()
+    }
+
     Scaffold(
         topBar = {
             PundarDetailTopBar(
                 title = "Notifications",
-                onBack = { navController.navigateUp() }
-            )
-        },
-        floatingActionButton = {
-            if (NotificationData.hasUnread()) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        NotificationData.notifications.forEach { it.isRead = true }
-                        // Trigger recomposition by re-assigning the list
-                        val current = NotificationData.notifications.toList()
-                        NotificationData.notifications.clear()
-                        NotificationData.notifications.addAll(current)
-                    },
-                    containerColor = PundarGold,
-                    contentColor = PundarTextPrimary,
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(Icons.Filled.DoneAll, contentDescription = "Mark all as read")
-                    Spacer(Modifier.width(8.dp))
-                    Text("Mark all read")
+                onBack = { navController.navigateUp() },
+                actions = {
+                    if (unreadCount > 0) {
+                        TextButton(onClick = { AppState.markAllNotificationsRead() }) {
+                            Text("Mark all read", color = ElectricBlue)
+                        }
+                    }
                 }
-            }
+            )
         },
         containerColor = PundarBackground
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (NotificationData.notifications.isEmpty()) {
-                item {
-                    Text(
-                        text = "You have no notifications.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = PundarTextSecondary,
-                        modifier = Modifier.padding(16.dp)
-                    )
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                scope.launch {
+                    AppState.refreshNotifications()
+                    isRefreshing = false
                 }
-            }
-
-            items(NotificationData.notifications) { notification ->
-                PundarCard(
-                    modifier = Modifier.clickable {
-                        notification.isRead = true
-                        val index = NotificationData.notifications.indexOf(notification)
-                        NotificationData.notifications[index] = notification.copy(isRead = true)
-                    }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(if (!notification.isRead) PundarBlueSubtle else Color.Transparent)
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
+            },
+            state = pullState,
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (notifications.isEmpty()) {
+                    item {
+                        Column(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(PundarBlueLight)
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Notifications,
+                                Icons.Filled.NotificationsNone,
                                 contentDescription = null,
-                                tint = PundarBlue,
-                                modifier = Modifier.size(20.dp)
+                                tint = PundarTextTertiary,
+                                modifier = Modifier.size(48.dp)
                             )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
+                            Spacer(Modifier.height(12.dp))
                             Text(
-                                text = notification.title,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = if (!notification.isRead) FontWeight.ExtraBold else FontWeight.SemiBold,
-                                color = PundarTextPrimary
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = notification.message,
-                                style = MaterialTheme.typography.bodySmall,
+                                text = "No notifications yet.",
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = PundarTextSecondary
                             )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = notification.time,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = PundarTextTertiary
-                            )
                         }
-                        if (!notification.isRead) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(PundarBlue)
-                                    .align(Alignment.CenterVertically)
-                            )
-                        }
+                    }
+                } else {
+                    items(notifications, key = { it.id }) { notification ->
+                        NotificationRow(
+                            notification = notification,
+                            onClick = { AppState.markNotificationRead(notification.id) }
+                        )
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun NotificationRow(
+    notification: AppNotification,
+    onClick: () -> Unit
+) {
+    val accent = colorForKind(notification.kind)
+    val icon = iconForKind(notification.kind)
+
+    PundarCard(
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(if (!notification.isRead) PundarBlueSubtle else Color.Transparent)
+                .padding(8.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.15f))
+            ) {
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = notification.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (!notification.isRead) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    color = PundarTextPrimary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = notification.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PundarTextSecondary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = formatTimestamp(notification.timestamp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = PundarTextTertiary
+                )
+            }
+            if (!notification.isRead) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(PundarBlue)
+                        .align(Alignment.CenterVertically)
+                )
+            }
+        }
+    }
+}
+
+/** Backward-compatible helper for top bar badge checks. */
+object NotificationData {
+    fun hasUnread(): Boolean = AppState.unreadNotificationCount() > 0
 }

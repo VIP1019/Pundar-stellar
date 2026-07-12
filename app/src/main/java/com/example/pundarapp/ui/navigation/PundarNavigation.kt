@@ -21,12 +21,16 @@ import com.example.pundarapp.ui.screens.grow.GrowScreen
 import com.example.pundarapp.ui.screens.grow.StockDetailScreen
 import com.example.pundarapp.ui.screens.home.HomeScreen
 import com.example.pundarapp.ui.screens.home.NotificationScreen
+import com.example.pundarapp.ui.screens.home.QrSendConfirmScreen
+import com.example.pundarapp.ui.screens.home.ReceiveMoneyScreen
 import com.example.pundarapp.ui.screens.home.ScanScreen
 import com.example.pundarapp.ui.screens.home.UserSettingsScreen
 import com.example.pundarapp.ui.screens.home.ChangeMpinScreen
 import com.example.pundarapp.ui.screens.pay.BillDetailScreen
 import com.example.pundarapp.ui.screens.pay.NewGroupBillScreen
 import com.example.pundarapp.ui.screens.pay.PayScreen
+import com.example.pundarapp.ui.screens.pay.BillQrScreen
+import com.example.pundarapp.ui.screens.pay.InstantSettlementScreen
 import com.example.pundarapp.ui.screens.home.SendMoneyScreen
 import com.example.pundarapp.ui.screens.home.BuyLoadScreen
 import com.example.pundarapp.ui.screens.SplashScreen
@@ -39,6 +43,8 @@ object Routes {
     const val PAY = "pay"
     const val PAY_NEW_BILL = "pay/new"
     const val BILL_DETAIL = "pay/bill/{billId}"
+    const val BILL_QR = "pay/bill/{billId}/qr"
+    const val INSTANT_SETTLE = "pay/instant_settle"
     const val CIRCLE = "circle"
     const val CIRCLE_CREATE = "circle/create"
     const val CIRCLE_DETAIL = "circle/{circleId}"
@@ -47,6 +53,7 @@ object Routes {
     const val STOCK_DETAIL = "grow/stock/{ticker}"
     fun stockDetail(ticker: String) = "grow/stock/$ticker"
     fun billDetail(billId: String) = "pay/bill/$billId"
+    fun billQr(billId: String) = "pay/bill/$billId/qr"
     fun circleDetail(circleId: String) = "circle/$circleId"
     fun circleInvite(inviteId: String) = "circle/invite/$inviteId"
     const val SETTINGS = "settings"
@@ -54,11 +61,13 @@ object Routes {
     const val SCAN = "scan"
     const val CHANGE_MPIN = "change_mpin"
     const val SEND_MONEY = "send_money"
+    const val RECEIVE_MONEY = "receive_money"
+    const val QR_SEND_CONFIRM = "qr_send_confirm"
     const val BUY_LOAD = "buy_load"
 }
 
 // Routes where bottom bar should be visible
-private val bottomBarRoutes = setOf(Routes.HOME, Routes.PAY, Routes.CIRCLE, Routes.GROW)
+private val bottomBarRoutes = setOf(Routes.HOME, Routes.PAY, Routes.SCAN, Routes.CIRCLE, Routes.GROW)
 
 @Composable
 fun PundarNavigation() {
@@ -124,8 +133,17 @@ fun PundarNavigation() {
             composable(Routes.SCAN) {
                 ScanScreen(navController = navController)
             }
+            composable(Routes.RECEIVE_MONEY) {
+                ReceiveMoneyScreen(navController = navController)
+            }
+            composable(Routes.QR_SEND_CONFIRM) {
+                QrSendConfirmScreen(navController = navController)
+            }
             composable(Routes.PAY_NEW_BILL) {
                 NewGroupBillScreen(navController = navController)
+            }
+            composable(Routes.INSTANT_SETTLE) {
+                InstantSettlementScreen(navController = navController)
             }
             composable(
                 route = Routes.BILL_DETAIL,
@@ -133,6 +151,13 @@ fun PundarNavigation() {
             ) { backStackEntry ->
                 val billId = backStackEntry.arguments?.getString("billId") ?: ""
                 BillDetailScreen(billId = billId, navController = navController)
+            }
+            composable(
+                route = Routes.BILL_QR,
+                arguments = listOf(navArgument("billId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val billId = backStackEntry.arguments?.getString("billId") ?: ""
+                BillQrScreen(billId = billId, navController = navController)
             }
             composable(Routes.CIRCLE) {
                 CircleScreen(navController = navController)
