@@ -29,6 +29,8 @@ import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +39,7 @@ fun CreateCircleScreen(navController: NavController) {
     var targetAmount by remember { mutableStateOf("") }
     var monthlyContribution by remember { mutableStateOf("") }
     var targetDate by remember { mutableStateOf("") }
+    var showDatePicker by remember { mutableStateOf(false) }
     var maxMembers by remember { mutableStateOf("10") }
     
     var searchQuery by remember { mutableStateOf("") }
@@ -112,6 +115,33 @@ fun CreateCircleScreen(navController: NavController) {
             }
         }
     ) { padding ->
+        // Date Picker Dialog
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState()
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val date = Date(millis)
+                            val format = SimpleDateFormat("MMM yyyy", Locale.getDefault())
+                            targetDate = format.format(date)
+                        }
+                        showDatePicker = false
+                    }) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text("Cancel")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -178,16 +208,32 @@ fun CreateCircleScreen(navController: NavController) {
 
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = targetDate,
-                        onValueChange = { targetDate = it },
-                        label = { Text("Target Date") },
-                        placeholder = { Text("e.g. Dec 2025") },
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true
-                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = targetDate,
+                            onValueChange = { },
+                            label = { Text("Target Date") },
+                            placeholder = { Text("Pick a date") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PundarBlue,
+                                focusedLabelColor = PundarBlue,
+                                disabledBorderColor = PundarBorder,
+                                disabledLabelColor = PundarTextSecondary,
+                                disabledTextColor = PundarTextPrimary
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            enabled = false,
+                            readOnly = true
+                        )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { showDatePicker = true }
+                        )
+                    }
                     OutlinedTextField(
                         value = maxMembers,
                         onValueChange = { maxMembers = it },
