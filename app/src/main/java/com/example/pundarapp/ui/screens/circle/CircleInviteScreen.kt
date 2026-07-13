@@ -17,7 +17,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import kotlinx.coroutines.launch
 import androidx.navigation.NavController
+import com.example.pundarapp.data.remote.CircleRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
@@ -25,10 +29,23 @@ import com.example.pundarapp.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CircleInviteScreen(inviteId: String, navController: NavController) {
-    val invite = AppState.pendingInvitation.value
+    val baseInvite = AppState.pendingInvitation.value
         ?: run { navController.navigateUp(); return }
 
+    var invite by remember { mutableStateOf(baseInvite) }
+
+    LaunchedEffect(baseInvite.circleId) {
+        invite = CircleRepository.refreshInvitation(baseInvite)
+    }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var isJoining by remember { mutableStateOf(false) }
+    var joinError by remember { mutableStateOf<String?>(null) }
+
+    val isFull = invite.memberCount >= invite.maxMembers
+    val remainingSlots = (invite.maxMembers - invite.memberCount).coerceAtLeast(0)
 
     if (showConfirmDialog) {
         AlertDialog(
@@ -40,13 +57,25 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
             confirmButton = {
                 Button(
                     onClick = {
-                        AppState.acceptInvitation(invite)
-                        showConfirmDialog = false
-                        navController.popBackStack(
-                            route = com.example.pundarapp.ui.navigation.Routes.CIRCLE,
-                            inclusive = false
-                        )
+                        isJoining = true
+                        joinError = null
+                        scope.launch {
+                            val result = AppState.acceptInvitation(invite)
+                            isJoining = false
+                            if (result.isSuccess) {
+                                showConfirmDialog = false
+                                navController.popBackStack(
+                                    route = com.example.pundarapp.ui.navigation.Routes.CIRCLE,
+                                    inclusive = false
+                                )
+                            } else {
+                                joinError = result.exceptionOrNull()?.message
+                                    ?: CircleRepository.MAX_MEMBER_LIMIT_MESSAGE
+                                Toast.makeText(context, joinError, Toast.LENGTH_LONG).show()
+                            }
+                        }
                     },
+                    enabled = !isJoining && !isFull,
                     colors = ButtonDefaults.buttonColors(containerColor = PundarBlue),
                     shape = RoundedCornerShape(12.dp)
                 ) { Text("Confirm & Join", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -68,7 +97,26 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
         containerColor = PundarBackground,
         bottomBar = {
             Column(modifier = Modifier.background(PundarSurface).padding(16.dp)) {
-                PundarBlueButton(text = "Join Circle →", onClick = { showConfirmDialog = true })
+                if (isFull) {
+                    Text(
+                        CircleRepository.MAX_MEMBER_LIMIT_MESSAGE,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                joinError?.let { err ->
+                    Text(err, color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                }
+                PundarBlueButton(
+                    text = if (isFull) "Circle Full" else if (isJoining) "Joining..." else "Join Circle →",
+                    onClick = { if (!isFull) showConfirmDialog = true }
+                )
                 Spacer(Modifier.height(12.dp))
                 PundarSecondaryButton(text = "View Detailed Schedule", onClick = { })
             }
@@ -137,8 +185,11 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                         Text("Members", style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
                         Text("${invite.memberCount} / ${invite.maxMembers}",
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("${invite.maxMembers - invite.memberCount} spots left",
-                            style = MaterialTheme.typography.bodySmall, color = PundarBlue)
+                        Text(
+                            text = if (remainingSlots == 0) "Circle Full" else "$remainingSlots slots left",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (remainingSlots == 0) MaterialTheme.colorScheme.error else PundarBlue
+                        )
                     }
                 }
             }

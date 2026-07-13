@@ -46,6 +46,10 @@ fun CircleScreen(navController: NavController) {
     val userSession by AuthRepository.currentUserState
     val invitation  = AppState.pendingInvitation.value
 
+    LaunchedEffect(Unit) {
+        AppState.refreshCircles()
+    }
+
     Scaffold(
         topBar = {
             PundarMainTopBar(
@@ -197,7 +201,7 @@ private fun InvitationBanner(circleName: String, onClick: () -> Unit) {
                     .background(PremiumGoldWarm.copy(0.18f))
                     .border(1.dp, PremiumGoldWarm.copy(0.5f), CircleShape),
                 contentAlignment = Alignment.Center
-            ) { Text("🔔", fontSize = 18.sp) }
+            ) { Icon3DBell(size = 42.dp, pulse = true) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("Pending Invitation", fontWeight = FontWeight.Bold,
@@ -308,9 +312,13 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                     Spacer(Modifier.width(10.dp))
                     Icon(Icons.Filled.Group, null, tint = TextSecondary, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(3.dp))
-                    Text("${circle.memberCount}",
+                    Text("${circle.memberCount} / ${circle.maxMembers}",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextSecondary, fontWeight = FontWeight.SemiBold)
+                    if (circle.isFull) {
+                        Spacer(Modifier.width(6.dp))
+                        Text("Full", fontSize = 9.sp, color = ErrorRed, fontWeight = FontWeight.Bold)
+                    }
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("TARGET", fontSize = 9.sp, letterSpacing = 1.2.sp, color = TextTertiary)

@@ -2,6 +2,7 @@ package com.example.pundarapp.ui.screens.circle
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -18,7 +19,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
+import kotlinx.coroutines.launch
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.ContributionStatus
 import com.example.pundarapp.ui.theme.*
@@ -29,7 +32,16 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
     val circle = AppState.circles.find { it.id == circleId }
         ?: run { navController.navigateUp(); return }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val currentUserId = AuthRepository.getCurrentUserId()
+    val isOwner = circle.creatorId == currentUserId
     val isMember = circle.members.any { it.isYou }
+    val isFull = circle.isFull
+    val remainingSlots = circle.remainingSlots
+
+    LaunchedEffect(circleId, isOwner) {
+        if (isOwner) AppState.refreshJoinRequests(circleId)
+    }
 
     var showContributeDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
@@ -82,12 +94,12 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
             title = { Text("Share Circle Details", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("📋 Circle: ${circle.name}", fontWeight = FontWeight.SemiBold)
+                    Text("Circle: ${circle.name}", fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(4.dp))
-                    Text("🎯 Target: ₱ ${String.format("%,.0f", circle.targetAmount)}", style = MaterialTheme.typography.bodyMedium)
-                    Text("💰 Saved: ₱ ${String.format("%,.0f", circle.savedAmount)}", style = MaterialTheme.typography.bodyMedium)
-                    Text("👥 Members: ${circle.memberCount}", style = MaterialTheme.typography.bodyMedium)
-                    Text("📅 Target Date: ${circle.targetDate}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Target: ₱ ${String.format("%,.0f", circle.targetAmount)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Saved: ₱ ${String.format("%,.0f", circle.savedAmount)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Members: ${circle.memberCount} / ${circle.maxMembers}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Target Date: ${circle.targetDate}", style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(8.dp))
                     Text("Invite link: pundar.app/circle/${circle.id}", style = MaterialTheme.typography.bodySmall, color = PundarBlue)
                 }
@@ -134,12 +146,26 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                             Surface(shape = RoundedCornerShape(8.dp), color = PundarSurfaceVariant) {
                                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically) {
-                                    Text("👥", fontSize = 12.sp)
+                                    Icon(Icons.Filled.Group, null, tint = PundarTextSecondary, modifier = Modifier.size(14.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text("${circle.memberCount} Members",
+                                    Text("${circle.memberCount} / ${circle.maxMembers} Members",
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.SemiBold, color = PundarTextSecondary)
                                 }
+                            }
+                            if (isFull) {
+                                Spacer(Modifier.width(8.dp))
+                                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.errorContainer) {
+                                    Text("Circle Full",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                                }
+                            } else {
+                                Spacer(Modifier.width(8.dp))
+                                Text("$remainingSlots slots left",
+                                    style = MaterialTheme.typography.labelSmall, color = PundarBlue)
                             }
                         }
                     }
@@ -201,6 +227,43 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                             Spacer(Modifier.width(8.dp))
                             Text("Share Details", style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+            }
+
+            // ── Pending Join Requests (owner only) ───────────────
+            if (isOwner && AppState.pendingJoinRequests.isNotEmpty()) {
+                item {
+                    Text("Pending Join Requests", style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = PundarTextPrimary)
+                }
+                items(AppState.pendingJoinRequests.toList()) { request ->
+                    PundarCard {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(request.userName, fontWeight = FontWeight.SemiBold)
+                                Text("Wants to join", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                            }
+                            if (isFull) {
+                                Text("Circle Full", color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.labelSmall)
+                            } else {
+                                TextButton(onClick = {
+                                    scope.launch {
+                                        val result = AppState.approveJoinRequest(request.id)
+                                        result.onFailure {
+                                            Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }) { Text("Approve", color = PundarSuccess) }
+                                TextButton(onClick = {
+                                    scope.launch { AppState.rejectJoinRequest(request.id) }
+                                }) { Text("Reject", color = MaterialTheme.colorScheme.error) }
+                            }
                         }
                     }
                 }

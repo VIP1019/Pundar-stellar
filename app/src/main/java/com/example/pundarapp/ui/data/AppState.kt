@@ -7,6 +7,7 @@ import com.example.pundarapp.data.qr.QrPayload
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.AppNotification
 import com.example.pundarapp.data.remote.NotificationRepository
+import com.example.pundarapp.data.remote.CircleRepository
 import com.example.pundarapp.data.remote.PayRepository
 import com.example.pundarapp.data.stellar.StellarWalletManager
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -39,6 +40,7 @@ object AppState {
                 }
                 refreshNotifications()
                 loadFavorites()
+                refreshCircles()
             }
         }
     }
@@ -80,42 +82,129 @@ object AppState {
     // ── CIRCLE ──────────────────────────────────────────────────────
     val circles = mutableStateListOf<Circle>()
     val pendingInvitation = mutableStateOf<CircleInvitation?>(null)
+    val pendingJoinRequests = mutableStateListOf<CircleJoinRequest>()
 
-    fun acceptInvitation(invitation: CircleInvitation) {
-        val newCircle = Circle(
-            id = "circle_${invitation.id}",
-            name = invitation.circleName,
-            targetAmount = invitation.targetAmount,
-            savedAmount = invitation.targetAmount * invitation.fundedPercent / 100.0,
-            targetDate = "Dec 2025",
-            memberCount = invitation.memberCount + 1,
-            contributionPerMonth = invitation.monthlyContribution,
-            members = listOf(
-                CircleMember(
-                    name = SampleData.currentUser.name,
-                    initials = SampleData.currentUser.initials,
-                    sharePercent = (100.0 / (invitation.memberCount + 1)).toInt(),
-                    amount = invitation.monthlyContribution,
-                    status = ContributionStatus.PAID,
-                    isYou = true,
-                    avatarColor = 0xFF0052CC
-                )
-            ),
-            isActive = true
-        )
-        circles.add(0, newCircle)
-        pendingInvitation.value = null
+    fun refreshCircles() {
+        val userId = AuthRepository.getCurrentUserId() ?: return
+        scope.launch {
+            val remote = CircleRepository.getCirclesForUser(userId)
+            circles.clear()
+            circles.addAll(remote)
+            pendingInvitation.value = CircleRepository.getPendingInvitation(userId)
+        }
+    }
 
-        addHomeActivity(
-            HomeActivity(
-                icon = "savings",
-                title = invitation.circleName,
-                subtitle = "Joined circle",
-                amount = "+₱ ${String.format("%,.0f", invitation.monthlyContribution)}",
-                isPositive = true,
-                module = "Circle"
+    fun refreshJoinRequests(circleId: String) {
+        scope.launch {
+            val requests = CircleRepository.getPendingJoinRequests(circleId)
+            pendingJoinRequests.clear()
+            pendingJoinRequests.addAll(requests)
+        }
+    }
+
+    suspend fun createCircle(circle: Circle, invitedMembers: List<CircleMember> = emptyList()): Result<Circle> {
+        val creatorId = AuthRepository.getCurrentUserId()
+            ?: return Result.failure(Exception("You must be logged in to create a circle."))
+        val invitees = invitedMembers.filter { !it.isYou && it.userId.isNotBlank() }
+        if (1 + invitees.size > circle.maxMembers) {
+            return Result.failure(
+                Exception("Cannot invite more than ${circle.maxMembers - 1} members (max ${circle.maxMembers} total).")
             )
+        }
+        val creatorMember = circle.members.firstOrNull { it.isYou }
+            ?: circle.members.firstOrNull()
+            ?: return Result.failure(Exception("Circle must include the creator."))
+        val creatorCircle = circle.copy(
+            memberCount = 1,
+            members = listOf(creatorMember.copy(userId = creatorId, isYou = true))
         )
+        val result = CircleRepository.createCircle(creatorCircle, creatorId)
+        return result.fold(
+            onSuccess = { created ->
+                circles.add(0, created)
+                val inviterName = AuthRepository.getCurrentUserName()
+                var inviteError: String? = null
+                for (invitee in invitees) {
+                    val inviteResult = CircleRepository.sendInvitation(
+                        circleId = created.id,
+                        inviteeUserId = invitee.userId,
+                        inviteeName = invitee.name,
+                        inviteeInitials = invitee.initials,
+                        inviterName = inviterName,
+                        inviterScore = SampleData.currentUser.pundarScore
+                    )
+                    if (inviteResult.isFailure) {
+                        inviteError = inviteResult.exceptionOrNull()?.message
+                        break
+                    }
+                }
+                if (inviteError != null) {
+                    Result.failure(Exception(inviteError))
+                } else {
+                    Result.success(created)
+                }
+            },
+            onFailure = { Result.failure(it) }
+        )
+    }
+
+    suspend fun acceptInvitation(invitation: CircleInvitation): Result<Unit> {
+        if (invitation.memberCount >= invitation.maxMembers) {
+            return Result.failure(Exception(CircleRepository.MAX_MEMBER_LIMIT_MESSAGE))
+        }
+        val userId = AuthRepository.getCurrentUserId()
+            ?: return Result.failure(Exception("You must be logged in."))
+        val userName = AuthRepository.getCurrentUserName()
+        val initials = AuthRepository.getCurrentUserInitials()
+
+        val result = CircleRepository.joinCircle(
+            circleId = invitation.circleId,
+            userId = userId,
+            userName = userName,
+            userInitials = initials,
+            monthlyContribution = invitation.monthlyContribution
+        )
+        return result.fold(
+            onSuccess = { circle ->
+                val idx = circles.indexOfFirst { it.id == circle.id }
+                if (idx >= 0) circles[idx] = circle else circles.add(0, circle)
+                pendingInvitation.value = null
+                addHomeActivity(
+                    HomeActivity(
+                        icon = "savings",
+                        title = invitation.circleName,
+                        subtitle = "Joined circle",
+                        amount = "+₱ ${String.format("%,.0f", invitation.monthlyContribution)}",
+                        isPositive = true,
+                        module = "Circle"
+                    )
+                )
+                Result.success(Unit)
+            },
+            onFailure = { Result.failure(it) }
+        )
+    }
+
+    suspend fun approveJoinRequest(requestId: String): Result<Unit> {
+        val approverId = AuthRepository.getCurrentUserId()
+            ?: return Result.failure(Exception("You must be logged in."))
+        val result = CircleRepository.approveJoinRequest(requestId, approverId)
+        result.onSuccess { circle ->
+            val idx = circles.indexOfFirst { it.id == circle.id }
+            if (idx >= 0) circles[idx] = circle
+            pendingJoinRequests.removeAll { it.id == requestId }
+        }
+        return result.map { Unit }
+    }
+
+    suspend fun rejectJoinRequest(requestId: String): Result<Unit> {
+        val approverId = AuthRepository.getCurrentUserId()
+            ?: return Result.failure(Exception("You must be logged in."))
+        val result = CircleRepository.rejectJoinRequest(requestId, approverId)
+        result.onSuccess {
+            pendingJoinRequests.removeAll { it.id == requestId }
+        }
+        return result
     }
 
     fun contributeToCircle(circleId: String, amount: Double) {
@@ -226,6 +315,7 @@ object AppState {
         recentNotifications.clear()
         favoriteStocks.value = emptySet()
         pendingInvitation.value = null
+        pendingJoinRequests.clear()
         pendingQrPayload.value = null
         walletBalance.value = 5000.0
         portfolio.value = SampleData.portfolio

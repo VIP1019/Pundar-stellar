@@ -37,15 +37,21 @@ data class Circle(
     val savedAmount: Double,
     val targetDate: String,
     val memberCount: Int,
+    val maxMembers: Int,
     val contributionPerMonth: Double,
     val members: List<CircleMember>,
+    val creatorId: String = "",
     val isActive: Boolean = true,
     val escrowAddress: String = "0x7f...9A2B",
     val escrowNetwork: String = "Stellar Network",
     val monthlyDueDay: Int = 5
-)
+) {
+    val remainingSlots: Int get() = (maxMembers - memberCount).coerceAtLeast(0)
+    val isFull: Boolean get() = memberCount >= maxMembers
+}
 
 data class CircleMember(
+    val userId: String = "",
     val name: String,
     val initials: String,
     val sharePercent: Int,
@@ -57,8 +63,22 @@ data class CircleMember(
 
 enum class ContributionStatus { PAID, PENDING, OVERDUE }
 
+enum class JoinRequestStatus { PENDING, APPROVED, REJECTED }
+
+data class CircleJoinRequest(
+    val id: String,
+    val circleId: String,
+    val circleName: String,
+    val userId: String,
+    val userName: String,
+    val userInitials: String,
+    val status: JoinRequestStatus = JoinRequestStatus.PENDING,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class CircleInvitation(
     val id: String,
+    val circleId: String,
     val circleName: String,
     val goal: String,
     val inviterName: String,

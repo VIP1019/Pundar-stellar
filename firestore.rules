@@ -63,6 +63,27 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Circles ────────────────────────────────────────────────────
+    match /circles/{circleId} {
+      allow read: if true;
+      allow create: if isValidCircleCreate();
+      allow update: if isValidCircleUpdate();
+      allow delete: if false;
+
+      match /members/{memberId} {
+        allow read: if true;
+        allow create: if isValidCircleMemberCreate(circleId);
+        allow update, delete: if false;
+      }
+    }
+
+    match /circle_join_requests/{requestId} {
+      allow read: if true;
+      allow create: if isValidJoinRequestCreate();
+      allow update: if isValidJoinRequestUpdate();
+      allow delete: if false;
+    }
+
     // ── Validation helpers ─────────────────────────────────────────
 
     function isValidUserCreate() {
@@ -151,6 +172,58 @@ service cloud.firestore {
       let data = request.resource.data;
       return data.keys().hasAll(['tickers'])
         && data.tickers is list;
+    }
+
+    function isValidCircleCreate() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['id', 'name', 'member_count', 'max_members', 'creator_id'])
+        && data.member_count is int
+        && data.max_members is int
+        && data.member_count >= 1
+        && data.member_count <= data.max_members
+        && data.max_members >= 2
+        && data.max_members <= 50;
+    }
+
+    function isValidCircleUpdate() {
+      let data = request.resource.data;
+      let diff = request.resource.data.diff(resource.data);
+      // member_count can only increase by 1 per update (transaction-safe)
+      return (!diff.affectedKeys().hasAny(['member_count'])
+              || (data.member_count is int
+                  && data.member_count == resource.data.member_count + 1
+                  && data.member_count <= data.max_members))
+        && (!diff.affectedKeys().hasAny(['max_members'])
+            || (data.max_members is int
+                && data.max_members >= data.member_count
+                && data.max_members <= 50));
+    }
+
+    function isValidCircleMemberCreate(circleId) {
+      let circle = get(/databases/$(database)/documents/circles/$(circleId)).data;
+      let data = request.resource.data;
+      return circle.member_count < circle.max_members
+        && data.keys().hasAll(['user_id', 'name', 'initials', 'status'])
+        && data.user_id is string
+        && data.name is string;
+    }
+
+    function isValidJoinRequestCreate() {
+      let data = request.resource.data;
+      let circleId = data.circle_id;
+      let circle = get(/databases/$(database)/documents/circles/$(circleId)).data;
+      return data.keys().hasAll(['circle_id', 'user_id', 'status', 'created_at'])
+        && data.circle_id is string
+        && data.user_id is string
+        && data.status == 'PENDING'
+        && data.created_at is number
+        && circle.member_count < circle.max_members;
+    }
+
+    function isValidJoinRequestUpdate() {
+      let diff = request.resource.data.diff(resource.data);
+      return diff.affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['APPROVED', 'REJECTED'];
     }
   }
 }
