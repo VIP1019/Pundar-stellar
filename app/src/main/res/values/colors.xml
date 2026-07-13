@@ -7,4 +7,6 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Pundar icon background — deep navy (used by legacy launchers) -->
+    <color name="ic_launcher_background">#FF060D1F</color>
 </resources>

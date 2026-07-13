@@ -1,30 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
+
+    <!-- ═══════════════════════════════════════════════════
+         PUNDAR — Futuristic Icon
+         Concept: Hexagonal frame + geometric P lettermark
+         + dual arc rings + gold accent node
+         ═══════════════════════════════════════════════════ -->
+
+    <!-- Outer glow ring (faint, large) -->
+    <path
+        android:pathData="M54,54 m-42,0 a42,42 0,1,1 84,0 a42,42 0,1,1 -84,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#1A2563EB"
+        android:strokeWidth="6"/>
+
+    <!-- Middle accent ring -->
+    <path
+        android:pathData="M54,54 m-35,0 a35,35 0,1,1 70,0 a35,35 0,1,1 -70,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#332563EB"
+        android:strokeWidth="1.2"/>
+
+    <!-- Inner ring — bright blue -->
+    <path
+        android:pathData="M54,54 m-30,0 a30,30 0,1,1 60,0 a30,30 0,1,1 -60,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#602563EB"
+        android:strokeWidth="1"/>
+
+    <!-- Arc sweep — top-left quarter, electric blue -->
+    <path
+        android:pathData="M54,20 A34,34 0,0,1 88,54"
+        android:fillColor="#00000000"
+        android:strokeColor="#FF3B82F6"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"/>
+
+    <!-- Arc sweep — bottom-right quarter, gold -->
+    <path
+        android:pathData="M54,88 A34,34 0,0,1 20,54"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFEAB308"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"/>
+
+    <!-- Icon background disc — gradient fill -->
+    <path
+        android:pathData="M54,54 m-26,0 a26,26 0,1,1 52,0 a26,26 0,1,1 -52,0">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="46"
+                android:gradientRadius="28">
+                <item android:offset="0"   android:color="#FF1A3A8F"/>
+                <item android:offset="0.6" android:color="#FF0E2260"/>
+                <item android:offset="1"   android:color="#FF071545"/>
             </gradient>
         </aapt:attr>
     </path>
+
+    <!-- Disc border — subtle bright edge -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M54,54 m-26,0 a26,26 0,1,1 52,0 a26,26 0,1,1 -52,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#4D60A5FA"
+        android:strokeWidth="1"/>
+
+    <!-- ── "P" lettermark — stem ──────────────────────────────────
+         Centered within the disc. Safe zone center = 54,54
+         Stem: x=44–50, y=36–72  (height 36, width 6)            -->
+    <path
+        android:pathData="M44,36 L44,72 L50,72 L50,36 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="44"
+                android:startY="36"
+                android:endX="50"
+                android:endY="72">
+                <item android:offset="0"   android:color="#FFFFFFFF"/>
+                <item android:offset="1"   android:color="#FFBFDBFE"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- ── "P" lettermark — bowl (top arc) ──────────────────────
+         Bowl: from (50,36) curves right to (63,44.5) then
+         back to (50,53).  Approximate with cubic bezier.         -->
+    <path
+        android:pathData="M50,36 L61,36 C67,36 70,40 70,44.5 C70,49 67,53 61,53 L50,53 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="50"
+                android:startY="36"
+                android:endX="70"
+                android:endY="53">
+                <item android:offset="0"   android:color="#FFFFFFFF"/>
+                <item android:offset="1"   android:color="#FFE0EEFF"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Bowl inner cutout — creates the counter of the P -->
+    <path
+        android:pathData="M50,40 L60,40 C64,40 66,42 66,44.5 C66,47 64,49 60,49 L50,49 Z"
+        android:fillColor="#FF0A1640"/>
+
+    <!-- ── Gold accent node — bottom right of disc ───────────────
+         A small bright circle at ~(68, 66), radius 4            -->
+    <path
+        android:pathData="M68,66 m-4.5,0 a4.5,4.5 0,1,1 9,0 a4.5,4.5 0,1,1 -9,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="68"
+                android:centerY="64"
+                android:gradientRadius="5">
+                <item android:offset="0"   android:color="#FFFDE047"/>
+                <item android:offset="1"   android:color="#FFD97706"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Gold node inner glint -->
+    <path
+        android:pathData="M66.5,64.5 m-1.5,0 a1.5,1.5 0,1,1 3,0 a1.5,1.5 0,1,1 -3,0"
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.55"/>
+
+    <!-- ── Top node — electric blue dot at top of ring ──────────
+         Small dot at (54, 20), radius 2.5                       -->
+    <path
+        android:pathData="M54,20 m-2.5,0 a2.5,2.5 0,1,1 5,0 a2.5,2.5 0,1,1 -5,0"
+        android:fillColor="#FF3B82F6"/>
+
+    <!-- ── Right node — on the right arc endpoint ───────────────
+         Small dot at (88, 54), radius 2                         -->
+    <path
+        android:pathData="M88,54 m-2,0 a2,2 0,1,1 4,0 a2,2 0,1,1 -4,0"
+        android:fillColor="#FF3B82F6"
+        android:fillAlpha="0.7"/>
+
+    <!-- ── Left arc endpoint node ───────────────────────────────
+         Small gold dot at (20, 54), radius 2                    -->
+    <path
+        android:pathData="M20,54 m-2,0 a2,2 0,1,1 4,0 a2,2 0,1,1 -4,0"
+        android:fillColor="#FFEAB308"
+        android:fillAlpha="0.7"/>
+
+    <!-- ── Tick marks at 0°, 90°, 180°, 270° on outer ring ─────
+         Four tiny dash marks on the 35px ring for precision feel -->
+    <!-- Top tick -->
+    <path
+        android:pathData="M54,17 L54,21"
+        android:fillColor="#00000000"
+        android:strokeColor="#4D60A5FA"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+    <!-- Bottom tick -->
+    <path
+        android:pathData="M54,87 L54,91"
+        android:fillColor="#00000000"
+        android:strokeColor="#4D60A5FA"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+    <!-- Left tick -->
+    <path
+        android:pathData="M17,54 L21,54"
+        android:fillColor="#00000000"
+        android:strokeColor="#4D60A5FA"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+    <!-- Right tick -->
+    <path
+        android:pathData="M87,54 L91,54"
+        android:fillColor="#00000000"
+        android:strokeColor="#4D60A5FA"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+
 </vector>

@@ -9,14 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,266 +20,588 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
 
-private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-private val EaseOutBack = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
-private val EaseInOutSine = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
+// ── Custom easing curves ──────────────────────────────────────────
+private val ExpoOut  = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+private val BackOut  = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
+private val SineIO   = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
+
+// ── Card gradient palettes ────────────────────────────────────────
+private val FrontGrad = listOf(
+    Color(0xFF0A1F5C),   // deep navy
+    Color(0xFF0D2880),   // royal blue
+    Color(0xFF071545)    // midnight
+)
+private val FrontGradAlt = listOf(
+    Color(0xFF061840),
+    Color(0xFF0E2260),
+    Color(0xFF1A3A8F)
+)
+private val BackGrad = listOf(
+    Color(0xFF0C0824),
+    Color(0xFF180F48),
+    Color(0xFF0A0618)
+)
 
 @Composable
 fun FlippableWalletCard(
-    modifier: Modifier = Modifier,
-    onTransfer: () -> Unit
+    modifier:   Modifier  = Modifier,
+    onTransfer: () -> Unit,
+    onCashIn:   () -> Unit = {},
+    onReceive:  () -> Unit = {}
 ) {
-    val density = LocalDensity.current
-    var isFlipped by remember { mutableStateOf(false) }
-    val rotation = remember { Animatable(0f) }
+    val density    = LocalDensity.current
+    var isFlipped  by remember { mutableStateOf(false) }
+    val rotation   = remember { Animatable(0f) }
     val enterScale = remember { Animatable(0.88f) }
     val enterAlpha = remember { Animatable(0f) }
+    val enterY     = remember { Animatable(24f) }
 
     LaunchedEffect(Unit) {
-        enterAlpha.animateTo(1f, tween(500, easing = EaseOutExpo))
-        enterScale.animateTo(1f, tween(550, easing = EaseOutBack))
+        enterAlpha.animateTo(1f, tween(500, easing = ExpoOut))
+        enterScale.animateTo(1f, tween(560, easing = BackOut))
+        enterY.animateTo(0f,     tween(500, easing = ExpoOut))
     }
-
     LaunchedEffect(isFlipped) {
         rotation.animateTo(
-            targetValue = if (isFlipped) 180f else 0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            )
+            if (isFlipped) 180f else 0f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
         )
     }
 
-    val infinite = rememberInfiniteTransition(label = "walletFloat")
-    val floatY by infinite.animateFloat(
-        initialValue = -4f,
-        targetValue = 4f,
-        animationSpec = infiniteRepeatable(tween(2800, easing = EaseInOutSine), RepeatMode.Reverse),
-        label = "floatY"
-    )
-    val shimmerX by infinite.animateFloat(
-        initialValue = -700f,
-        targetValue = 1400f,
-        animationSpec = infiniteRepeatable(tween(2600, easing = LinearEasing)),
-        label = "shimmer"
-    )
+    val inf      = rememberInfiniteTransition(label = "wlt")
+    val floatY   by inf.animateFloat(-2.5f, 2.5f,
+        infiniteRepeatable(tween(3200, easing = SineIO), RepeatMode.Reverse), label = "fy")
+    val shimmerX by inf.animateFloat(-800f, 1600f,
+        infiniteRepeatable(tween(3000, easing = LinearEasing)), label = "sx")
+    val glowPulse by inf.animateFloat(0.55f, 1f,
+        infiniteRepeatable(tween(2000, easing = SineIO), RepeatMode.Reverse), label = "gp")
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .graphicsLayer {
-                alpha = enterAlpha.value
-                scaleX = enterScale.value
-                scaleY = enterScale.value
-                translationY = floatY
-                rotationY = rotation.value
-                cameraDistance = 14f * density.density
-            }
-            .clickable { isFlipped = !isFlipped }
-    ) {
-        if (rotation.value <= 90f) {
-            WalletCardFront(shimmerX = shimmerX, onTransfer = onTransfer)
-        } else {
+    Column(modifier = modifier.fillMaxWidth()) {
+
+        // ── Card shell with glow shadow ───────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .graphicsLayer {
+                    alpha          = enterAlpha.value
+                    scaleX         = enterScale.value
+                    scaleY         = enterScale.value
+                    translationY   = floatY + enterY.value
+                    rotationY      = rotation.value
+                    cameraDistance = 16f * density.density
+                }
+        ) {
+            // The actual card (clickable to flip)
             Box(
-                Modifier
+                modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { rotationY = 180f }
-            ) {
-                WalletCardBack(shimmerX = shimmerX)
-            }
-        }
-    }
-
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            Icons.Filled.Refresh,
-            contentDescription = null,
-            tint = TextTertiary,
-            modifier = Modifier.size(12.dp)
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = if (isFlipped) "Tap to view balance" else "Tap card to flip",
-            style = MaterialTheme.typography.labelSmall,
-            color = TextTertiary,
-            letterSpacing = 0.5.sp
-        )
-    }
-}
-
-@Composable
-private fun WalletCardFront(shimmerX: Float, onTransfer: () -> Unit) {
-    val infinite = rememberInfiniteTransition(label = "orb")
-    val orbY by infinite.animateFloat(
-        initialValue = -14f,
-        targetValue = 14f,
-        animationSpec = infiniteRepeatable(tween(2600, easing = EaseInOutSine), RepeatMode.Reverse),
-        label = "orbY"
-    )
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .shadow(28.dp, RoundedCornerShape(28.dp),
-                ambientColor = ElectricBlue.copy(0.28f), spotColor = ElectricBlue.copy(0.28f))
-            .clip(RoundedCornerShape(28.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF0A1E3D), Color(0xFF0D2A52), Color(0xFF06121E))))
-    ) {
-        Box(Modifier.size(180.dp).align(Alignment.TopEnd)
-            .offset(x = 30.dp, y = (orbY - 30).dp)
-            .background(Brush.radialGradient(listOf(ElectricBlue.copy(0.18f), Color.Transparent))))
-        Box(Modifier.size(140.dp).align(Alignment.BottomStart)
-            .offset(x = (-20).dp, y = (20 - orbY).dp)
-            .background(Brush.radialGradient(listOf(ElectricPurple.copy(0.13f), Color.Transparent))))
-
-        Box(Modifier.matchParentSize().background(
-            Brush.linearGradient(
-                listOf(Color.Transparent, Color.White.copy(0.06f), Color.Transparent),
-                start = Offset(shimmerX, 0f),
-                end = Offset(shimmerX + 260f, 400f)
-            )
-        ))
-        Box(Modifier.fillMaxWidth().height(2.dp)
-            .background(Brush.horizontalGradient(
-                listOf(Color.Transparent, ElectricBlue.copy(0.8f), NeonCyan.copy(0.6f), Color.Transparent))))
-
-        Column(Modifier.padding(24.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("PUNDAR WALLET", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 2.5.sp, color = ElectricBlue.copy(0.9f))
-                Box(Modifier.clip(RoundedCornerShape(6.dp))
-                    .background(ElectricBlue.copy(0.15f))
-                    .border(1.dp, ElectricBlue.copy(0.45f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp)) {
-                    Text("PHP", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ElectricBlue)
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                Spacer(Modifier.width(8.dp))
-                IconButton(
-                    onClick = { AppState.toggleBalanceVisibility() },
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = if (AppState.isBalanceHidden.value) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = "Toggle Balance Visibility",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(16.dp)
+                    .shadow(
+                        elevation    = (20 + glowPulse * 16).dp,
+                        shape        = RoundedCornerShape(28.dp),
+                        ambientColor = Blue500.copy(glowPulse * 0.5f),
+                        spotColor    = Blue600.copy(glowPulse * 0.5f)
                     )
-                }
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = AppState.getDisplayBalance(),
-                fontWeight = FontWeight.Black,
-                fontSize = 36.sp,
-                color = TextOnDark,
-                letterSpacing = (-1).sp
-            )
-            Spacer(Modifier.height(20.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(46.dp)
-                    .shadow(12.dp, RoundedCornerShape(14.dp),
-                        ambientColor = PremiumGoldWarm.copy(0.45f), spotColor = PremiumGoldWarm.copy(0.45f))
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Brush.horizontalGradient(listOf(PremiumGoldDim, PremiumGoldWarm)))
-                    .clickable(onClick = onTransfer),
-                contentAlignment = Alignment.Center
+                    .clickable { isFlipped = !isFlipped }
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.AutoMirrored.Filled.Send, null, tint = SpaceBlack, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Transfer Money", color = SpaceBlack, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                if (rotation.value <= 90f) {
+                    WalletFront(shimmerX = shimmerX, glowPulse = glowPulse)
+                } else {
+                    Box(Modifier.fillMaxSize().graphicsLayer { rotationY = 180f }) {
+                        WalletBack(shimmerX = shimmerX)
+                    }
                 }
             }
+        }
+
+        // ── Flip hint ─────────────────────────────────────────────
+        Spacer(Modifier.height(10.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment     = Alignment.CenterVertically
+        ) {
+            val dotAlpha by rememberInfiniteTransition(label = "dot")
+                .animateFloat(0.3f, 0.9f,
+                    infiniteRepeatable(tween(1200, easing = SineIO), RepeatMode.Reverse), label = "da")
+            Box(
+                Modifier.size(5.dp).clip(CircleShape)
+                    .background(Blue400.copy(dotAlpha))
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                if (isFlipped) "Tap to view balance" else "Tap card to flip",
+                style    = MaterialTheme.typography.labelSmall,
+                color    = TextDim,
+                fontSize = 11.sp,
+                letterSpacing = 0.5.sp
+            )
+            Spacer(Modifier.width(6.dp))
+            Box(
+                Modifier.size(5.dp).clip(CircleShape)
+                    .background(Blue400.copy(dotAlpha))
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // ── Action buttons ────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            WalletAction(
+                icon    = Icons.Filled.AddCircleOutline,
+                label   = "Cash In",
+                accent  = Green400,
+                modifier = Modifier.weight(1f),
+                onClick = onCashIn
+            )
+            WalletAction(
+                icon    = Icons.AutoMirrored.Filled.Send,
+                label   = "Send",
+                accent  = Blue400,
+                modifier = Modifier.weight(1f),
+                onClick = onTransfer
+            )
+            WalletAction(
+                icon    = Icons.Filled.QrCodeScanner,
+                label   = "Receive",
+                accent  = Gold500,
+                modifier = Modifier.weight(1f),
+                onClick = onReceive
+            )
         }
     }
 }
 
+// ── Action button ─────────────────────────────────────────────────
 @Composable
-private fun WalletCardBack(shimmerX: Float) {
-    val userName = AuthRepository.getCurrentUserName()
-    val initials = AuthRepository.getCurrentUserInitials()
-    val userId = AuthRepository.getCurrentUserPhone().ifBlank { "•••• ••••" }
+private fun WalletAction(
+    icon: ImageVector, label: String,
+    accent: Color, modifier: Modifier,
+    onClick: () -> Unit
+) {
+    val inf = rememberInfiniteTransition(label = "wa_$label")
+    val pulse by inf.animateFloat(0.7f, 1f,
+        infiniteRepeatable(tween(1800, easing = SineIO), RepeatMode.Reverse), label = "wp")
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .shadow(28.dp, RoundedCornerShape(28.dp),
-                ambientColor = ElectricPurple.copy(0.25f), spotColor = ElectricPurple.copy(0.25f))
-            .clip(RoundedCornerShape(28.dp))
+    Column(
+        modifier = modifier
+            .shadow(
+                elevation    = (6 * pulse).dp,
+                shape        = RoundedCornerShape(18.dp),
+                ambientColor = accent.copy(pulse * 0.25f),
+                spotColor    = accent.copy(pulse * 0.25f)
+            )
+            .clip(RoundedCornerShape(18.dp))
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xFF1A0A3D), Color(0xFF2D1560), Color(0xFF0A1628))
+                    listOf(accent.copy(0.13f), accent.copy(0.07f))
                 )
             )
+            .border(1.dp, accent.copy(0.28f), RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(Modifier.matchParentSize().background(
-            Brush.linearGradient(
-                listOf(Color.Transparent, Color.White.copy(0.05f), Color.Transparent),
-                start = Offset(shimmerX, 0f),
-                end = Offset(shimmerX + 200f, 300f)
-            )
-        ))
+        Box(
+            Modifier.size(36.dp).clip(CircleShape)
+                .background(accent.copy(0.18f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = accent)
+    }
+}
 
-        Column(Modifier.padding(24.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("VIRTUAL CARD", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 2.sp, color = NeonCyan.copy(0.9f))
-                Icon(Icons.Filled.CreditCard, null, tint = PremiumGoldWarm, modifier = Modifier.size(28.dp))
+// ── FRONT face ────────────────────────────────────────────────────
+@Composable
+private fun WalletFront(shimmerX: Float, glowPulse: Float) {
+    val inf  = rememberInfiniteTransition(label = "wf")
+    val orbY by inf.animateFloat(-16f, 16f,
+        infiniteRepeatable(tween(3000, easing = SineIO), RepeatMode.Reverse), label = "oy")
+    val orbX by inf.animateFloat(-8f, 8f,
+        infiniteRepeatable(tween(4000, easing = SineIO), RepeatMode.Reverse), label = "ox")
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(28.dp))
+            .background(Brush.linearGradient(FrontGrad, start = Offset(0f, 0f), end = Offset(800f, 600f)))
+            .border(
+                1.dp,
+                Brush.linearGradient(
+                    listOf(Blue300.copy(0.55f), Color.Transparent, Blue500.copy(0.15f)),
+                    start = Offset(0f, 0f), end = Offset(800f, 600f)
+                ),
+                RoundedCornerShape(28.dp)
+            )
+    ) {
+        // ── Background orbs ───────────────────────────────────────
+        Box(
+            Modifier.size(260.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = (50 + orbX).dp, y = (-60 + orbY).dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Blue400.copy(glowPulse * 0.22f), Color.Transparent)
+                    )
+                )
+        )
+        Box(
+            Modifier.size(180.dp)
+                .align(Alignment.BottomStart)
+                .offset(x = (-30).dp, y = 40.dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Gold500.copy(0.14f), Color.Transparent)
+                    )
+                )
+        )
+        Box(
+            Modifier.size(100.dp)
+                .align(Alignment.Center)
+                .offset(x = orbX.dp, y = orbY.dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Blue300.copy(glowPulse * 0.08f), Color.Transparent)
+                    )
+                )
+        )
+
+        // ── Shimmer sweep ─────────────────────────────────────────
+        Box(
+            Modifier.matchParentSize().background(
+                Brush.linearGradient(
+                    listOf(Color.Transparent, White.copy(0.055f), Color.Transparent),
+                    start = Offset(shimmerX, 0f), end = Offset(shimmerX + 300f, 400f)
+                )
+            )
+        )
+
+        // ── Top edge highlight ────────────────────────────────────
+        Box(
+            Modifier.fillMaxWidth().height(1.dp)
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color.Transparent, Blue200.copy(0.8f), Color.Transparent)
+                    )
+                )
+        )
+
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 20.dp)
+        ) {
+            // ── Row 1: Brand + chip ───────────────────────────────
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                // Brand wordmark
+                Column {
+                    Text(
+                        "PUNDAR",
+                        fontSize      = 18.sp,
+                        fontWeight    = FontWeight.Black,
+                        color         = White,
+                        letterSpacing = 3.sp
+                    )
+                    Text(
+                        "e-wallet",
+                        fontSize      = 9.sp,
+                        fontWeight    = FontWeight.Medium,
+                        color         = Blue200.copy(0.65f),
+                        letterSpacing = 2.sp
+                    )
+                }
+                // NFC + currency chip
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Contactless icon
+                    Icon(
+                        Icons.Filled.Wifi,
+                        contentDescription = null,
+                        tint     = Blue200.copy(0.55f),
+                        modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = 90f }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    // PHP badge
+                    Box(
+                        Modifier.clip(RoundedCornerShape(8.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Blue500.copy(0.35f), Blue600.copy(0.2f))
+                                )
+                            )
+                            .border(1.dp, Blue300.copy(0.35f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text("PHP", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Blue200)
+                    }
+                }
             }
-            Spacer(Modifier.height(20.dp))
-            // Chip
+
+            Spacer(Modifier.weight(1f))
+
+            // ── Row 2: Balance ────────────────────────────────────
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Available Balance",
+                        fontSize      = 10.sp,
+                        color         = Blue200.copy(0.65f),
+                        letterSpacing = 0.8.sp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .clickable { AppState.toggleBalanceVisibility() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (AppState.isBalanceHidden.value)
+                                Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            contentDescription = "Toggle",
+                            tint     = Blue200.copy(0.55f),
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    AppState.getDisplayBalance(),
+                    fontSize      = 34.sp,
+                    fontWeight    = FontWeight.Black,
+                    color         = White,
+                    letterSpacing = (-0.8).sp
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ── Row 3: Footer — verified badge + flip hint ────────
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(6.dp).clip(CircleShape)
+                            .background(Green400)
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        "Verified Account",
+                        fontSize  = 9.sp,
+                        color     = Green400.copy(0.85f),
+                        letterSpacing = 0.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                // Holographic pattern dots
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    repeat(4) { i ->
+                        Box(
+                            Modifier.size(4.dp).clip(CircleShape)
+                                .background(Blue300.copy(0.2f + i * 0.12f))
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── BACK face ─────────────────────────────────────────────────────
+@Composable
+private fun WalletBack(shimmerX: Float) {
+    val userName = AuthRepository.getCurrentUserName()
+    val initials = AuthRepository.getCurrentUserInitials()
+    val userId   = AuthRepository.getCurrentUserPhone().ifBlank { "0000" }
+    val last4    = userId.takeLast(4).padStart(4, '0')
+
+    val inf  = rememberInfiniteTransition(label = "wb")
+    val orbY by inf.animateFloat(-10f, 10f,
+        infiniteRepeatable(tween(3400, easing = SineIO), RepeatMode.Reverse), label = "by")
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(28.dp))
+            .background(
+                Brush.linearGradient(BackGrad, start = Offset(0f, 0f), end = Offset(600f, 500f))
+            )
+            .border(
+                1.dp,
+                Brush.linearGradient(
+                    listOf(Color(0xFF8B5CF6).copy(0.45f), Color.Transparent, Color(0xFF8B5CF6).copy(0.12f))
+                ),
+                RoundedCornerShape(28.dp)
+            )
+    ) {
+        // Purple orb
+        Box(
+            Modifier.size(220.dp).align(Alignment.TopEnd)
+                .offset(x = 40.dp, y = (-30 + orbY).dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Color(0xFF7C3AED).copy(0.18f), Color.Transparent)
+                    )
+                )
+        )
+        Box(
+            Modifier.size(140.dp).align(Alignment.BottomStart)
+                .offset(x = (-20).dp, y = 30.dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Gold500.copy(0.12f), Color.Transparent)
+                    )
+                )
+        )
+
+        // Shimmer
+        Box(
+            Modifier.matchParentSize().background(
+                Brush.linearGradient(
+                    listOf(Color.Transparent, White.copy(0.045f), Color.Transparent),
+                    start = Offset(shimmerX, 0f), end = Offset(shimmerX + 250f, 350f)
+                )
+            )
+        )
+
+        // Top edge
+        Box(
+            Modifier.fillMaxWidth().height(1.dp)
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color.Transparent, Color(0xFFA78BFA).copy(0.65f), Color.Transparent)
+                    )
+                )
+        )
+
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 20.dp)
+        ) {
+            // Header
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Text(
+                    "VIRTUAL CARD",
+                    fontSize      = 10.sp,
+                    fontWeight    = FontWeight.Bold,
+                    letterSpacing = 2.5.sp,
+                    color         = Color(0xFFA78BFA).copy(0.85f)
+                )
+                Icon(
+                    Icons.Filled.CreditCard,
+                    contentDescription = null,
+                    tint     = Gold400,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // SIM chip
             Box(
                 Modifier
-                    .size(width = 44.dp, height = 32.dp)
+                    .size(width = 42.dp, height = 30.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Brush.linearGradient(listOf(PremiumGoldWarm, PremiumGoldDim)))
-                    .border(1.dp, Color.White.copy(0.3f), RoundedCornerShape(6.dp))
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "•••• •••• •••• ${userId.takeLast(4).padStart(4, '•')}",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextOnDark,
-                letterSpacing = 2.sp
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom) {
-                Column {
-                    Text("CARDHOLDER", fontSize = 8.sp, color = TextTertiary, letterSpacing = 1.sp)
-                    Text(userName.uppercase(), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                }
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(ElectricBlueDeep, ElectricPurple))),
-                    contentAlignment = Alignment.Center
+                    .background(
+                        Brush.linearGradient(listOf(Gold500, Gold400, GoldWarm))
+                    )
+                    .border(1.dp, White.copy(0.20f), RoundedCornerShape(6.dp))
+            ) {
+                // Chip lines
+                Column(
+                    Modifier.fillMaxSize().padding(4.dp),
+                    verticalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Text(initials, fontWeight = FontWeight.Black, color = Color.White, fontSize = 14.sp)
+                    repeat(3) {
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(White.copy(0.25f)))
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Card number
+            Text(
+                "•••• •••• •••• $last4",
+                fontSize      = 16.sp,
+                fontWeight    = FontWeight.Bold,
+                color         = White,
+                letterSpacing = 2.5.sp
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            // Footer: cardholder + avatar
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        "CARDHOLDER",
+                        fontSize      = 8.sp,
+                        color         = TextDim,
+                        letterSpacing = 1.2.sp
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        userName.uppercase(),
+                        fontSize      = 11.sp,
+                        fontWeight    = FontWeight.SemiBold,
+                        color         = TextSoft,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                // Two overlapping circles (Mastercard-style)
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier.size(32.dp).offset(x = (-8).dp)
+                            .clip(CircleShape)
+                            .background(Blue500.copy(0.75f))
+                            .border(1.dp, Blue300.copy(0.4f), CircleShape)
+                    )
+                    Box(
+                        Modifier.size(32.dp).offset(x = 8.dp)
+                            .clip(CircleShape)
+                            .background(Gold500.copy(0.65f))
+                            .border(1.dp, Gold300.copy(0.4f), CircleShape)
+                    )
+                    // Initials overlay at center intersection
+                    Text(
+                        initials,
+                        fontSize   = 9.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color      = White,
+                        textAlign  = TextAlign.Center
+                    )
                 }
             }
         }

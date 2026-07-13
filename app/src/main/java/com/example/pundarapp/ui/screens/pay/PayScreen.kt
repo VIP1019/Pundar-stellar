@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.*
+import com.example.pundarapp.ui.components.AnimatedBackground
+import com.example.pundarapp.ui.components.BgAccent
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.data.SampleData
@@ -49,6 +51,7 @@ fun PayScreen(navController: NavController) {
     val currentName   = userSession?.name ?: "User"
     val initials      = AuthRepository.getCurrentUserInitials()
 
+    AnimatedBackground(accent = BgAccent.Teal) {
     Scaffold(
         topBar = {
             PundarMainTopBar(
@@ -61,7 +64,7 @@ fun PayScreen(navController: NavController) {
             )
         },
         floatingActionButton = { PayFab { navController.navigate(Routes.PAY_NEW_BILL) } },
-        containerColor = SpaceNavy
+        containerColor = Color.Transparent
     ) { padding ->
         LazyColumn(
             modifier            = Modifier.fillMaxSize().padding(padding),
@@ -92,6 +95,7 @@ fun PayScreen(navController: NavController) {
             }
         }
     }
+    } // AnimatedBackground
 }
 
 // ── Glowing FAB ───────────────────────────────────────────────────
@@ -166,7 +170,7 @@ private fun PayStatsCard(settled: Int, pending: Int, total: Double) {
             .shadow(20.dp, RoundedCornerShape(24.dp),
                 ambientColor = ElectricBlue.copy(0.22f), spotColor = ElectricBlue.copy(0.22f))
             .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF0A1E3D), Color(0xFF0D2A52), Color(0xFF06121E))))
+            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
     ) {
         // shimmer
         Box(Modifier.matchParentSize().background(
@@ -185,11 +189,11 @@ private fun PayStatsCard(settled: Int, pending: Int, total: Double) {
             Spacer(Modifier.height(20.dp))
             // Divider
             Box(Modifier.fillMaxWidth().height(1.dp)
-                .background(Brush.horizontalGradient(listOf(Color.Transparent, GlassBorder, Color.Transparent))))
+                .background(Brush.horizontalGradient(listOf(Color.Transparent, BorderWhiteStrong, Color.Transparent))))
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 PayStatPill(settled, "Settled", Icons.Filled.CheckCircle, NeonGreen)
-                Box(Modifier.width(1.dp).height(36.dp).background(SpaceBorder))
+                Box(Modifier.width(1.dp).height(36.dp).background(NavyBorder))
                 PayStatPill(pending, "Pending", Icons.Filled.Schedule, WarningAmber)
             }
         }
@@ -307,8 +311,8 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, index: Int, 
             .shadow(12.dp, RoundedCornerShape(20.dp),
                 ambientColor = accent.copy(0.18f), spotColor = accent.copy(0.18f))
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825))))
-            .border(1.dp, Brush.linearGradient(listOf(accent.copy(0.45f), GlassWhite)), RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .border(1.dp, Brush.linearGradient(listOf(accent.copy(0.35f), GlassWhite)), RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(16.dp)
     ) {
@@ -350,8 +354,8 @@ private fun PayEmptyState() {
     Box(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825))))
-            .border(1.dp, SpaceBorder, RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .border(1.dp, BorderCharcoal, RoundedCornerShape(20.dp))
             .padding(32.dp),
         contentAlignment = Alignment.Center
     ) {

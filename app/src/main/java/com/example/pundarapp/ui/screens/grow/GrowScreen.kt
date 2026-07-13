@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
+import com.example.pundarapp.ui.components.AnimatedBackground
+import com.example.pundarapp.ui.components.BgAccent
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
@@ -57,8 +59,87 @@ fun GrowScreen(navController: NavController) {
     var withdrawAmount     by remember { mutableStateOf("") }
 
     // ── Scaffold ─────────────────────────────────────────────────
+    AnimatedBackground(accent = BgAccent.Gold) {
+
+    // ── Invest Dialog ─────────────────────────────────────────────
+    if (showInvestDialog) {
+        GrowAlertDialog(
+            title        = "Invest More",
+            confirmLabel = "Invest",
+            onDismiss    = { showInvestDialog = false; investAmount = "" },
+            onConfirm    = {
+                investAmount.toDoubleOrNull()?.let { amt -> AppState.invest(amt) }
+                showInvestDialog = false
+                investAmount = ""
+            }
+        ) {
+            GrowTextField(
+                value         = investAmount,
+                onValueChange = { investAmount = it },
+                label         = "Amount (₱)",
+                placeholder   = "e.g. 5000"
+            )
+        }
+    }
+
+    // ── Withdraw Dialog ───────────────────────────────────────────
+    if (showWithdrawDialog) {
+        GrowAlertDialog(
+            title        = "Withdraw",
+            confirmLabel = "Withdraw",
+            onDismiss    = { showWithdrawDialog = false; withdrawAmount = "" },
+            onConfirm    = {
+                withdrawAmount.toDoubleOrNull()?.let { amt -> AppState.withdraw(amt) }
+                showWithdrawDialog = false
+                withdrawAmount = ""
+            }
+        ) {
+            GrowTextField(
+                value         = withdrawAmount,
+                onValueChange = { withdrawAmount = it },
+                label         = "Amount (₱)",
+                placeholder   = "e.g. 1000"
+            )
+        }
+    }
+
+    // ── Optimize Dialog ───────────────────────────────────────────
+    if (showOptimizeDialog) {
+        GrowAlertDialog(
+            title        = "Optimize Portfolio",
+            confirmLabel = "Apply",
+            onDismiss    = { showOptimizeDialog = false },
+            onConfirm    = { showOptimizeDialog = false }
+        ) {
+            Text(
+                text  = "Our AI-powered engine will rebalance your holdings to maximize risk-adjusted returns based on your current allocation targets.",
+                color = TextSecondary,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 20.sp
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier              = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SpaceMedium)
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("PH Equities", color = TextSecondary, fontSize = 12.sp)
+                    Text("80%  →  75%", color = ElectricBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Fixed Income", color = TextSecondary, fontSize = 12.sp)
+                    Text("20%  →  25%", color = NeonGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
+        }
+    }
+
     Scaffold(
-        containerColor = SpaceNavy,
+        containerColor = Color.Transparent,
         topBar = {
             PundarGrowTopBar(
                 userInitials       = userInitials,
@@ -71,8 +152,7 @@ fun GrowScreen(navController: NavController) {
 
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .background(SpaceNavy),
+                .fillMaxSize(),
             contentPadding = PaddingValues(
                 top    = paddingValues.calculateTopPadding() + 12.dp,
                 bottom = 100.dp,
@@ -110,83 +190,7 @@ fun GrowScreen(navController: NavController) {
             }
         }
     }
-
-    // ── Invest Dialog ─────────────────────────────────────────────
-    if (showInvestDialog) {
-        GrowAlertDialog(
-            title        = "Invest More",
-            confirmLabel = "Invest",
-            onDismiss    = { showInvestDialog = false; investAmount = "" },
-            onConfirm    = {
-                investAmount.toDoubleOrNull()?.let { AppState.invest(it) }
-                showInvestDialog = false
-                investAmount = ""
-            }
-        ) {
-            GrowTextField(
-                value         = investAmount,
-                onValueChange = { investAmount = it },
-                label         = "Amount (₱)",
-                placeholder   = "e.g. 5000"
-            )
-        }
-    }
-
-    // ── Withdraw Dialog ───────────────────────────────────────────
-    if (showWithdrawDialog) {
-        GrowAlertDialog(
-            title        = "Withdraw",
-            confirmLabel = "Withdraw",
-            onDismiss    = { showWithdrawDialog = false; withdrawAmount = "" },
-            onConfirm    = {
-                withdrawAmount.toDoubleOrNull()?.let { AppState.withdraw(it) }
-                showWithdrawDialog = false
-                withdrawAmount = ""
-            }
-        ) {
-            GrowTextField(
-                value         = withdrawAmount,
-                onValueChange = { withdrawAmount = it },
-                label         = "Amount (₱)",
-                placeholder   = "e.g. 1000"
-            )
-        }
-    }
-
-    // ── Optimize Dialog ───────────────────────────────────────────
-    if (showOptimizeDialog) {
-        GrowAlertDialog(
-            title        = "Optimize Portfolio",
-            confirmLabel = "Apply",
-            onDismiss    = { showOptimizeDialog = false },
-            onConfirm    = { showOptimizeDialog = false }
-        ) {
-            Text(
-                text  = "Our AI-powered engine will rebalance your holdings to maximize risk-adjusted returns based on your current allocation targets.",
-                color = TextSecondary,
-                style = MaterialTheme.typography.bodyMedium,
-                lineHeight = 20.sp
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier            = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SpaceMedium)
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text("PH Equities", color = TextSecondary, fontSize = 12.sp)
-                    Text("80%  →  75%", color = ElectricBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Fixed Income", color = TextSecondary, fontSize = 12.sp)
-                    Text("20%  →  25%", color = NeonGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-            }
-        }
-    }
+    } // AnimatedBackground
 }
 
 
@@ -204,7 +208,7 @@ private fun GrowAlertDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = SpaceDeep,
+        containerColor   = Navy800,
         tonalElevation   = 0.dp,
         shape            = RoundedCornerShape(20.dp),
         title = {
@@ -260,13 +264,13 @@ private fun GrowTextField(
         keyboardOptions  = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier         = Modifier.fillMaxWidth(),
         colors           = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor      = ElectricBlue,
-            unfocusedBorderColor    = SpaceBorder,
-            focusedLabelColor       = ElectricBlue,
+            focusedBorderColor      = AccentCyanBlue,
+            unfocusedBorderColor    = NavyBorder,
+            focusedLabelColor       = AccentCyanBlue,
             unfocusedLabelColor     = TextSecondary,
-            focusedContainerColor   = SpaceMedium,
-            unfocusedContainerColor = SpaceMedium,
-            cursorColor             = ElectricBlue,
+            focusedContainerColor   = Navy700,
+            unfocusedContainerColor = Navy700,
+            cursorColor             = AccentCyanBlue,
             focusedTextColor        = TextPrimary,
             unfocusedTextColor      = TextPrimary
         ),
@@ -349,9 +353,8 @@ private fun PortfolioHeroCard(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF0A1628),
-                        Color(0xFF0C1A30),
-                        Color(0xFF050C18)
+                        Navy800,
+                        Navy700
                     )
                 )
             )
@@ -494,12 +497,10 @@ private fun PortfolioHeroCard(
                             .weight(1f)
                             .height(46.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(GlassWhite)
+                            .background(CharcoalElevated)
                             .border(
-                                1.5.dp,
-                                Brush.horizontalGradient(
-                                    listOf(GlassBorder, GlassWhiteMid)
-                                ),
+                                1.dp,
+                                BorderWhiteStrong,
                                 RoundedCornerShape(14.dp)
                             )
                             .clickable { onWithdraw() },
@@ -560,9 +561,9 @@ private fun AllocationSection(portfolio: Portfolio) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(
-                    Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825)))
+                    Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd))
                 )
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp))
+                .border(1.dp, BorderWhiteStrong, RoundedCornerShape(20.dp))
                 .padding(20.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -646,9 +647,9 @@ private fun ActivityRow(activity: PortfolioActivity, index: Int) {
             .graphicsLayer(translationY = offsetY, alpha = alphaVal)
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825)))
+                Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd))
             )
-            .border(1.dp, GlassBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, BorderWhiteStrong, RoundedCornerShape(14.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -760,9 +761,9 @@ private fun HoldingsSection(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(
-                    Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825)))
+                    Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd))
                 )
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp))
+                .border(1.dp, BorderWhiteStrong, RoundedCornerShape(20.dp))
         ) {
             // Header row
             Row(

@@ -1,9 +1,11 @@
 package com.example.pundarapp.ui.screens.home
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,21 +13,27 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.PundarAvatar
 import com.example.pundarapp.ui.components.PundarDetailTopBar
+import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.launch
@@ -33,33 +41,66 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserSettingsScreen(navController: NavController) {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val userSession by AuthRepository.currentUserState
-    val userName = userSession?.name ?: "User"
-    val userPhone = userSession?.phone ?: ""
-    val initials = AuthRepository.getCurrentUserInitials()
+    val context        = LocalContext.current
+    val scope          = rememberCoroutineScope()
+    val userSession    by AuthRepository.currentUserState
+    val userName       = userSession?.name ?: "User"
+    val userPhone      = userSession?.phone ?: ""
+    val initials       = AuthRepository.getCurrentUserInitials()
+    var profileUri     by remember { mutableStateOf<Uri?>(null) }
+    var showPhotoSheet by remember { mutableStateOf(false) }
 
-    var profileUrl by remember(userSession?.profileImageUrl) {
-        mutableStateOf(userSession?.profileImageUrl ?: "")
-    }
-
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+    // Gallery picker
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            Toast.makeText(context, "Image selected (Upload not yet implemented)", Toast.LENGTH_SHORT).show()
+            profileUri = uri
+            Toast.makeText(context, "Photo updated!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Camera
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            Toast.makeText(context, "Photo captured!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    if (showPhotoSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPhotoSheet = false },
+            containerColor   = Navy800,
+            shape            = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+        ) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text("Change Profile Photo",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold, color = TextWhite,
+                    modifier = Modifier.padding(bottom = 16.dp))
+                PhotoOption(Icons.Filled.PhotoLibrary, "Choose from Gallery", Blue400) {
+                    showPhotoSheet = false; galleryLauncher.launch("image/*")
+                }
+                Spacer(Modifier.height(8.dp))
+                PhotoOption(Icons.Filled.CameraAlt, "Take a Photo", Green400) {
+                    showPhotoSheet = false; cameraLauncher.launch(null)
+                }
+                Spacer(Modifier.height(8.dp))
+                PhotoOption(Icons.Filled.Delete, "Remove Photo", Red500) {
+                    showPhotoSheet = false
+                    profileUri = null
+                    Toast.makeText(context, "Profile photo removed.", Toast.LENGTH_SHORT).show()
+                }
+                Spacer(Modifier.height(28.dp))
+            }
         }
     }
 
     Scaffold(
-        topBar = {
-            PundarDetailTopBar(
-                title = "Settings",
-                onBack = { navController.navigateUp() }
-            )
-        },
-        containerColor = PundarBackground
+        topBar         = { PundarDetailTopBar("Settings") { navController.navigateUp() } },
+        containerColor = Navy900
     ) { padding ->
         Column(
             modifier = Modifier
@@ -67,258 +108,284 @@ fun UserSettingsScreen(navController: NavController) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Profile Header
+            // ── Profile header ─────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .background(Brush.verticalGradient(listOf(Color(0xFF0E2260), Navy900)))
+                    .padding(vertical = 28.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(contentAlignment = Alignment.BottomEnd) {
-                        PundarAvatar(
-                            initials = initials,
-                            imageUrl = profileUrl.ifBlank { null },
-                            size = 100.dp,
-                            showRing = true,
-                            initialsFontSize = 32.sp
-                        )
+                        if (profileUri != null) {
+                            AsyncImage(
+                                model              = profileUri,
+                                contentDescription = "Profile",
+                                contentScale       = ContentScale.Crop,
+                                modifier           = Modifier.size(90.dp).clip(CircleShape)
+                                    .border(3.dp, Brush.linearGradient(listOf(Blue500, Blue600)), CircleShape)
+                            )
+                        } else {
+                            PundarAvatar(
+                                initials         = initials,
+                                imageUrl         = userSession?.profileImageUrl,
+                                size             = 90.dp,
+                                showRing         = true,
+                                initialsFontSize = 28.sp
+                            )
+                        }
                         Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(ElectricBlue)
-                                .clickable { imagePickerLauncher.launch("image/*") },
+                            modifier = Modifier.size(28.dp).clip(CircleShape)
+                                .background(Blue500).border(2.dp, Navy900, CircleShape)
+                                .clickable { showPhotoSheet = true },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.CameraAlt, contentDescription = "Change Photo", tint = SpaceBlack, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.CameraAlt, "Change photo",
+                                tint = White, modifier = Modifier.size(14.dp))
                         }
                     }
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = userName,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = userPhone,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
-                    )
+                    Spacer(Modifier.height(14.dp))
+                    Text(userName, style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = TextWhite)
+                    Spacer(Modifier.height(3.dp))
+                    Text(userPhone, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(20.dp))
 
-            // Account Section
-            SettingsSection("Account") {
-                SettingsItem(
-                    icon = Icons.Filled.Person,
-                    title = "Personal Information",
-                    subtitle = "Update name, email, and address",
-                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-                )
-                SettingsItem(
-                    icon = Icons.Filled.CreditCard,
-                    title = "Linked Accounts & Cards",
-                    subtitle = "Manage payment methods",
-                    onClick = { navController.navigate(Routes.LINK_CARD) }
-                )
-                SettingsItem(
-                    icon = Icons.Filled.VerifiedUser,
-                    title = "Account Verification",
-                    subtitle = "Level 2 Verified",
-                    value = "Verified",
-                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-                )
+            // ── Account ────────────────────────────────────────────
+            SectionHeader("Account")
+            SettingsGroup {
+                SettingsRow(Icons.Filled.Person,   "Personal Information", Blue400) {}
+                RowDivider()
+                SettingsRow(Icons.Filled.Edit,     "Edit Name",            Blue400) {}
+                RowDivider()
+                SettingsRow(Icons.Filled.Phone,    "Phone Number",         Blue400, sub = userPhone) {}
+                RowDivider()
+                SettingsRow(Icons.Filled.Email,    "Email Address",        Blue400) {}
             }
 
-            // Security Section
-            SettingsSection("Security") {
-                SettingsItem(
-                    icon = Icons.Filled.Security,
-                    title = "Change MPIN",
-                    subtitle = "Update your 4-digit security code",
-                    onClick = { navController.navigate(Routes.CHANGE_MPIN) }
-                )
-                SettingsItem(
-                    icon = Icons.Filled.Fingerprint,
-                    title = "Biometric Login",
-                    subtitle = "Use fingerprint or Face ID",
-                    hasToggle = true,
-                    isToggled = false,
-                    onToggle = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-                )
+            Spacer(Modifier.height(16.dp))
+
+            // ── Security ───────────────────────────────────────────
+            SectionHeader("Security")
+            SettingsGroup {
+                SettingsRow(Icons.Filled.Lock,        "Change MPIN",       Orange500) {
+                    navController.navigate(Routes.CHANGE_MPIN)
+                }
+                RowDivider()
+                SettingsRow(Icons.Filled.Password,    "Change Password",   Orange500) {}
+                RowDivider()
+                SettingsRow(Icons.Filled.Fingerprint, "Biometrics",        Orange500, sub = "Coming soon") {}
+                RowDivider()
+                SettingsRow(Icons.Filled.Devices,     "Device Management", Orange500) {}
             }
 
-            // App Settings
-            SettingsSection("App Settings") {
-                SettingsItem(
-                    icon = Icons.Filled.Notifications,
-                    title = "Notifications",
-                    subtitle = "Manage alerts and updates",
-                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-                )
-                SettingsItem(
-                    icon = Icons.Filled.DarkMode,
-                    title = "Appearance",
-                    subtitle = "Dark Mode (System Default)",
-                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-                )
+            Spacer(Modifier.height(16.dp))
+
+            // ── Notifications ──────────────────────────────────────
+            SectionHeader("Notifications")
+            SettingsGroup {
+                ToggleRow(Icons.Filled.Notifications, "Push Notifications",   Blue400, default = true)
+                RowDivider()
+                ToggleRow(Icons.Filled.Receipt,       "Transaction Alerts",   Blue400, default = true)
+                RowDivider()
+                ToggleRow(Icons.Filled.Campaign,      "Promotions & Offers",  Blue400, default = false)
             }
 
-            // Help & Support
-            SettingsSection("Help & Support") {
-                SettingsItem(
-                    icon = Icons.Filled.Help,
-                    title = "Help Center",
-                    subtitle = "FAQs and Contact Support",
-                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-                )
-                SettingsItem(
-                    icon = Icons.Filled.Info,
-                    title = "About PUNDAR",
-                    subtitle = "Version 1.0.0",
-                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-                )
+            Spacer(Modifier.height(16.dp))
+
+            // ── Privacy ────────────────────────────────────────────
+            SectionHeader("Privacy")
+            SettingsGroup {
+                // Hide Balance — wired directly to AppState
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconBox(Icons.Filled.VisibilityOff, Blue400)
+                    Spacer(Modifier.width(14.dp))
+                    Text("Hide Balance", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium, color = TextWhite, modifier = Modifier.weight(1f))
+                    Switch(
+                        checked         = AppState.isBalanceHidden.value,
+                        onCheckedChange = { AppState.toggleBalanceVisibility() },
+                        colors          = SwitchDefaults.colors(
+                            checkedTrackColor   = Blue500,
+                            uncheckedTrackColor = Navy600,
+                            checkedThumbColor   = White,
+                            uncheckedThumbColor = TextMuted
+                        )
+                    )
+                }
+                RowDivider()
+                SettingsRow(Icons.Filled.Policy, "Manage Data Preferences", Blue400) {}
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Logout Button
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 24.dp)
-            ) {
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            AuthRepository.logout()
-                            navController.navigate(Routes.LOGIN) {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        }
-                    },
+            // ── Linked Cards ───────────────────────────────────────
+            SectionHeader("Linked Cards")
+            SettingsGroup {
+                SettingsRow(Icons.Filled.CreditCard, "Manage Cards", Gold500) {
+                    navController.navigate(Routes.LINK_CARD)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ── About ──────────────────────────────────────────────
+            SectionHeader("About")
+            SettingsGroup {
+                SettingsRow(Icons.Filled.Description, "Terms and Conditions", TextMuted) {}
+                RowDivider()
+                SettingsRow(Icons.Filled.PrivacyTip,  "Privacy Policy",       TextMuted) {}
+                RowDivider()
+                SettingsRow(Icons.Filled.Help,        "Help Center",          TextMuted) {}
+                RowDivider()
+                SettingsRow(Icons.Filled.Support,     "Contact Support",      TextMuted) {}
+                RowDivider()
+                SettingsRow(Icons.Filled.Info,        "App Version",          TextMuted,
+                    sub = "1.0.0 (Beta)") {}
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── Logout ─────────────────────────────────────────────
+            Box(Modifier.padding(horizontal = 16.dp)) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = SpaceMedium,
-                        contentColor = ErrorRed
-                    )
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(RedBg)
+                        .border(1.dp, Red500.copy(0.28f), RoundedCornerShape(16.dp))
+                        .clickable {
+                            scope.launch {
+                                AuthRepository.logout()
+                                AppState.clearSession()
+                                navController.navigate(Routes.LOGIN) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        }
+                        .padding(16.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(Icons.Filled.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "Log Out",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Icon(Icons.AutoMirrored.Filled.Logout, null,
+                        tint = Red400, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text("Log Out", color = Red400, fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium)
                 }
             }
+
+            Spacer(Modifier.height(36.dp))
         }
     }
 }
 
+// ── Helpers ───────────────────────────────────────────────────────
+
 @Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
+private fun SectionHeader(title: String) {
+    Text(title, style = MaterialTheme.typography.labelMedium, color = TextMuted,
+        fontWeight = FontWeight.SemiBold,
+        modifier   = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+}
+
+@Composable
+private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
+            .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .border(1.dp, Glass10, RoundedCornerShape(16.dp)),
+        content = content
+    )
+}
+
+@Composable
+private fun IconBox(icon: ImageVector, accent: Color) {
+    Box(
+        Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(accent.copy(0.12f)),
+        contentAlignment = Alignment.Center
+    ) { Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp)) }
+}
+
+@Composable
+private fun SettingsRow(
+    icon:    ImageVector,
+    label:   String,
+    accent:  Color,
+    sub:     String?    = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextTertiary,
-            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
-            letterSpacing = 1.sp
-        )
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = SpaceDeep,
-            border = androidx.compose.foundation.BorderStroke(1.dp, SpaceBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column {
-                content()
-            }
+        IconBox(icon, accent)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium, color = TextWhite)
+            if (!sub.isNullOrBlank())
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
+        Icon(Icons.Filled.ChevronRight, null, tint = TextDim, modifier = Modifier.size(18.dp))
     }
 }
 
 @Composable
-private fun SettingsItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    value: String? = null,
-    hasToggle: Boolean = false,
-    isToggled: Boolean = false,
-    onToggle: ((Boolean) -> Unit)? = null,
-    onClick: (() -> Unit)? = null
-) {
-    val modifier = if (onClick != null) {
-        Modifier.clickable(onClick = onClick)
-    } else Modifier
-
+private fun ToggleRow(icon: ImageVector, label: String, accent: Color, default: Boolean) {
+    var checked by remember { mutableStateOf(default) }
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(SpaceMedium),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = title, tint = ElectricBlue, modifier = Modifier.size(20.dp))
+        IconBox(icon, accent)
+        Spacer(Modifier.width(14.dp))
+        Text(label, style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium, color = TextWhite, modifier = Modifier.weight(1f))
+        Switch(
+            checked         = checked,
+            onCheckedChange = { checked = it },
+            colors          = SwitchDefaults.colors(
+                checkedTrackColor   = Blue500, uncheckedTrackColor = Navy600,
+                checkedThumbColor   = White,   uncheckedThumbColor = TextMuted
+            )
+        )
+    }
+}
+
+@Composable
+private fun RowDivider() {
+    HorizontalDivider(
+        modifier  = Modifier.padding(horizontal = 16.dp),
+        color     = NavyBorder.copy(0.5f),
+        thickness = 0.5.dp
+    )
+}
+
+@Composable
+private fun PhotoOption(icon: ImageVector, label: String, accent: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick).padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(accent.copy(0.12f)),
+            contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(19.dp))
         }
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary
-            )
-        }
-        
-        if (value != null) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelMedium,
-                color = NeonGreen,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        } else if (hasToggle) {
-            Switch(
-                checked = isToggled,
-                onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = SpaceBlack,
-                    checkedTrackColor = ElectricBlue,
-                    uncheckedThumbColor = TextSecondary,
-                    uncheckedTrackColor = SpaceMedium
-                )
-            )
-        } else if (onClick != null) {
-            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextTertiary)
-        }
+        Spacer(Modifier.width(14.dp))
+        Text(label, style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium, color = TextWhite)
     }
 }

@@ -66,7 +66,7 @@ fun FinancialJourneySection(modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = ElectricBlue.copy(0.15f))
                 .clip(RoundedCornerShape(24.dp))
-                .background(Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825))))
+                .background(Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd)))
                 .border(
                     1.dp,
                     Brush.linearGradient(listOf(ElectricBlue.copy(0.35f), GlassWhite, ElectricPurple.copy(0.2f))),

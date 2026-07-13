@@ -3,10 +3,10 @@ package com.example.pundarapp.ui.screens
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,25 +23,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.components.Icon3DStar
+import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.random.Random
 
-// ── Particle data ────────────────────────────────────────────────
-private data class Particle(
-    val x: Float, val y: Float,
-    val radius: Float,
-    val alpha: Float,
-    val color: Color
-)
+private data class Particle(val x: Float, val y: Float, val r: Float, val a: Float)
+
+private val EaseOutBack_  = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
+private val EaseOutExpo_  = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 @Composable
 fun SplashScreen(onSplashFinished: () -> Unit) {
-
-    // ── Animation states ─────────────────────────────────────────
     val logoScale    = remember { Animatable(0f) }
     val logoAlpha    = remember { Animatable(0f) }
     val ringScale    = remember { Animatable(0f) }
@@ -50,292 +43,182 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
     val badgeAlpha   = remember { Animatable(0f) }
     val screenAlpha  = remember { Animatable(1f) }
 
-    // ── Infinite pulse ring ──────────────────────────────────────
-    val infinite = rememberInfiniteTransition(label = "splashPulse")
-    val pulseRing by infinite.animateFloat(
-        initialValue = 1f, targetValue = 1.6f,
-        animationSpec = infiniteRepeatable(
-            tween(1400, easing = EaseOutCubic), RepeatMode.Restart
-        ), label = "pulseRing"
+    val inf = rememberInfiniteTransition(label = "splash")
+    val pulseRing by inf.animateFloat(
+        1f, 1.55f,
+        infiniteRepeatable(tween(1600, easing = EaseOutExpo_), RepeatMode.Restart),
+        label = "pr"
     )
-    val pulseRingAlpha by infinite.animateFloat(
-        initialValue = 0.6f, targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            tween(1400, easing = LinearEasing), RepeatMode.Restart
-        ), label = "pulseAlpha"
+    val pulseAlpha by inf.animateFloat(
+        0.45f, 0f,
+        infiniteRepeatable(tween(1600, easing = LinearEasing), RepeatMode.Restart),
+        label = "pa"
     )
-    val rotateOrbit by infinite.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            tween(6000, easing = LinearEasing), RepeatMode.Restart
-        ), label = "orbit"
+    val orbit by inf.animateFloat(
+        0f, 360f,
+        infiniteRepeatable(tween(6000, easing = LinearEasing), RepeatMode.Restart),
+        label = "orb"
+    )
+    val orb1Y by inf.animateFloat(
+        -18f, 18f,
+        infiniteRepeatable(tween(3200, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)), RepeatMode.Reverse),
+        label = "o1"
     )
 
-    // ── Static random particles ──────────────────────────────────
     val particles = remember {
-        List(22) {
-            Particle(
-                x      = Random.nextFloat(),
-                y      = Random.nextFloat(),
-                radius = Random.nextFloat() * 2.5f + 0.8f,
-                alpha  = Random.nextFloat() * 0.5f + 0.1f,
-                color  = if (Random.nextBoolean()) ElectricBlue else NeonCyan
-            )
+        List(18) {
+            Particle(Random.nextFloat(), Random.nextFloat(),
+                Random.nextFloat() * 2f + 0.6f, Random.nextFloat() * 0.3f + 0.06f)
         }
     }
 
-    // ── Entrance choreography ────────────────────────────────────
     LaunchedEffect(Unit) {
-        // Ring expand
-        ringScale.animateTo(1f, tween(600, easing = EaseOutBack))
-        // Logo scale-in with bounce
-        logoScale.animateTo(1.15f, tween(350, easing = FastOutSlowInEasing))
-        logoAlpha.animateTo(1f,   tween(300))
-        logoScale.animateTo(1f,   tween(200, easing = FastOutSlowInEasing))
-        // Text fade
-        textAlpha.animateTo(1f, tween(400))
-        delay(150)
-        taglineAlpha.animateTo(1f, tween(400))
+        ringScale.animateTo(1f, tween(600, easing = EaseOutBack_))
+        logoScale.animateTo(1.1f, tween(320, easing = FastOutSlowInEasing))
+        logoAlpha.animateTo(1f, tween(280))
+        logoScale.animateTo(1f, tween(200, easing = FastOutSlowInEasing))
+        textAlpha.animateTo(1f, tween(380, easing = EaseOutExpo_))
+        delay(130)
+        taglineAlpha.animateTo(1f, tween(350, easing = EaseOutExpo_))
         delay(100)
-        badgeAlpha.animateTo(1f, tween(400))
-        // Hold
-        delay(900)
-        // Fade out
-        screenAlpha.animateTo(0f, tween(450))
+        badgeAlpha.animateTo(1f, tween(320, easing = EaseOutExpo_))
+        delay(950)
+        screenAlpha.animateTo(0f, tween(400))
         onSplashFinished()
     }
 
-    // ── Full-screen container ────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
             .alpha(screenAlpha.value)
             .background(
                 Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF0A1832),
-                        SpaceNavy,
-                        SpaceBlack
-                    ),
-                    radius = 1600f
+                    listOf(Color(0xFF0C1A3D), Navy900, Navy950),
+                    radius = 1800f
                 )
             )
     ) {
+        // Background ambient orbs
+        Box(
+            Modifier.size(320.dp).align(Alignment.TopCenter)
+                .offset(y = ((-50).dp + orb1Y.dp))
+                .blur(120.dp)
+                .background(Blue500.copy(0.12f), CircleShape)
+        )
+        Box(
+            Modifier.size(200.dp).align(Alignment.BottomEnd)
+                .offset(x = 40.dp, y = 50.dp)
+                .blur(80.dp)
+                .background(Gold500.copy(0.08f), CircleShape)
+        )
 
-        // ── Particle field ───────────────────────────────────────
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        // Particle field
+        Canvas(Modifier.fillMaxSize()) {
             particles.forEach { p ->
                 drawCircle(
-                    color  = p.color.copy(alpha = p.alpha),
-                    radius = p.radius.dp.toPx(),
+                    color  = Blue300.copy(p.a),
+                    radius = p.r.dp.toPx(),
                     center = Offset(p.x * size.width, p.y * size.height)
                 )
             }
         }
 
-        // ── Background glow orbs ─────────────────────────────────
-        Box(
-            modifier = Modifier
-                .size(280.dp)
-                .offset(x = (-60).dp, y = (-80).dp)
-                .blur(100.dp)
-                .background(ElectricBlue.copy(alpha = 0.12f), CircleShape)
-        )
-        Box(
-            modifier = Modifier
-                .size(200.dp)
-                .align(Alignment.BottomEnd)
-                .offset(x = 40.dp, y = 60.dp)
-                .blur(80.dp)
-                .background(NeonPurple.copy(alpha = 0.10f), CircleShape)
-        )
-
-        // ── Center content ───────────────────────────────────────
         Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier            = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // ── Logo assembly ────────────────────────────────────
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(160.dp)
-            ) {
-                // Pulse ring (outer)
+            // Logo assembly
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(164.dp)) {
+                // Pulse ring
                 Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .scale(pulseRing)
-                        .alpha(pulseRingAlpha)
-                        .clip(CircleShape)
-                        .background(ElectricBlue.copy(alpha = 0.2f))
+                    Modifier.size(130.dp).scale(pulseRing).alpha(pulseAlpha)
+                        .clip(CircleShape).background(Blue500.copy(0.15f))
                 )
-
-                // Static ring
+                // Static halo
                 Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .scale(ringScale.value)
+                    Modifier.size(130.dp).scale(ringScale.value)
                         .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0xFF1A3A60).copy(alpha = 0.6f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
+                        .background(Brush.radialGradient(listOf(Blue600.copy(0.25f), Color.Transparent)))
                 )
-
                 // Orbiting dot
                 Box(
-                    modifier = Modifier
-                        .size(160.dp)
-                        .alpha(ringScale.value)
-                        .graphicsLayer(rotationZ = rotateOrbit)
+                    Modifier.size(150.dp).alpha(ringScale.value)
+                        .graphicsLayer(rotationZ = orbit)
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .align(Alignment.TopCenter)
-                            .offset(y = 8.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    colors = listOf(NeonCyan, NeonCyan.copy(alpha = 0f))
-                                )
-                            )
+                        Modifier.size(7.dp).align(Alignment.TopCenter).offset(y = 10.dp)
+                            .clip(CircleShape).background(Blue300)
                     )
                 }
-
-                // Logo circle — gradient border ring
+                // Logo circle
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .scale(logoScale.value)
-                        .alpha(logoAlpha.value)
-                        .size(110.dp)
+                        .scale(logoScale.value).alpha(logoAlpha.value)
+                        .size(108.dp)
                         .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    ElectricBlue,
-                                    ElectricPurple,
-                                    PremiumGoldWarm
-                                )
-                            )
-                        )
+                        .background(Brush.linearGradient(listOf(Blue500, Blue600)))
                 ) {
-                    // Inner dark circle (creates ring effect)
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .background(SpaceDeep)
+                        modifier = Modifier.size(100.dp).clip(CircleShape).background(Navy800)
                     ) {
-                        // Glass inner fill
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(94.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.radialGradient(
-                                        colors = listOf(
-                                            Color(0xFF0D2040),
-                                            SpaceDeep
-                                        )
-                                    )
-                                )
-                        ) {
-                            Text(
-                                text = "P",
-                                fontSize = 48.sp,
-                                fontWeight = FontWeight.Black,
-                                color = ElectricBlue
-                            )
-                        }
+                        Text("P", fontSize = 46.sp, fontWeight = FontWeight.Black, color = Blue400)
                     }
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(30.dp))
 
-            // ── App name ─────────────────────────────────────────
+            // App name
             Text(
-                text = "PUNDAR",
-                fontWeight = FontWeight.Black,
-                fontSize = 36.sp,
-                letterSpacing = 8.sp,
-                color = TextOnDark,
-                modifier = Modifier.alpha(textAlpha.value)
+                "PUNDAR",
+                fontWeight    = FontWeight.Black,
+                fontSize      = 36.sp,
+                letterSpacing = 7.sp,
+                color         = TextWhite,
+                modifier      = Modifier.alpha(textAlpha.value)
             )
-
             Spacer(Modifier.height(6.dp))
-
-            // Neon underline bar
+            // Underline accent
             Box(
-                modifier = Modifier
-                    .alpha(textAlpha.value)
-                    .width(120.dp)
-                    .height(2.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, ElectricBlue, Color.Transparent)
-                        )
-                    )
+                Modifier.alpha(textAlpha.value).width(110.dp).height(2.dp)
+                    .background(Brush.horizontalGradient(listOf(Color.Transparent, Blue400, Color.Transparent)))
             )
-
             Spacer(Modifier.height(14.dp))
-
             Text(
-                text = "Spend · Save · Grow · Together",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                letterSpacing = 1.5.sp,
-                modifier = Modifier
-                    .alpha(taglineAlpha.value)
-                    .padding(horizontal = 32.dp)
+                "Build Together. Grow Together.",
+                style         = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                color         = TextSoft,
+                fontWeight    = FontWeight.Normal,
+                textAlign     = TextAlign.Center,
+                letterSpacing = 0.8.sp,
+                modifier      = Modifier.alpha(taglineAlpha.value).padding(horizontal = 36.dp)
             )
+            Spacer(Modifier.height(38.dp))
 
-            Spacer(Modifier.height(40.dp))
-
-            // ── Stellar badge ────────────────────────────────────
+            // Stellar badge
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .alpha(badgeAlpha.value)
                     .clip(RoundedCornerShape(50.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                ElectricBlue.copy(alpha = 0.15f),
-                                NeonPurple.copy(alpha = 0.10f)
-                            )
-                        )
-                    )
-                    .padding(horizontal = 20.dp, vertical = 10.dp)
+                    .background(Blue500.copy(0.10f))
+                    .border(1.dp, Blue400.copy(0.25f), RoundedCornerShape(50.dp))
+                    .padding(horizontal = 18.dp, vertical = 9.dp)
             ) {
-                // Glass border effect via outline
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon3DStar(size = 14.dp)
-                    Spacer(Modifier.width(8.dp))
+                    Icon3DStar(size = 13.dp)
+                    Spacer(Modifier.width(7.dp))
                     Text(
-                        text = "Powered by Stellar Blockchain",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = PremiumGoldWarm,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.5.sp
+                        "Powered by Stellar Blockchain",
+                        style      = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                        color      = Gold400,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.4.sp
                     )
                 }
             }
         }
     }
 }
-
-private val EaseOutBack = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
-private val EaseOutCubic = CubicBezierEasing(0.33f, 1f, 0.68f, 1f)

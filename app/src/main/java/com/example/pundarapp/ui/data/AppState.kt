@@ -379,4 +379,23 @@ object AppState {
         homeActivities.add(0, activity) // newest first
         if (homeActivities.size > 20) homeActivities.removeAt(homeActivities.lastIndex)
     }
+
+    // ── SETTINGS ───────────────────────────────────────────────────
+    val isBalanceHidden = mutableStateOf(false)
+    private var prefs: android.content.SharedPreferences? = null
+
+    fun initPreferences(context: android.content.Context) {
+        prefs = context.getSharedPreferences("pundar_prefs", android.content.Context.MODE_PRIVATE)
+        isBalanceHidden.value = prefs?.getBoolean("hide_balance", false) ?: false
+    }
+
+    fun toggleBalanceVisibility() {
+        val newState = !isBalanceHidden.value
+        isBalanceHidden.value = newState
+        prefs?.edit()?.putBoolean("hide_balance", newState)?.apply()
+    }
+
+    fun getDisplayBalance(): String {
+        return if (isBalanceHidden.value) "₱ •••••" else "₱ ${String.format("%,.2f", walletBalance.value)}"
+    }
 }

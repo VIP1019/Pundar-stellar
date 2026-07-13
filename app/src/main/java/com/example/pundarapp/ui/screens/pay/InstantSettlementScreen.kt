@@ -266,7 +266,7 @@ private fun WalletBalanceCard(balance: Double) {
             .shadow(16.dp, RoundedCornerShape(20.dp),
                 ambientColor = ElectricBlue.copy(0.2f), spotColor = ElectricBlue.copy(0.2f))
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF0A1E3D), Color(0xFF0D2A52))))
+            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
     ) {
         // Shimmer effect
         Box(Modifier.matchParentSize().background(

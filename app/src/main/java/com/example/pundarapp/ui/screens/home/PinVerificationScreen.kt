@@ -40,8 +40,7 @@ fun PinVerificationScreen(
                 title = "Enter your PIN",
                 subtitle = "Please enter your 4-digit PIN to confirm this action.",
                 errorMessage = errorMessage,
-                showBiometric = true,
-                onBiometricClick = {
+                onBiometric = {
                     // Biometric placeholder
                     errorMessage = "Biometric authentication will be available in a future update."
                 },

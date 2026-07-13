@@ -1,155 +1,160 @@
 package com.example.pundarapp.ui.screens.home
 
 import android.widget.Toast
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.HomeRepository
 import com.example.pundarapp.data.stellar.StellarWalletManager
-import com.example.pundarapp.ui.components.PundarDetailTopBar
-import com.example.pundarapp.ui.components.PundarPrimaryButton
+import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.HomeActivity
+import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendMoneyScreen(navController: NavController) {
-    var amount by remember { mutableStateOf("") }
     var recipientPhone by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-    
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    var isSending by remember { mutableStateOf(false) }
-    
-    var showMpinDialog by remember { mutableStateOf(false) }
-    var mpinInput by remember { mutableStateOf("") }
+    var amount         by remember { mutableStateOf("") }
+    var message        by remember { mutableStateOf("") }
+    var isSending      by remember { mutableStateOf(false) }
+    var showPinDialog  by remember { mutableStateOf(false) }
+    var mpinInput      by remember { mutableStateOf("") }
+    var errorMsg       by remember { mutableStateOf<String?>(null) }
 
-    if (showMpinDialog) {
+    val context = LocalContext.current
+    val scope   = rememberCoroutineScope()
+
+    // PIN confirmation dialog
+    if (showPinDialog) {
         AlertDialog(
-            onDismissRequest = { 
-                showMpinDialog = false
-                isSending = false
+            onDismissRequest = { showPinDialog = false; isSending = false; mpinInput = "" },
+            containerColor   = Navy800,
+            shape            = RoundedCornerShape(20.dp),
+            title = {
+                Text("Confirm Transfer", fontWeight = FontWeight.Bold, color = TextWhite)
             },
-            title = { Text("Confirm Transfer") },
             text = {
                 Column {
-                    Text("Enter your 4-digit MPIN to confirm sending XLM.")
+                    Text(
+                        "Sending ₱${String.format("%,.2f", amount.toDoubleOrNull() ?: 0.0)} to $recipientPhone",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSoft
+                    )
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
-                        value = mpinInput,
-                        onValueChange = { if (it.length <= 4) mpinInput = it },
-                        label = { Text("MPIN") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        value                = mpinInput,
+                        onValueChange        = { if (it.length <= 4) mpinInput = it },
+                        label                = { Text("Enter MPIN") },
+                        keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier             = Modifier.fillMaxWidth(),
+                        colors               = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor      = Blue400,
+                            unfocusedBorderColor    = NavyBorder,
+                            focusedContainerColor   = Navy700,
+                            unfocusedContainerColor = Navy700,
+                            focusedTextColor        = TextWhite,
+                            unfocusedTextColor      = TextWhite,
+                            cursorColor             = Blue400
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     )
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     enabled = mpinInput.length == 4,
                     onClick = {
-                        showMpinDialog = false
-                        isSending = true
-                        coroutineScope.launch {
+                        showPinDialog = false
+                        isSending     = true
+                        scope.launch {
                             try {
-                                // 1. Check if recipient exists
-                                val users = AuthRepository.searchUsers(recipientPhone)
+                                val users     = AuthRepository.searchUsers(recipientPhone)
                                 val recipient = users.find { it.phone == recipientPhone.trim() }
-
                                 if (recipient == null) {
-                                    Toast.makeText(context, "User not found with this number.", Toast.LENGTH_SHORT).show()
+                                    errorMsg  = "No PUNDAR user found with that number."
                                     isSending = false
                                     return@launch
                                 }
-                                
                                 val recipientPk = recipient.stellarPublicKey
                                 if (recipientPk.isNullOrBlank()) {
-                                    Toast.makeText(context, "Recipient does not have a Stellar wallet.", Toast.LENGTH_SHORT).show()
+                                    errorMsg  = "Recipient wallet not found."
                                     isSending = false
                                     return@launch
                                 }
-
-                                // 2. Get sender info
-                                val senderPk = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
-                                val senderEncryptedSeed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
-                                
-                                // 3. Send Payment
-                                val result = StellarWalletManager.sendPayment(
-                                    senderPublicKey = senderPk,
-                                    senderEncryptedSeed = senderEncryptedSeed,
-                                    senderMpin = mpinInput,
-                                    recipientPublicKey = recipientPk,
-                                    amountXlm = amount,
-                                    memo = "PAY"
+                                val senderPk   = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
+                                val senderSeed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
+                                val result     = StellarWalletManager.sendPayment(
+                                    senderPublicKey     = senderPk,
+                                    senderEncryptedSeed = senderSeed,
+                                    senderMpin          = mpinInput,
+                                    recipientPublicKey  = recipientPk,
+                                    amountXlm           = amount,
+                                    memo                = message.take(28)
                                 )
-
                                 if (result.isSuccess) {
-                                    val txHash = result.getOrNull() ?: ""
-                                    
-                                    // 4. Refresh balance
                                     AppState.refreshWalletBalance()
-                                    
-                                    // 5. Log activity
                                     val activity = HomeActivity(
-                                        icon = "send",
-                                        title = "Sent to ${recipient.name}",
-                                        subtitle = "Tx: ${txHash.take(8)}...",
-                                        amount = "-${amount} XLM",
+                                        icon      = "send",
+                                        title     = "Sent to ${recipient.name}",
+                                        subtitle  = message.ifBlank { "Money Transfer" },
+                                        amount    = "-₱${String.format("%,.2f", amount.toDoubleOrNull() ?: 0.0)}",
                                         isPositive = false,
-                                        module = "Wallet"
+                                        module    = "Wallet"
                                     )
                                     AppState.homeActivities.add(0, activity)
-                                    
-                                    // Persist activity
-                                    val userId = AuthRepository.getCurrentUserId()
-                                    if (userId != null) {
-                                        HomeRepository.createActivity(userId, activity)
-                                    }
-
+                                    val uid = AuthRepository.getCurrentUserId()
+                                    if (uid != null) HomeRepository.createActivity(uid, activity)
                                     AppState.requestHomeRefresh()
-                                    
                                     Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
                                     navController.navigateUp()
                                 } else {
-                                    val errorMsg = result.exceptionOrNull()?.message ?: "Payment failed"
-                                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                                    errorMsg  = result.exceptionOrNull()?.message ?: "Transfer failed."
                                     isSending = false
                                 }
                             } catch (e: Exception) {
-                                Toast.makeText(context, "An error occurred: ${e.message}", Toast.LENGTH_SHORT).show()
+                                errorMsg  = e.message ?: "An error occurred."
                                 isSending = false
                             } finally {
-                                mpinInput = "" // Security: clear MPIN from state
+                                mpinInput = ""
                             }
                         }
-                    }
-                ) {
-                    Text("Confirm")
-                }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Blue500)
+                ) { Text("Confirm", color = White, fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
-                TextButton(onClick = { 
-                    showMpinDialog = false 
-                    isSending = false
-                    mpinInput = ""
-                }) {
-                    Text("Cancel")
+                TextButton(onClick = { showPinDialog = false; isSending = false; mpinInput = "" }) {
+                    Text("Cancel", color = TextMuted)
                 }
             }
         )
@@ -157,32 +162,27 @@ fun SendMoneyScreen(navController: NavController) {
 
     Scaffold(
         topBar = {
-            PundarDetailTopBar(
-                title = "Send Money",
-                onBack = { navController.navigateUp() }
-            )
+            PundarDetailTopBar(title = "Send Money", onBack = { navController.navigateUp() })
         },
-        containerColor = PundarBackground,
+        containerColor = Navy900,
         bottomBar = {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 PundarPrimaryButton(
-                    text = if (isSending) "Sending..." else "Send Money",
-                    enabled = amount.isNotBlank() && recipientPhone.isNotBlank() && !isSending,
+                    text    = if (isSending) "Sending…" else "Send Money",
+                    enabled = !isSending && recipientPhone.isNotBlank()
+                              && (amount.toDoubleOrNull() ?: 0.0) > 0,
                     onClick = {
-                        val sendAmount = amount.toDoubleOrNull() ?: 0.0
-                        if (sendAmount <= 0) {
-                            Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
+                        val sendAmt = amount.toDoubleOrNull() ?: 0.0
+                        if (sendAmt <= 0) {
+                            errorMsg = "Enter a valid amount."
                             return@PundarPrimaryButton
                         }
-                        // We check balance again in real time before showing dialog
-                        coroutineScope.launch {
-                            val currentBalance = AppState.walletBalance.value
-                            if (sendAmount > currentBalance) {
-                                Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
-                            } else {
-                                showMpinDialog = true
-                            }
+                        if (sendAmt > AppState.walletBalance.value) {
+                            errorMsg = "Insufficient balance."
+                            return@PundarPrimaryButton
                         }
+                        errorMsg = null
+                        showPinDialog = true
                     }
                 )
             }
@@ -192,53 +192,168 @@ fun SendMoneyScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = PundarSurface,
-                modifier = Modifier.fillMaxWidth()
+            // Balance card
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFF0E2260), Color(0xFF1A3680))))
+                    .border(1.dp, Blue400.copy(0.28f), RoundedCornerShape(18.dp))
+                    .padding(18.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
-                    Text("${String.format("%,.2f", AppState.walletBalance.value)} XLM",
-                        style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = PundarBlue)
+                Column {
+                    Text("Available Balance",
+                        style = MaterialTheme.typography.labelSmall, color = Blue200.copy(0.75f))
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        AppState.getDisplayBalance(),
+                        style      = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color      = White
+                    )
                 }
             }
 
+            // Recipient field with QR scan shortcut
+            Text("Recipient", style = MaterialTheme.typography.labelMedium,
+                color = TextSoft, fontWeight = FontWeight.Medium)
             OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it },
-                label = { Text("Amount (₱)") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = recipientPhone,
+                value         = recipientPhone,
                 onValueChange = { recipientPhone = it },
-                label = { Text("Recipient Mobile Number") },
-                placeholder = { Text("e.g. 09123456789") },
-                leadingIcon = { Icon(Icons.Filled.AccountCircle, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth(),
+                placeholder   = { Text("Mobile number (e.g. 09171234567)", color = TextDim) },
+                leadingIcon   = { Icon(Icons.Filled.Person, null, tint = TextMuted) },
+                trailingIcon  = {
+                    // QR scan shortcut
+                    IconButton(onClick = { navController.navigate(Routes.SCAN) }) {
+                        Icon(Icons.Filled.QrCodeScanner, "Scan QR", tint = Blue400)
+                    }
+                },
+                modifier        = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
-                shape = RoundedCornerShape(12.dp),
+                colors          = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor      = Blue400,
+                    unfocusedBorderColor    = NavyBorder,
+                    focusedContainerColor   = Navy700,
+                    unfocusedContainerColor = Navy700,
+                    focusedTextColor        = TextWhite,
+                    unfocusedTextColor      = TextWhite,
+                    cursorColor             = Blue400
+                ),
+                shape      = RoundedCornerShape(14.dp),
                 singleLine = true
             )
 
+            // Amount field
+            Text("Amount", style = MaterialTheme.typography.labelMedium,
+                color = TextSoft, fontWeight = FontWeight.Medium)
             OutlinedTextField(
-                value = message,
-                onValueChange = { message = it },
-                label = { Text("Message (Optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
-                shape = RoundedCornerShape(12.dp)
+                value         = amount,
+                onValueChange = {
+                    if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d{0,2}$"))) amount = it
+                },
+                placeholder   = { Text("₱ 0.00", color = TextDim) },
+                leadingIcon   = {
+                    Text("₱", color = TextSoft, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 12.dp))
+                },
+                modifier        = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                colors          = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor      = Blue400,
+                    unfocusedBorderColor    = NavyBorder,
+                    focusedContainerColor   = Navy700,
+                    unfocusedContainerColor = Navy700,
+                    focusedTextColor        = TextWhite,
+                    unfocusedTextColor      = TextWhite,
+                    cursorColor             = Blue400
+                ),
+                shape      = RoundedCornerShape(14.dp),
+                singleLine = true
             )
+
+            // Quick amount chips
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("100", "200", "500", "1000").forEach { preset ->
+                    FilterChip(
+                        selected = amount == preset,
+                        onClick  = { amount = preset },
+                        label    = { Text("₱$preset", fontSize = 11.sp) },
+                        colors   = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Blue500.copy(0.20f),
+                            selectedLabelColor     = Blue300,
+                            containerColor         = Navy700,
+                            labelColor             = TextMuted
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled         = true,
+                            selected        = amount == preset,
+                            borderColor     = NavyBorder,
+                            selectedBorderColor = Blue400.copy(0.5f)
+                        )
+                    )
+                }
+            }
+
+            // Message field
+            Text("Note (Optional)", style = MaterialTheme.typography.labelMedium,
+                color = TextSoft, fontWeight = FontWeight.Medium)
+            OutlinedTextField(
+                value         = message,
+                onValueChange = { if (it.length <= 50) message = it },
+                placeholder   = { Text("What's this for?", color = TextDim) },
+                modifier      = Modifier.fillMaxWidth(),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor      = Blue400,
+                    unfocusedBorderColor    = NavyBorder,
+                    focusedContainerColor   = Navy700,
+                    unfocusedContainerColor = Navy700,
+                    focusedTextColor        = TextWhite,
+                    unfocusedTextColor      = TextWhite,
+                    cursorColor             = Blue400
+                ),
+                shape     = RoundedCornerShape(14.dp),
+                maxLines  = 2
+            )
+
+            // Error
+            if (errorMsg != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(RedBg)
+                        .border(1.dp, Red500.copy(0.30f), RoundedCornerShape(10.dp))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon3DWarning(size = 14.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(errorMsg!!, color = Red400, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            // QR scan tip
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Blue500.copy(0.08f))
+                    .border(1.dp, Blue400.copy(0.20f), RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.QrCodeScanner, null, tint = Blue400, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "Tap the QR icon to scan recipient's code.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Blue300
+                )
+            }
         }
     }
 }

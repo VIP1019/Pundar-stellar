@@ -2,6 +2,7 @@ package com.example.pundarapp.ui.screens.auth
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -30,12 +30,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.ui.components.Icon3DWarning
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
-import com.example.pundarapp.ui.components.Icon3DWarning
 import kotlinx.coroutines.launch
+
+private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,262 +47,173 @@ fun LoginScreen(navController: NavController) {
     var mpinVisible  by remember { mutableStateOf(false) }
     var isLoading    by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
+    val scope        = rememberCoroutineScope()
 
-    // ── Entrance animations ──────────────────────────────────────
     val headerAlpha   = remember { Animatable(0f) }
     val formAlpha     = remember { Animatable(0f) }
-    val formTranslate = remember { Animatable(40f) }
-
+    val formSlide     = remember { Animatable(28f) }
     LaunchedEffect(Unit) {
-        headerAlpha.animateTo(1f, tween(600, easing = FastOutSlowInEasing))
-        formAlpha.animateTo(1f, tween(500, delayMillis = 200, easing = FastOutSlowInEasing))
-        formTranslate.animateTo(0f, tween(500, delayMillis = 200, easing = FastOutSlowInEasing))
+        headerAlpha.animateTo(1f, tween(520, easing = EaseOutExpo))
+        formAlpha.animateTo(1f, tween(480, delayMillis = 160, easing = EaseOutExpo))
+        formSlide.animateTo(0f, tween(480, delayMillis = 160, easing = EaseOutExpo))
     }
 
-    // ── Ambient orb animation ────────────────────────────────────
-    val infinite = rememberInfiniteTransition(label = "loginBg")
-    val orb1Y by infinite.animateFloat(
-        initialValue = -20f, targetValue = 20f,
-        animationSpec = infiniteRepeatable(
-            tween(3500, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)),
-            RepeatMode.Reverse
-        ), label = "orb1"
-    )
-    val orb2Y by infinite.animateFloat(
-        initialValue = 15f, targetValue = -15f,
-        animationSpec = infiniteRepeatable(
-            tween(2800, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)),
-            RepeatMode.Reverse
-        ), label = "orb2"
-    )
+    val inf   = rememberInfiniteTransition(label = "loginBg")
+    val orbY  by inf.animateFloat(-18f, 18f,
+        infiniteRepeatable(tween(3600, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)), RepeatMode.Reverse),
+        label = "oy")
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(SpaceBlack, SpaceNavy, Color(0xFF0A1228))
-                )
-            )
+            .background(Brush.verticalGradient(listOf(Color(0xFF08122A), Navy900, Navy950)))
     ) {
-
-        // ── Ambient light orbs ───────────────────────────────────
+        // Ambient blue orb
         Box(
-            modifier = Modifier
-                .size(300.dp)
-                .offset(x = (-80).dp, y = ((-100).dp + orb1Y.dp))
-                .blur(100.dp)
-                .background(ElectricBlue.copy(alpha = 0.10f), CircleShape)
-        )
-        Box(
-            modifier = Modifier
-                .size(250.dp)
-                .align(Alignment.BottomEnd)
-                .offset(x = 60.dp, y = (80.dp + orb2Y.dp))
-                .blur(100.dp)
-                .background(ElectricPurple.copy(alpha = 0.10f), CircleShape)
+            Modifier.size(340.dp).align(Alignment.TopCenter)
+                .offset(y = ((-70).dp + orbY.dp))
+                .blur(130.dp)
+                .background(Blue500.copy(0.10f), CircleShape)
         )
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+            modifier            = Modifier.fillMaxSize().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            Spacer(Modifier.weight(0.6f))
 
-            Spacer(Modifier.weight(0.8f))
-
-            // ── Logo & Header ────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .alpha(headerAlpha.value)
-                    .graphicsLayer(alpha = headerAlpha.value)
+            // Logo + header
+            Column(
+                modifier            = Modifier.alpha(headerAlpha.value),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // Logo mark
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(Brush.linearGradient(listOf(Blue500, Blue600)))
+                ) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .shadow(
-                                elevation    = 20.dp,
-                                shape        = CircleShape,
-                                ambientColor = ElectricBlue.copy(0.4f),
-                                spotColor    = ElectricBlue.copy(0.4f)
-                            )
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(ElectricBlue, ElectricPurple)
-                                )
-                            )
+                        modifier = Modifier.size(64.dp).clip(CircleShape).background(Navy800)
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(SpaceDeep)
-                        ) {
-                            Text(
-                                text = "P",
-                                fontSize = 34.sp,
-                                fontWeight = FontWeight.Black,
-                                color = ElectricBlue
-                            )
-                        }
+                        Text("P", fontSize = 30.sp, fontWeight = FontWeight.Black, color = Blue400)
                     }
-
-                    Spacer(Modifier.height(20.dp))
-
-                    Text(
-                        text = "Welcome Back",
-                        fontWeight = FontWeight.Black,
-                        fontSize = 28.sp,
-                        color = TextOnDark,
-                        letterSpacing = (-0.5).sp
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = "Sign in to your PUNDAR account",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
                 }
+                Spacer(Modifier.height(22.dp))
+                Text("Welcome Back",
+                    fontWeight = FontWeight.Bold, fontSize = 26.sp,
+                    color = TextWhite, letterSpacing = (-0.3).sp)
+                Spacer(Modifier.height(6.dp))
+                Text("Sign in to your PUNDAR account",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextMuted, textAlign = TextAlign.Center)
             }
 
-            Spacer(Modifier.height(44.dp))
+            Spacer(Modifier.height(36.dp))
 
-            // ── Form card ────────────────────────────────────────
+            // Form card
             Box(
                 modifier = Modifier
-                    .graphicsLayer(
-                        alpha       = formAlpha.value,
-                        translationY = formTranslate.value
-                    )
+                    .graphicsLayer(alpha = formAlpha.value, translationY = formSlide.value)
                     .fillMaxWidth()
-                    .shadow(
-                        elevation    = 24.dp,
-                        shape        = RoundedCornerShape(28.dp),
-                        ambientColor = ElectricBlue.copy(alpha = 0.12f),
-                        spotColor    = ElectricBlue.copy(alpha = 0.12f)
-                    )
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(SpaceDeep, Color(0xFF0E1A2E))
-                        )
-                    )
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+                    .border(1.dp, Brush.linearGradient(listOf(Glass15, Glass10)), RoundedCornerShape(20.dp))
             ) {
-                Column(modifier = Modifier.padding(24.dp)) {
+                Column(modifier = Modifier.padding(22.dp)) {
 
-                    // ── Phone field ──────────────────────────────
-                    Text(
-                        text = "Mobile Number",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    // Mobile Number
+                    Text("Mobile Number", style = MaterialTheme.typography.labelMedium,
+                        color = TextSoft, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it },
-                        placeholder = { Text("09171234567", color = TextTertiary) },
-                        modifier = Modifier.fillMaxWidth(),
+                        value           = phone,
+                        onValueChange   = { phone = it },
+                        placeholder     = { Text("09171234567", color = TextDim) },
+                        modifier        = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor    = ElectricBlue,
-                            unfocusedBorderColor  = SpaceBorder,
-                            focusedLabelColor     = ElectricBlue,
-                            focusedTextColor      = TextPrimary,
-                            unfocusedTextColor    = TextPrimary,
-                            cursorColor           = ElectricBlue,
-                            focusedContainerColor = SpaceMedium,
-                            unfocusedContainerColor = SpaceMedium
+                        colors          = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor      = Blue400,
+                            unfocusedBorderColor    = NavyBorder,
+                            focusedLabelColor       = Blue400,
+                            focusedTextColor        = TextWhite,
+                            unfocusedTextColor      = TextWhite,
+                            cursorColor             = Blue400,
+                            focusedContainerColor   = Navy700,
+                            unfocusedContainerColor = Navy700
                         ),
-                        shape = RoundedCornerShape(14.dp),
+                        shape      = RoundedCornerShape(14.dp),
                         singleLine = true
                     )
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(18.dp))
 
-                    // ── MPIN field ───────────────────────────────
-                    Text(
-                        text = "4-Digit MPIN",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    // 4-Digit MPIN
+                    Text("4-Digit MPIN", style = MaterialTheme.typography.labelMedium,
+                        color = TextSoft, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
-                        value = mpin,
-                        onValueChange = { mpin = it.take(4) },
-                        placeholder = { Text("••••", color = TextTertiary) },
-                        modifier = Modifier.fillMaxWidth(),
+                        value                = mpin,
+                        onValueChange        = { mpin = it.take(4) },
+                        placeholder          = { Text("••••", color = TextDim) },
+                        modifier             = Modifier.fillMaxWidth(),
                         visualTransformation = if (mpinVisible) VisualTransformation.None
                                                else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         trailingIcon = {
                             IconButton(onClick = { mpinVisible = !mpinVisible }) {
                                 Icon(
-                                    imageVector = if (mpinVisible) Icons.Filled.Visibility
-                                                  else Icons.Filled.VisibilityOff,
-                                    contentDescription = "Toggle MPIN",
-                                    tint = TextSecondary
+                                    if (mpinVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    "Toggle", tint = TextMuted
                                 )
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor      = ElectricBlue,
-                            unfocusedBorderColor    = SpaceBorder,
-                            focusedLabelColor       = ElectricBlue,
-                            focusedTextColor        = TextPrimary,
-                            unfocusedTextColor      = TextPrimary,
-                            cursorColor             = ElectricBlue,
-                            focusedContainerColor   = SpaceMedium,
-                            unfocusedContainerColor = SpaceMedium
+                            focusedBorderColor      = Blue400,
+                            unfocusedBorderColor    = NavyBorder,
+                            focusedLabelColor       = Blue400,
+                            focusedTextColor        = TextWhite,
+                            unfocusedTextColor      = TextWhite,
+                            cursorColor             = Blue400,
+                            focusedContainerColor   = Navy700,
+                            unfocusedContainerColor = Navy700
                         ),
-                        shape = RoundedCornerShape(14.dp),
+                        shape      = RoundedCornerShape(14.dp),
                         singleLine = true
                     )
 
-                    // Error message
+                    // Error
                     if (errorMessage != null) {
                         Spacer(Modifier.height(14.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(ErrorRed.copy(alpha = 0.12f))
-                                .padding(12.dp)
+                                .background(RedBg)
+                                .border(1.dp, Red500.copy(0.30f), RoundedCornerShape(10.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon3DWarning(size = 14.dp)
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text  = errorMessage!!,
-                                    color = ErrorRed,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
+                            Icon3DWarning(size = 14.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(errorMessage!!, color = Red400,
+                                style = MaterialTheme.typography.bodySmall)
                         }
                     }
 
-                    Spacer(Modifier.height(28.dp))
-
-                    // ── CTA ──────────────────────────────────────
+                    Spacer(Modifier.height(26.dp))
                     PundarPrimaryButton(
-                        text = if (isLoading) "Verifying..." else "Sign In",
+                        text    = if (isLoading) "Signing in…" else "Sign In",
                         enabled = !isLoading && phone.isNotBlank() && mpin.length == 4,
                         onClick = {
-                            isLoading = true
+                            isLoading    = true
                             errorMessage = null
-                            coroutineScope.launch {
+                            scope.launch {
                                 val result = AuthRepository.loginWithPhone(phone, mpin)
-                                isLoading = false
+                                isLoading  = false
                                 if (result.isSuccess) {
                                     AppState.refreshWalletBalance()
                                     AppState.refreshNotifications()
@@ -322,31 +235,23 @@ fun LoginScreen(navController: NavController) {
 
             Spacer(Modifier.weight(1f))
 
-            // ── Register link ────────────────────────────────────
+            // Register link
             Row(
-                modifier = Modifier
-                    .alpha(formAlpha.value)
-                    .fillMaxWidth(),
+                modifier = Modifier.alpha(formAlpha.value).fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
+                Text("Don't have an account? ",
+                    color = TextMuted, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    text = "Don't have an account? ",
-                    color = TextSecondary,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Register Here",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = ElectricBlue,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { navController.navigate(Routes.REGISTER) }
+                    "Register Here",
+                    style      = MaterialTheme.typography.labelLarge,
+                    color      = Blue300,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier   = Modifier.clickable { navController.navigate(Routes.REGISTER) }
                 )
             }
-
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
         }
     }
 }
-
-

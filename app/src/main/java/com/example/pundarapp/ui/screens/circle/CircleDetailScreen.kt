@@ -1,5 +1,6 @@
 package com.example.pundarapp.ui.screens.circle
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.compose.ui.Alignment
@@ -91,10 +93,10 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
     if (showShareDialog) {
         AlertDialog(
             onDismissRequest = { showShareDialog = false },
-            title = { Text("Share Circle Details", fontWeight = FontWeight.Bold) },
+            title = { Text("Share Paluwagan Details", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("Circle: ${circle.name}", fontWeight = FontWeight.SemiBold)
+                    Text("Paluwagan: ${circle.name}", fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(4.dp))
                     Text("Target: ₱ ${String.format("%,.0f", circle.targetAmount)}", style = MaterialTheme.typography.bodyMedium)
                     Text("Saved: ₱ ${String.format("%,.0f", circle.savedAmount)}", style = MaterialTheme.typography.bodyMedium)
@@ -177,6 +179,41 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(circle.name, style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold, color = PundarTextPrimary)
+                            Spacer(Modifier.height(6.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (isOwner) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Filled.AdminPanelSettings, null,
+                                            tint = com.example.pundarapp.ui.theme.NeonGreen,
+                                            modifier = Modifier.size(12.dp))
+                                        Spacer(Modifier.width(3.dp))
+                                        Text("Admin", fontSize = 11.sp,
+                                            color = com.example.pundarapp.ui.theme.NeonGreen,
+                                            fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                                val (cycleColor, cycleLabel) = when (circle.cycleStatus) {
+                                    com.example.pundarapp.ui.data.CycleStatus.ACTIVE ->
+                                        com.example.pundarapp.ui.theme.NeonGreen to "Active"
+                                    com.example.pundarapp.ui.data.CycleStatus.PAUSED ->
+                                        com.example.pundarapp.ui.theme.Orange500 to "Paused"
+                                    com.example.pundarapp.ui.data.CycleStatus.COMPLETED ->
+                                        PundarBlue to "Completed"
+                                    com.example.pundarapp.ui.data.CycleStatus.NOT_STARTED ->
+                                        PundarTextSecondary to "Not Started"
+                                }
+                                androidx.compose.foundation.layout.Box(
+                                    Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(cycleColor.copy(0.15f))
+                                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                                ) {
+                                    Text(cycleLabel, fontSize = 10.sp, color = cycleColor, fontWeight = FontWeight.Bold)
+                                }
+                            }
                             Spacer(Modifier.height(4.dp))
                             Text("Target: ${circle.targetDate}",
                                 style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
@@ -204,7 +241,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
 
                     Spacer(Modifier.height(24.dp))
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (isMember) {
                             Button(
                                 onClick = { showContributeDialog = true },
@@ -212,9 +249,9 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = PundarGold, contentColor = PundarTextPrimary)
                             ) {
-                                Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Contribute", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Icon(Icons.Filled.Add, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Contribute", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                             }
                         }
                         OutlinedButton(
@@ -223,10 +260,25 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarBlue)
                         ) {
-                            Icon(Icons.Filled.Share, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Share Details", style = MaterialTheme.typography.titleSmall,
+                            Icon(Icons.Filled.Share, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Share", style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        }
+                        if (isOwner) {
+                            Button(
+                                onClick = { navController.navigate("circle/$circleId/admin") },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = androidx.compose.ui.graphics.Color(0xFF152240),
+                                    contentColor = com.example.pundarapp.ui.theme.NeonGreen
+                                )
+                            ) {
+                                Icon(Icons.Filled.AdminPanelSettings, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Admin", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

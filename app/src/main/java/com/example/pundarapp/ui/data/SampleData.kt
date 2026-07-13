@@ -42,10 +42,23 @@ data class Circle(
     val isActive: Boolean = true,
     val escrowAddress: String = "0x7f...9A2B",
     val escrowNetwork: String = "Stellar Network",
-    val monthlyDueDay: Int = 5
-)
+    val monthlyDueDay: Int = 5,
+    val maxMembers: Int = 10,
+    val creatorId: String = "",
+    val cycleStatus: CycleStatus = CycleStatus.NOT_STARTED,
+    val allowedInviteMethods: List<InviteMethod> = InviteMethod.values().toList(),
+    val penaltyAmount: Double = 0.0,
+    val penaltyEnabled: Boolean = false,
+    val cycleStartDate: String = "",
+    val cycleEndDate: String = "",
+    val currentRecipientIndex: Int = 0
+) {
+    val isFull: Boolean get() = memberCount >= maxMembers
+    val remainingSlots: Int get() = (maxMembers - memberCount).coerceAtLeast(0)
+}
 
 data class CircleMember(
+    val userId: String = "",
     val name: String,
     val initials: String,
     val sharePercent: Int,
@@ -57,8 +70,13 @@ data class CircleMember(
 
 enum class ContributionStatus { PAID, PENDING, OVERDUE }
 
+enum class CycleStatus { NOT_STARTED, ACTIVE, PAUSED, COMPLETED }
+
+enum class InviteMethod { QR_CODE, SHARE_LINK, USERNAME, PHONE_NUMBER }
+
 data class CircleInvitation(
     val id: String,
+    val circleId: String = "",
     val circleName: String,
     val goal: String,
     val inviterName: String,
@@ -71,6 +89,13 @@ data class CircleInvitation(
     val maxMembers: Int,
     val inviterInitials: String = "",
     val inviterAvatarColor: Long = 0xFF0052CC
+)
+
+data class CircleJoinRequest(
+    val id: String,
+    val userId: String,
+    val userName: String,
+    val circleId: String
 )
 
 data class Portfolio(

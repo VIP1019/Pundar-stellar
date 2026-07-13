@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.*
+import com.example.pundarapp.ui.components.AnimatedBackground
+import com.example.pundarapp.ui.components.BgAccent
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.Circle
 import com.example.pundarapp.ui.data.SampleData
@@ -50,6 +52,7 @@ fun CircleScreen(navController: NavController) {
         AppState.refreshCircles()
     }
 
+    AnimatedBackground(accent = BgAccent.Purple) {
     Scaffold(
         topBar = {
             PundarMainTopBar(
@@ -64,7 +67,7 @@ fun CircleScreen(navController: NavController) {
         floatingActionButton = {
             CircleFab { navController.navigate(Routes.CIRCLE_CREATE) }
         },
-        containerColor = SpaceNavy
+        containerColor = Color.Transparent
     ) { padding ->
         LazyColumn(
             modifier            = Modifier.fillMaxSize().padding(padding),
@@ -83,7 +86,7 @@ fun CircleScreen(navController: NavController) {
 
             item {
                 Text(
-                    "Active Circles",
+                    "My Paluwagan Groups",
                     fontWeight    = FontWeight.Bold,
                     fontSize      = 15.sp,
                     color         = TextPrimary,
@@ -102,6 +105,7 @@ fun CircleScreen(navController: NavController) {
             }
         }
     }
+    } // AnimatedBackground
 }
 
 
@@ -132,7 +136,7 @@ private fun CircleFab(onClick: () -> Unit) {
         ) {
             Icon(Icons.Filled.Add, contentDescription = "New Circle")
             Spacer(Modifier.width(8.dp))
-            Text("Create Circle", fontWeight = FontWeight.ExtraBold,
+            Text("Create Paluwagan", fontWeight = FontWeight.ExtraBold,
                 style = MaterialTheme.typography.labelLarge)
         }
     }
@@ -160,7 +164,7 @@ private fun CircleHeroHeader() {
             Icon(Icons.Filled.Shield, null, tint = PremiumGoldWarm, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             Text(
-                "Probably Safe Paluwagan · Soroban Escrow",
+                "Paluwagan · Safe Savings Group · Soroban Escrow",
                 style         = MaterialTheme.typography.bodyMedium,
                 color         = TextSecondary,
                 letterSpacing = 0.3.sp
@@ -261,7 +265,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
             )
             .clip(RoundedCornerShape(24.dp))
             .background(
-                Brush.linearGradient(listOf(Color(0xFF0A1E3D), Color(0xFF0D2252), Color(0xFF06121E)))
+                Brush.linearGradient(listOf(Navy800, Navy700))
             )
             .border(
                 1.dp,
@@ -405,18 +409,18 @@ private fun CircleEmptyState() {
     Box(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825))))
-            .border(1.dp, SpaceBorder, RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .border(1.dp, NavyBorder, RoundedCornerShape(20.dp))
             .padding(36.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("🌀", fontSize = 36.sp)
             Spacer(Modifier.height(10.dp))
-            Text("No circles yet.", fontWeight = FontWeight.SemiBold, color = TextSecondary)
+            Text("No Paluwagan groups yet.", fontWeight = FontWeight.SemiBold, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Tap \"Create Circle\" to start your savings group.",
+                "Tap \"Create Paluwagan\" to start your savings circle.",
                 style     = MaterialTheme.typography.bodySmall,
                 color     = TextTertiary,
                 textAlign = TextAlign.Center
