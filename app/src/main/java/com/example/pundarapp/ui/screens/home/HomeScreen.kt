@@ -228,10 +228,10 @@ private fun QuickActionsSection(navController: NavController) {
     Spacer(Modifier.height(12.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         val items = listOf(
+            Triple(Icons.Filled.AddCard,     "Cash In", NeonGreen)       to { navController.navigate(Routes.CASH_IN) },
             Triple(Icons.Filled.Send,        "Send",   ElectricBlue)     to { navController.navigate(Routes.SEND_MONEY) },
             Triple(Icons.Filled.QrCode2,     "Receive", NeonCyan)       to { navController.navigate(Routes.RECEIVE_MONEY) },
-            Triple(Icons.Filled.PhoneAndroid,"Load",   PremiumGoldWarm)  to { navController.navigate(Routes.BUY_LOAD) },
-            Triple(Icons.Filled.Receipt,     "Split",  WarningAmber)     to { navController.navigate(Routes.PAY_NEW_BILL) },
+            Triple(Icons.Filled.Receipt,     "Pay",    PremiumGoldWarm)  to { navController.navigate(Routes.PAY) },
         )
         items.forEachIndexed { idx, (info, action) ->
             val (icon, title, accent) = info

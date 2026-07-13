@@ -209,6 +209,26 @@ object AuthRepository {
         }
     }
 
+    suspend fun verifyMpin(mpin: String): Result<Boolean> {
+        return try {
+            val phone = getCurrentUserPhone()
+            if (phone.isBlank()) return Result.failure(Exception("User not logged in."))
+
+            val doc = usersCollection.document(phone).get().await()
+            if (!doc.exists()) return Result.failure(Exception("Account not found."))
+
+            val storedMpin = doc.getString("mpin") ?: ""
+            if (storedMpin != mpin.trim()) {
+                return Result.failure(Exception("Incorrect PIN."))
+            }
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "verifyMpin failed", e)
+            val friendly = mapFirestoreError(e)
+            Result.failure(Exception(friendly, e))
+        }
+    }
+
     suspend fun logout() {
         currentUserState.value = null
         AppState.clearSession()

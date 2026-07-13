@@ -83,7 +83,7 @@ fun CircleScreen(navController: NavController) {
 
             item {
                 Text(
-                    "Active Circles",
+                    "Active Paluwagans",
                     fontWeight    = FontWeight.Bold,
                     fontSize      = 15.sp,
                     color         = TextPrimary,
@@ -130,9 +130,9 @@ private fun CircleFab(onClick: () -> Unit) {
                 .clip(RoundedCornerShape(18.dp))
                 .background(Brush.horizontalGradient(listOf(NeonGreenDim, NeonGreen)))
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "New Circle")
+            Icon(Icons.Filled.Add, contentDescription = "New Paluwagan")
             Spacer(Modifier.width(8.dp))
-            Text("Create Circle", fontWeight = FontWeight.ExtraBold,
+            Text("Create Paluwagan", fontWeight = FontWeight.ExtraBold,
                 style = MaterialTheme.typography.labelLarge)
         }
     }
@@ -149,7 +149,7 @@ private fun CircleHeroHeader() {
     }
     Column(Modifier.graphicsLayer(alpha = alpha.value, translationY = slideY.value)) {
         Text(
-            "PUNDAR Circle",
+            "PUNDAR Paluwagan",
             fontWeight    = FontWeight.Black,
             fontSize      = 32.sp,
             color         = TextOnDark,
@@ -413,10 +413,10 @@ private fun CircleEmptyState() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("🌀", fontSize = 36.sp)
             Spacer(Modifier.height(10.dp))
-            Text("No circles yet.", fontWeight = FontWeight.SemiBold, color = TextSecondary)
+            Text("No Paluwagans yet.", fontWeight = FontWeight.SemiBold, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Tap \"Create Circle\" to start your savings group.",
+                "Tap \"Create Paluwagan\" to start your savings group.",
                 style     = MaterialTheme.typography.bodySmall,
                 color     = TextTertiary,
                 textAlign = TextAlign.Center

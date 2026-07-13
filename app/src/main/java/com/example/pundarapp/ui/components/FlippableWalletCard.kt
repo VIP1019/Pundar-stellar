@@ -11,7 +11,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -174,10 +177,24 @@ private fun WalletCardFront(shimmerX: Float, onTransfer: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                Spacer(Modifier.width(8.dp))
+                IconButton(
+                    onClick = { AppState.toggleBalanceVisibility() },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (AppState.isBalanceHidden.value) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = "Toggle Balance Visibility",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "₱${String.format("%,.2f", AppState.walletBalance.value)}",
+                text = AppState.getDisplayBalance(),
                 fontWeight = FontWeight.Black,
                 fontSize = 36.sp,
                 color = TextOnDark,

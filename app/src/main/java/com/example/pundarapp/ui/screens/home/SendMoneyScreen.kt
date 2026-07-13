@@ -20,139 +20,107 @@ import com.example.pundarapp.data.remote.HomeRepository
 import com.example.pundarapp.data.stellar.StellarWalletManager
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
+import com.example.pundarapp.ui.components.PundarSmallButton
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.HomeActivity
+import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.filled.QrCodeScanner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendMoneyScreen(navController: NavController) {
-    var amount by remember { mutableStateOf("") }
-    var recipientPhone by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
+    var amount by rememberSaveable { mutableStateOf("") }
+    var recipientPhone by rememberSaveable { mutableStateOf("") }
+    var message by rememberSaveable { mutableStateOf("") }
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isSending by remember { mutableStateOf(false) }
-    
-    var showMpinDialog by remember { mutableStateOf(false) }
-    var mpinInput by remember { mutableStateOf("") }
 
-    if (showMpinDialog) {
-        AlertDialog(
-            onDismissRequest = { 
-                showMpinDialog = false
-                isSending = false
-            },
-            title = { Text("Confirm Transfer") },
-            text = {
-                Column {
-                    Text("Enter your 4-digit MPIN to confirm sending XLM.")
-                    Spacer(Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = mpinInput,
-                        onValueChange = { if (it.length <= 4) mpinInput = it },
-                        label = { Text("MPIN") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = mpinInput.length == 4,
-                    onClick = {
-                        showMpinDialog = false
-                        isSending = true
-                        coroutineScope.launch {
-                            try {
-                                // 1. Check if recipient exists
-                                val users = AuthRepository.searchUsers(recipientPhone)
-                                val recipient = users.find { it.phone == recipientPhone.trim() }
+    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+    val pinVerified = savedStateHandle?.get<Boolean>("pin_verified") ?: false
+    val pin = savedStateHandle?.get<String>("pin")
 
-                                if (recipient == null) {
-                                    Toast.makeText(context, "User not found with this number.", Toast.LENGTH_SHORT).show()
-                                    isSending = false
-                                    return@launch
-                                }
-                                
-                                val recipientPk = recipient.stellarPublicKey
-                                if (recipientPk.isNullOrBlank()) {
-                                    Toast.makeText(context, "Recipient does not have a Stellar wallet.", Toast.LENGTH_SHORT).show()
-                                    isSending = false
-                                    return@launch
-                                }
+    LaunchedEffect(pinVerified) {
+        if (pinVerified && pin != null) {
+            savedStateHandle?.remove<Boolean>("pin_verified")
+            savedStateHandle?.remove<String>("pin")
+            
+            isSending = true
+            coroutineScope.launch {
+                try {
+                    // 1. Check if recipient exists
+                    val users = AuthRepository.searchUsers(recipientPhone)
+                    val recipient = users.find { it.phone == recipientPhone.trim() }
 
-                                // 2. Get sender info
-                                val senderPk = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
-                                val senderEncryptedSeed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
-                                
-                                // 3. Send Payment
-                                val result = StellarWalletManager.sendPayment(
-                                    senderPublicKey = senderPk,
-                                    senderEncryptedSeed = senderEncryptedSeed,
-                                    senderMpin = mpinInput,
-                                    recipientPublicKey = recipientPk,
-                                    amountXlm = amount,
-                                    memo = "PAY"
-                                )
-
-                                if (result.isSuccess) {
-                                    val txHash = result.getOrNull() ?: ""
-                                    
-                                    // 4. Refresh balance
-                                    AppState.refreshWalletBalance()
-                                    
-                                    // 5. Log activity
-                                    val activity = HomeActivity(
-                                        icon = "send",
-                                        title = "Sent to ${recipient.name}",
-                                        subtitle = "Tx: ${txHash.take(8)}...",
-                                        amount = "-${amount} XLM",
-                                        isPositive = false,
-                                        module = "Wallet"
-                                    )
-                                    AppState.homeActivities.add(0, activity)
-                                    
-                                    // Persist activity
-                                    val userId = AuthRepository.getCurrentUserId()
-                                    if (userId != null) {
-                                        HomeRepository.createActivity(userId, activity)
-                                    }
-
-                                    AppState.requestHomeRefresh()
-                                    
-                                    Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
-                                    navController.navigateUp()
-                                } else {
-                                    val errorMsg = result.exceptionOrNull()?.message ?: "Payment failed"
-                                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
-                                    isSending = false
-                                }
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "An error occurred: ${e.message}", Toast.LENGTH_SHORT).show()
-                                isSending = false
-                            } finally {
-                                mpinInput = "" // Security: clear MPIN from state
-                            }
-                        }
+                    if (recipient == null) {
+                        Toast.makeText(context, "Recipient not found.", Toast.LENGTH_SHORT).show()
+                        isSending = false
+                        return@launch
                     }
-                ) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    showMpinDialog = false 
+                    
+                    val recipientPk = recipient.stellarPublicKey
+                    if (recipientPk.isNullOrBlank()) {
+                        Toast.makeText(context, "Recipient not found.", Toast.LENGTH_SHORT).show()
+                        isSending = false
+                        return@launch
+                    }
+
+                    // 2. Get sender info
+                    val senderPk = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
+                    val senderEncryptedSeed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
+                    
+                    // 3. Send Payment
+                    val result = StellarWalletManager.sendPayment(
+                        senderPublicKey = senderPk,
+                        senderEncryptedSeed = senderEncryptedSeed,
+                        senderMpin = pin,
+                        recipientPublicKey = recipientPk,
+                        amountXlm = amount,
+                        memo = "PAY"
+                    )
+
+                    if (result.isSuccess) {
+                        val txHash = result.getOrNull() ?: ""
+                        
+                        // 4. Refresh balance
+                        AppState.refreshWalletBalance()
+                        
+                        // 5. Log activity
+                        val activity = HomeActivity(
+                            icon = "send",
+                            title = "Sent to ${recipient.name}",
+                            subtitle = "Tx: ${txHash.take(8)}...",
+                            amount = "-₱${amount}",
+                            isPositive = false,
+                            module = "Wallet"
+                        )
+                        AppState.homeActivities.add(0, activity)
+                        
+                        // Persist activity
+                        val userId = AuthRepository.getCurrentUserId()
+                        if (userId != null) {
+                            HomeRepository.createActivity(userId, activity)
+                        }
+
+                        AppState.requestHomeRefresh()
+                        
+                        Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
+                        navController.navigateUp()
+                    } else {
+                        val errorMsg = result.exceptionOrNull()?.message ?: "Payment failed"
+                        Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                        isSending = false
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "An error occurred: ${e.message}", Toast.LENGTH_SHORT).show()
                     isSending = false
-                    mpinInput = ""
-                }) {
-                    Text("Cancel")
                 }
             }
-        )
+        }
     }
 
     Scaffold(
@@ -180,7 +148,7 @@ fun SendMoneyScreen(navController: NavController) {
                             if (sendAmount > currentBalance) {
                                 Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
                             } else {
-                                showMpinDialog = true
+                                navController.navigate(Routes.PIN_VERIFICATION)
                             }
                         }
                     }
@@ -202,9 +170,25 @@ fun SendMoneyScreen(navController: NavController) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
-                    Text("${String.format("%,.2f", AppState.walletBalance.value)} XLM",
+                    Text(AppState.getDisplayBalance(),
                         style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = PundarBlue)
                 }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PundarSmallButton(
+                    text = "Scan QR",
+                    onClick = { navController.navigate(Routes.SCAN) },
+                    modifier = Modifier.weight(1f)
+                )
+                PundarSmallButton(
+                    text = "Select Contact",
+                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             OutlinedTextField(

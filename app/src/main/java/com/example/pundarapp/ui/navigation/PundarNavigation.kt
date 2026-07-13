@@ -33,6 +33,9 @@ import com.example.pundarapp.ui.screens.pay.BillQrScreen
 import com.example.pundarapp.ui.screens.pay.InstantSettlementScreen
 import com.example.pundarapp.ui.screens.home.SendMoneyScreen
 import com.example.pundarapp.ui.screens.home.BuyLoadScreen
+import com.example.pundarapp.ui.screens.home.PinVerificationScreen
+import com.example.pundarapp.ui.screens.home.CashInScreen
+import com.example.pundarapp.ui.screens.home.LinkCardScreen
 import com.example.pundarapp.ui.screens.SplashScreen
 
 object Routes {
@@ -64,6 +67,9 @@ object Routes {
     const val RECEIVE_MONEY = "receive_money"
     const val QR_SEND_CONFIRM = "qr_send_confirm"
     const val BUY_LOAD = "buy_load"
+    const val PIN_VERIFICATION = "pin_verification"
+    const val CASH_IN = "cash_in"
+    const val LINK_CARD = "link_card"
 }
 
 // Routes where bottom bar should be visible
@@ -191,6 +197,15 @@ fun PundarNavigation() {
             }
             composable(Routes.BUY_LOAD) {
                 BuyLoadScreen(navController = navController)
+            }
+            composable(Routes.PIN_VERIFICATION) {
+                PinVerificationScreen(navController = navController)
+            }
+            composable(Routes.CASH_IN) {
+                CashInScreen(navController = navController)
+            }
+            composable(Routes.LINK_CARD) {
+                LinkCardScreen(navController = navController)
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.example.pundarapp.ui.data
 
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -303,6 +305,26 @@ object AppState {
     val walletBalance = mutableStateOf(5000.0)
     val homeRefreshTrigger = mutableIntStateOf(0)
     val pendingQrPayload = mutableStateOf<QrPayload?>(null)
+
+    // ── BALANCE VISIBILITY ─────────────────────────────────────────
+    val isBalanceHidden = mutableStateOf(false)
+    private var prefs: SharedPreferences? = null
+    private const val PREFS_NAME = "pundar_prefs"
+    private const val KEY_BALANCE_HIDDEN = "is_balance_hidden"
+
+    fun initPreferences(context: Context) {
+        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        isBalanceHidden.value = prefs?.getBoolean(KEY_BALANCE_HIDDEN, false) ?: false
+    }
+
+    fun toggleBalanceVisibility() {
+        isBalanceHidden.value = !isBalanceHidden.value
+        prefs?.edit()?.putBoolean(KEY_BALANCE_HIDDEN, isBalanceHidden.value)?.apply()
+    }
+
+    fun getDisplayBalance(): String {
+        return if (isBalanceHidden.value) "₱••••••" else "₱${String.format("%,.2f", walletBalance.value)}"
+    }
 
     fun requestHomeRefresh() {
         homeRefreshTrigger.intValue++

@@ -114,7 +114,7 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                     Spacer(Modifier.height(8.dp))
                 }
                 PundarBlueButton(
-                    text = if (isFull) "Circle Full" else if (isJoining) "Joining..." else "Join Circle →",
+                    text = if (isFull) "Paluwagan Full" else if (isJoining) "Joining..." else "Join Paluwagan →",
                     onClick = { if (!isFull) showConfirmDialog = true }
                 )
                 Spacer(Modifier.height(12.dp))
@@ -186,7 +186,7 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                         Text("${invite.memberCount} / ${invite.maxMembers}",
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(
-                            text = if (remainingSlots == 0) "Circle Full" else "$remainingSlots slots left",
+                            text = if (remainingSlots == 0) "Paluwagan Full" else "$remainingSlots slots left",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (remainingSlots == 0) MaterialTheme.colorScheme.error else PundarBlue
                         )
@@ -226,7 +226,7 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                                     style = MaterialTheme.typography.labelMedium, color = PundarBlue, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.height(4.dp))
-                            Text("Successfully completed ${invite.inviterCirclesCompleted} circles.",
+                            Text("Successfully completed ${invite.inviterCirclesCompleted} Paluwagans.",
                                 style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
                         }
                     }

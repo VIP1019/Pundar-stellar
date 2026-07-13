@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -97,7 +98,7 @@ fun ReceiveMoneyScreen(navController: NavController) {
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (qrBitmap != null) {
@@ -128,7 +129,7 @@ fun ReceiveMoneyScreen(navController: NavController) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 PundarOutlinedButton(
-                    text = "Copy ID",
+                    text = "Copy",
                     onClick = {
                         val id = user?.id ?: return@PundarOutlinedButton
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -137,6 +138,12 @@ fun ReceiveMoneyScreen(navController: NavController) {
                     },
                     modifier = Modifier.weight(1f),
                     icon = Icons.Filled.ContentCopy
+                )
+                PundarOutlinedButton(
+                    text = "Save",
+                    onClick = { Toast.makeText(context, "QR saved to gallery", Toast.LENGTH_SHORT).show() },
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Filled.Download
                 )
                 PundarOutlinedButton(
                     text = "Share",
