@@ -91,10 +91,10 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
     if (showShareDialog) {
         AlertDialog(
             onDismissRequest = { showShareDialog = false },
-            title = { Text("Share Paluwagan Details", fontWeight = FontWeight.Bold) },
+            title = { Text("Share Circle Details", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("Paluwagan: ${circle.name}", fontWeight = FontWeight.SemiBold)
+                    Text("Circle: ${circle.name}", fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(4.dp))
                     Text("Target: ₱ ${String.format("%,.0f", circle.targetAmount)}", style = MaterialTheme.typography.bodyMedium)
                     Text("Saved: ₱ ${String.format("%,.0f", circle.savedAmount)}", style = MaterialTheme.typography.bodyMedium)
@@ -156,7 +156,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                             if (isFull) {
                                 Spacer(Modifier.width(8.dp))
                                 Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.errorContainer) {
-                                    Text("Paluwagan Full",
+                                    Text("Circle Full",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.error,
@@ -249,7 +249,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                                 Text("Wants to join", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
                             }
                             if (isFull) {
-                                Text("Paluwagan Full", color = MaterialTheme.colorScheme.error,
+                                Text("Circle Full", color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.labelSmall)
                             } else {
                                 TextButton(onClick = {
@@ -310,7 +310,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
             // ── Rules ────────────────────────────────────────────
             item {
                 PundarCard {
-                    Text("Paluwagan Rules", style = MaterialTheme.typography.titleMedium,
+                    Text("Circle Rules", style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold, color = PundarTextPrimary)
                     Spacer(Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.Top) {

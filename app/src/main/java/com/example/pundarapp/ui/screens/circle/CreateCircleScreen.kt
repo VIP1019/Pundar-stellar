@@ -101,7 +101,7 @@ fun CreateCircleScreen(navController: NavController) {
     Scaffold(
         topBar = {
             PundarDetailTopBar(
-                title = "Create a Paluwagan",
+                title = "Create a Circle",
                 onBack = { navController.navigateUp() }
             )
         },
@@ -113,7 +113,7 @@ fun CreateCircleScreen(navController: NavController) {
                     Spacer(Modifier.height(8.dp))
                 }
                 PundarPrimaryButton(
-                    text = if (isCreating) "Launching..." else "Launch Paluwagan",
+                    text = if (isCreating) "Launching..." else "Launch Circle",
                     enabled = !isCreating && circleName.isNotBlank()
                         && (targetAmount.toDoubleOrNull() ?: 0.0) > 0
                         && selectedMembers.size <= maxMembersInt,
@@ -209,7 +209,7 @@ fun CreateCircleScreen(navController: NavController) {
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text("New PUNDAR Paluwagan", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("New PUNDAR Circle", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         Text("Secured by Soroban smart contract", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
                     }
                 }
@@ -222,7 +222,7 @@ fun CreateCircleScreen(navController: NavController) {
                 OutlinedTextField(
                     value = circleName,
                     onValueChange = { circleName = it },
-                    label = { Text("Paluwagan Name") },
+                    label = { Text("Circle Name") },
                     placeholder = { Text("e.g. Family Dream House") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
@@ -312,7 +312,7 @@ fun CreateCircleScreen(navController: NavController) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isAtCapacity) "Paluwagan Full" else "$remainingSlots slots left",
+                        text = if (isAtCapacity) "Circle Full" else "$remainingSlots slots left",
                         style = MaterialTheme.typography.labelMedium,
                         color = if (isAtCapacity) MaterialTheme.colorScheme.error else PundarBlue,
                         fontWeight = FontWeight.SemiBold
