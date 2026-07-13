@@ -122,8 +122,6 @@ fun SendMoneyScreen(navController: NavController) {
                                         HomeRepository.createActivity(userId, activity)
                                     }
 
-                                    AppState.requestHomeRefresh()
-                                    
                                     Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
                                     navController.navigateUp()
                                 } else {

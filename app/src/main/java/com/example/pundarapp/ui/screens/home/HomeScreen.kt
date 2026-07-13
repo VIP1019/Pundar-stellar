@@ -1,39 +1,34 @@
 package com.example.pundarapp.ui.screens.home
 
-import androidx.compose.animation.core.*
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
-import kotlinx.coroutines.launch
+import com.example.pundarapp.R
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
@@ -43,323 +38,521 @@ import com.example.pundarapp.data.remote.HomeRepository
 import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.data.AppState
 
-// ── Easing constants ─────────────────────────────────────────────
-private val EaseOutBack   = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
-private val EaseOutExpo   = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-private val EaseInOutSine = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController) {
-    val user    = SampleData.currentUser
+    val user = SampleData.currentUser
     val context = LocalContext.current
-    val scope   = rememberCoroutineScope()
 
+    var userName by remember { mutableStateOf("User") }
     var isLoadingActivities by remember { mutableStateOf(true) }
-    var isRefreshing by remember { mutableStateOf(false) }
-    val pullRefreshState = rememberPullToRefreshState()
-    val refreshTrigger = AppState.homeRefreshTrigger.intValue
 
-    // Function to refresh data
-    suspend fun refreshData() {
+    LaunchedEffect(Unit) {
+        userName = AuthRepository.getCurrentUserName().split(" ").first()
         val userId = AuthRepository.getCurrentUserId()
-        if (userId != null) {
-            AppState.homeActivities.clear()
+        if (userId != null && AppState.homeActivities.isEmpty()) {
             val result = HomeRepository.getRecentActivities(userId)
             if (result.isSuccess) {
                 AppState.homeActivities.addAll(result.getOrDefault(emptyList()))
             }
         }
         AppState.refreshWalletBalance()
-    }
-
-    // Initial data load + refresh after transactions
-    LaunchedEffect(Unit, refreshTrigger) {
-        refreshData()
         isLoadingActivities = false
     }
 
-    // Auto-refresh on resume
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                scope.launch { refreshData() }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    val userSession by AuthRepository.currentUserState
-    val currentUserName     = userSession?.name?.split(" ")?.firstOrNull() ?: "User"
+    val currentUserName = AuthRepository.getCurrentUserName().split(" ").first()
     val currentUserInitials = AuthRepository.getCurrentUserInitials()
-    val totalSaved          = AppState.circles.sumOf { it.savedAmount }
+    val totalSaved = AppState.circles.sumOf { it.savedAmount }
 
     Scaffold(
         topBar = {
             PundarMainTopBar(
-                userName             = currentUserName,
-                userInitials         = currentUserInitials,
-                profileImageUrl      = userSession?.profileImageUrl,
-                pundarScore          = user.pundarScore,
-                onNotificationClick  = { navController.navigate(Routes.NOTIFICATIONS) },
-                onSettingsClick      = { navController.navigate(Routes.SETTINGS) }
+                userName = currentUserName,
+                userInitials = currentUserInitials,
+                pundarScore = user.pundarScore,
+                onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
             )
         },
-        containerColor = SpaceNavy
+        containerColor = PundarBackground
     ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = {
-                isRefreshing = true
-                scope.launch {
-                    refreshData()
-                    isRefreshing = false
-                }
-            },
-            state = pullRefreshState,
-            modifier = Modifier.fillMaxSize().padding(padding)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            LazyColumn(
-                modifier        = Modifier.fillMaxSize(),
-                contentPadding  = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    FlippableWalletCard(
-                        onTransfer = { navController.navigate(Routes.SEND_MONEY) }
-                    )
-                }
-                item { StatsRow(totalSaved, user.pundarScore) }
-                item { QuickActionsSection(navController) }
-                item { FinancialJourneySection() }
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment     = Alignment.CenterVertically
+            // ── Welcome Banner ─────────────────────────────────
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(PundarBlue, PundarBlueDark)
+                                )
+                            )
                     ) {
-                        HomeSectionLabel("Recent Activity")
-                        TextButton(onClick = { Toast.makeText(context, "Coming soon!", Toast.LENGTH_SHORT).show() }) {
-                            Text("View All", color = ElectricBlue, style = MaterialTheme.typography.labelLarge)
+                        Column {
+                            Column(modifier = Modifier.padding(24.dp)) {
+                                Text(
+                                    text = "Wallet Balance",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    text = "${String.format("%,.2f", AppState.walletBalance.value)} XLM",
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { AppState.refreshWalletBalance() }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Refresh balance",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "Tap to Refresh",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 24.dp),
+                                color = Color.White.copy(alpha = 0.15f),
+                                thickness = 0.5.dp
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min)
+                                    .padding(vertical = 16.dp)
+                            ) {
+                                // Invested Section
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 20.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White.copy(alpha = 0.15f))
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.invested),
+                                            contentDescription = null
+                                        )
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Invested",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "₱ 124,500",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                VerticalDivider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = Color.White.copy(alpha = 0.15f),
+                                    thickness = 0.5.dp
+                                )
+
+                                // Credit Score Section
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 20.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White.copy(alpha = 0.15f))
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.score1),
+                                            contentDescription = null
+                                        )
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Credit Score",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "850",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-                if (isLoadingActivities) {
-                    item { ActivityShimmer() }
-                } else if (AppState.homeActivities.isEmpty()) {
-                    item { EmptyActivity() }
-                } else {
-                    itemsIndexed(AppState.homeActivities) { idx, activity ->
-                        ActivityRow(activity = activity, index = idx)
-                    }
+            }
+
+            // ── Quick Actions ──────────────────────────────────
+            item {
+                Text(
+                    text = "Quick Actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PundarTextPrimary
+                )
+                Spacer(Modifier.height(12.dp))
+                // Row 1
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickActionCard(
+                        icon = Icons.Filled.Send,
+                        title = "Send Money",
+                        subtitle = "PUNDAR Wallet",
+                        color = PundarBlue,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Routes.SEND_MONEY) }
+                    )
+                    QuickActionCard(
+                        icon = Icons.Filled.PhoneAndroid,
+                        title = "Buy Load",
+                        subtitle = "PUNDAR Wallet",
+                        color = PundarGoldDark,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Routes.BUY_LOAD) }
+                    )
                 }
-                item {
-                    Text(
-                        text  = "Spend · Save · Grow · Together",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextTertiary,
-                        textAlign    = TextAlign.Center,
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                Spacer(Modifier.height(12.dp))
+                // Row 2
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickActionCard(
+                        icon = Icons.Filled.Receipt,
+                        title = "Split a Bill",
+                        subtitle = "PUNDAR Pay",
+                        color = PundarWarning,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Routes.PAY_NEW_BILL) }
+                    )
+                    QuickActionCard(
+                        icon = Icons.Filled.Groups,
+                        title = "Join Circle",
+                        subtitle = "PUNDAR Circle",
+                        color = PundarSuccess,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Routes.CIRCLE) }
                     )
                 }
             }
-        }
-    }
-}
 
-
-// ── Stats Row ─────────────────────────────────────────────────────
-@Composable
-private fun StatsRow(totalSaved: Double, score: Int) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        StatCard(Modifier.weight(1f), "Total Saved",
-            "₱${String.format("%,.0f", totalSaved)}", Icons.Filled.Savings, NeonGreen, delay = 0)
-        StatCard(Modifier.weight(1f), "Credit Score",
-            score.toString(), Icons.Filled.Star, PremiumGoldWarm, delay = 80)
-    }
-}
-
-@Composable
-private fun StatCard(
-    modifier: Modifier, label: String, value: String,
-    icon: ImageVector, accent: Color, delay: Int
-) {
-    val scale = remember { Animatable(0.82f) }
-    val alpha = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        alpha.animateTo(1f, tween(400, delayMillis = delay, easing = EaseOutExpo))
-        scale.animateTo(1f, tween(450, delayMillis = delay, easing = EaseOutBack))
-    }
-    Box(
-        modifier = modifier
-            .graphicsLayer(scaleX = scale.value, scaleY = scale.value, alpha = alpha.value)
-            .shadow(10.dp, RoundedCornerShape(18.dp),
-                ambientColor = accent.copy(0.18f), spotColor = accent.copy(0.18f))
-            .clip(RoundedCornerShape(18.dp))
-            .background(Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825))))
-            .border(1.dp, Brush.linearGradient(listOf(accent.copy(0.45f), GlassWhite)), RoundedCornerShape(18.dp))
-            .padding(16.dp)
-    ) {
-        Column {
-            FuturisticIcon(
-                icon = icon,
-                tint = accent,
-                size = 36.dp,
-                iconSize = 18.dp,
-                shape = RoundedCornerShape(10.dp)
-            )
-            Spacer(Modifier.height(10.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-            Spacer(Modifier.height(2.dp))
-            Text(value, style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold, color = accent)
-        }
-    }
-}
-
-
-// ── Quick Actions ─────────────────────────────────────────────────
-@Composable
-private fun QuickActionsSection(navController: NavController) {
-    HomeSectionLabel("Quick Actions")
-    Spacer(Modifier.height(12.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        val items = listOf(
-            Triple(Icons.Filled.Send,        "Send",   ElectricBlue)     to { navController.navigate(Routes.SEND_MONEY) },
-            Triple(Icons.Filled.QrCode2,     "Receive", NeonCyan)       to { navController.navigate(Routes.RECEIVE_MONEY) },
-            Triple(Icons.Filled.PhoneAndroid,"Load",   PremiumGoldWarm)  to { navController.navigate(Routes.BUY_LOAD) },
-            Triple(Icons.Filled.Receipt,     "Split",  WarningAmber)     to { navController.navigate(Routes.PAY_NEW_BILL) },
-        )
-        items.forEachIndexed { idx, (info, action) ->
-            val (icon, title, accent) = info
-            QuickTile(icon, title, accent, Modifier.weight(1f), delay = idx * 60, onClick = action)
-        }
-    }
-}
-
-@Composable
-private fun QuickTile(
-    icon: ImageVector, title: String, accent: Color,
-    modifier: Modifier, delay: Int, onClick: () -> Unit
-) {
-    val scale = remember { Animatable(0.75f) }
-    val alpha = remember { Animatable(0f) }
-    val rotY  = remember { Animatable(25f) }
-    LaunchedEffect(Unit) {
-        alpha.animateTo(1f, tween(350, delayMillis = delay))
-        scale.animateTo(1f, tween(400, delayMillis = delay, easing = EaseOutBack))
-        rotY.animateTo(0f,  tween(500, delayMillis = delay, easing = EaseOutExpo))
-    }
-    Column(
-        modifier = modifier
-            .graphicsLayer(
-                scaleX = scale.value, scaleY = scale.value, alpha = alpha.value,
-                rotationY = rotY.value, cameraDistance = 12f * 8
-            )
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        FuturisticIcon(
-            icon = icon,
-            tint = accent,
-            size = 58.dp,
-            iconSize = 26.dp,
-            shape = RoundedCornerShape(18.dp),
-            pulseGlow = true
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 12.sp,
-            color = TextPrimary, textAlign = TextAlign.Center)
-    }
-}
-
-// ── Activity composables ──────────────────────────────────────────
-@Composable
-private fun ActivityRow(activity: HomeActivity, index: Int) {
-    val accent = when (activity.module) {
-        "Pay"    -> ElectricBlue
-        "Circle" -> PremiumGoldWarm
-        "Grow"   -> NeonGreen
-        "Wallet" -> NeonCyan
-        else     -> TextSecondary
-    }
-    val icon = when (activity.module) {
-        "Pay"    -> Icons.Filled.Receipt
-        "Circle" -> Icons.Filled.Groups
-        "Grow"   -> Icons.AutoMirrored.Filled.TrendingUp
-        "Wallet" -> Icons.Filled.AccountBalanceWallet
-        else     -> Icons.Filled.Info
-    }
-    val slideX = remember { Animatable(40f) }
-    val alpha  = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        slideX.animateTo(0f, tween(360, delayMillis = index * 55, easing = EaseOutExpo))
-        alpha.animateTo(1f,  tween(300, delayMillis = index * 55))
-    }
-    Box(
-        Modifier.fillMaxWidth()
-            .graphicsLayer(translationX = slideX.value, alpha = alpha.value)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(listOf(SpaceDeep, Color(0xFF0E1825))))
-            .border(1.dp, Brush.horizontalGradient(listOf(accent.copy(0.22f), GlassWhite)), RoundedCornerShape(16.dp))
-            .padding(14.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            FuturisticIcon(
-                icon = icon,
-                tint = accent,
-                size = 42.dp,
-                iconSize = 20.dp,
-                shape = RoundedCornerShape(12.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(activity.title, style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                Text(activity.subtitle, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            // ── Financial Progress ─────────────────────────────
+            item {
+                Text(
+                    text = "Your Financial Journey",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PundarTextPrimary
+                )
             }
-            Text(activity.amount, style = MaterialTheme.typography.titleSmall,
+
+            item {
+                PundarCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        JourneyStep("Spend", R.drawable.spend, PundarSuccess, true)
+                        JourneyArrow()
+                        JourneyStep("Save", R.drawable.save, PundarSuccess, true)
+                        JourneyArrow()
+                        JourneyStep("Grow", R.drawable.grow1, PundarBlue, true)
+                        JourneyArrow()
+                        JourneyStep("Score", R.drawable.score, PundarGold, true)
+                        JourneyArrow()
+                        JourneyStep("Access", R.drawable.access, PundarTextSecondary, false)
+                    }
+                }
+            }
+
+            // ── Recent Activity ────────────────────────────────
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Recent Activity",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = PundarTextPrimary
+                    )
+                    TextButton(onClick = { Toast.makeText(context, "Activity history coming soon!", Toast.LENGTH_SHORT).show() }) {
+                        Text(
+                            text = "View All",
+                            color = PundarBlue,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            }
+
+            if (isLoadingActivities) {
+                item {
+                    Text(
+                        text = "Loading activities...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PundarTextSecondary,
+                        modifier = Modifier.padding(vertical = 24.dp).fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else if (AppState.homeActivities.isEmpty()) {
+                item {
+                    Text(
+                        text = "No recent activity yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PundarTextSecondary,
+                        modifier = Modifier.padding(vertical = 24.dp).fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                items(AppState.homeActivities) { activity ->
+                    PundarCard {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when (activity.module) {
+                                            "Pay" -> PundarBlueSubtle
+                                            "Circle" -> PundarGoldLight
+                                            "Grow" -> PundarSuccessLight
+                                            "Wallet" -> PundarInfoLight
+                                            else -> PundarSurfaceVariant
+                                        }
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = when (activity.module) {
+                                        "Pay" -> Icons.Filled.Receipt
+                                        "Circle" -> Icons.Filled.Groups
+                                        "Grow" -> Icons.AutoMirrored.Filled.TrendingUp
+                                        "Wallet" -> Icons.Filled.AccountBalanceWallet
+                                        else -> Icons.Filled.Info
+                                    },
+                                    contentDescription = null,
+                                    tint = when (activity.module) {
+                                        "Pay" -> PundarBlue
+                                        "Circle" -> PundarGoldDark
+                                        "Grow" -> PundarSuccess
+                                        "Wallet" -> PundarInfo
+                                        else -> PundarTextSecondary
+                                    },
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+
+                            Spacer(Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = activity.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = activity.subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = PundarTextSecondary
+                                )
+                            }
+
+                            Text(
+                                text = activity.amount,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (activity.isPositive) PundarSuccess else PundarTextPrimary
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Bottom Tagline ─────────────────────────────────
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Spend Together → Save Together → Grow Together",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PundarTextTertiary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeStatItem(label: String, value: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.7f)
+        )
+    }
+}
+
+@Composable
+private fun QuickActionCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    Card(
+        modifier = modifier
+            .height(120.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PundarSurface),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.1f))
+            ) {
+                Icon(icon, contentDescription = title, tint = color, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                color = if (activity.isPositive) NeonGreen else TextPrimary)
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = PundarTextSecondary,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
 
 @Composable
-private fun ActivityShimmer() {
-    val infinite = rememberInfiniteTransition(label = "shimmer")
-    val x by infinite.animateFloat(
-        initialValue = -800f, targetValue = 800f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing)), label = "sx"
+private fun JourneyStep(
+    label: String,
+    @DrawableRes iconRes: Int,
+    color: Color,
+    isComplete: Boolean
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = label,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isComplete) FontWeight.Bold else FontWeight.Normal,
+            color = if (isComplete) color else PundarTextTertiary
+        )
+    }
+}
+
+@Composable
+private fun JourneyArrow() {
+    Text(
+        text = "→",
+        style = MaterialTheme.typography.bodySmall,
+        color = PundarTextTertiary,
+        modifier = Modifier.padding(top = 4.dp)
     )
-    val brush = Brush.linearGradient(
-        listOf(SpaceMedium, Color(0xFF2A3A55), SpaceMedium),
-        start = Offset(x, 0f), end = Offset(x + 300f, 0f)
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        repeat(3) {
-            Box(Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(16.dp)).background(brush))
-        }
-    }
-}
-
-@Composable
-private fun EmptyActivity() {
-    Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon3DWallet(size = 56.dp)
-            Spacer(Modifier.height(12.dp))
-            Text("No recent activity yet.", style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-private fun HomeSectionLabel(text: String) {
-    Text(text, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-        color = TextPrimary, letterSpacing = 0.2.sp)
 }
