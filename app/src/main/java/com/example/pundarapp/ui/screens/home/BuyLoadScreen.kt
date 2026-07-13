@@ -128,7 +128,7 @@ fun BuyLoadScreen(navController: NavController) {
                 Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    AppState.getDisplayBalance(),
+                    "₱ ${String.format("%,.2f", AppState.walletBalance.value)}",
                     style = MaterialTheme.typography.headlineMedium, 
                     fontWeight = FontWeight.Bold, 
                     color = ElectricBlue
