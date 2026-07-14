@@ -25,42 +25,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import kotlinx.coroutines.launch
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
-import java.text.SimpleDateFormat
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateCircleScreen(navController: NavController) {
-    val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
     var circleName by remember { mutableStateOf("") }
     var targetAmount by remember { mutableStateOf("") }
     var monthlyContribution by remember { mutableStateOf("") }
     var targetDate by remember { mutableStateOf("") }
-    var showDatePicker by remember { mutableStateOf(false) }
     var maxMembers by remember { mutableStateOf("10") }
-
+    
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<CircleMember>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
 
-    var isCreating by remember { mutableStateOf(false) }
-    var createError by remember { mutableStateOf<String?>(null) }
-
     val selectedMembers = remember {
         mutableStateListOf(
             CircleMember(
-                userId = AuthRepository.getCurrentUserId() ?: "",
-                name = AuthRepository.getCurrentUserName().ifBlank { SampleData.currentUser.name },
-                initials = AuthRepository.getCurrentUserInitials().ifBlank { SampleData.currentUser.initials },
+                name = SampleData.currentUser.name,
+                initials = SampleData.currentUser.initials,
                 sharePercent = 100,
                 amount = 0.0,
                 status = ContributionStatus.PENDING,
@@ -70,21 +57,16 @@ fun CreateCircleScreen(navController: NavController) {
         )
     }
 
-    val maxMembersInt = (maxMembers.toIntOrNull() ?: 10).coerceIn(2, 50)
-    val remainingSlots = (maxMembersInt - selectedMembers.size).coerceAtLeast(0)
-    val isAtCapacity = selectedMembers.size >= maxMembersInt
-
     LaunchedEffect(searchQuery) {
         if (searchQuery.isBlank()) {
             searchResults = emptyList()
             return@LaunchedEffect
         }
-
+        
         isSearching = true
         val users = AuthRepository.searchUsers(searchQuery)
         searchResults = users.map { u ->
             CircleMember(
-                userId = u.id,
                 name = u.name,
                 initials = u.name.take(2).uppercase(),
                 sharePercent = 0,
@@ -108,19 +90,10 @@ fun CreateCircleScreen(navController: NavController) {
         containerColor = PundarBackground,
         bottomBar = {
             Column(modifier = Modifier.padding(16.dp)) {
-                createError?.let { err ->
-                    Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(8.dp))
-                }
                 PundarPrimaryButton(
-                    text = if (isCreating) "Launching..." else "Launch Circle",
-                    enabled = !isCreating && circleName.isNotBlank()
-                        && (targetAmount.toDoubleOrNull() ?: 0.0) > 0
-                        && selectedMembers.size <= maxMembersInt,
+                    text = "Launch Circle 🚀",
+                    enabled = circleName.isNotBlank() && (targetAmount.toDoubleOrNull() ?: 0.0) > 0,
                     onClick = {
-                        isCreating = true
-                        createError = null
-                        val creatorId = AuthRepository.getCurrentUserId() ?: ""
                         val newCircle = Circle(
                             id = "circle_${System.currentTimeMillis()}",
                             name = circleName,
@@ -128,71 +101,17 @@ fun CreateCircleScreen(navController: NavController) {
                             savedAmount = 0.0,
                             targetDate = targetDate.ifBlank { "TBD" },
                             memberCount = selectedMembers.size,
-                            maxMembers = maxMembersInt,
                             contributionPerMonth = monthlyContribution.toDoubleOrNull() ?: 0.0,
                             members = selectedMembers.toList(),
-                            creatorId = creatorId,
                             isActive = true
                         )
-                        scope.launch {
-                            val invitees = selectedMembers.filter { !it.isYou }
-                            val result = AppState.createCircle(newCircle, invitees)
-                            isCreating = false
-                            result.onSuccess { navController.navigateUp() }
-                                .onFailure { createError = it.message }
-                        }
+                        AppState.circles.add(0, newCircle)
+                        navController.navigateUp()
                     }
                 )
             }
         }
     ) { padding ->
-        // Date Picker Dialog
-        if (showDatePicker) {
-            val datePickerState = rememberDatePickerState(
-                selectableDates = object : SelectableDates {
-                    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                        // Convert evaluating UTC timestamp to LocalDate (DatePicker uses UTC internally)
-                        val selectableDate = Instant.ofEpochMilli(utcTimeMillis)
-                            .atZone(ZoneId.of("UTC"))
-                            .toLocalDate()
-
-                        // Get tomorrow's local date
-                        val tomorrow = LocalDate.now().plusDays(1)
-
-                        // Selectable if date is tomorrow or later
-                        return !selectableDate.isBefore(tomorrow)
-                    }
-
-                    override fun isSelectableYear(year: Int): Boolean {
-                        // Prevent selecting past years
-                        return year >= LocalDate.now().year
-                    }
-                }
-            )
-            DatePickerDialog(
-                onDismissRequest = { showDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val date = Date(millis)
-                            val format = SimpleDateFormat("MMM yyyy", Locale.getDefault())
-                            targetDate = format.format(date)
-                        }
-                        showDatePicker = false
-                    }) {
-                        Text("OK")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDatePicker = false }) {
-                        Text("Cancel")
-                    }
-                }
-            ) {
-                DatePicker(state = datePickerState)
-            }
-        }
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -259,32 +178,16 @@ fun CreateCircleScreen(navController: NavController) {
 
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(
-                            value = targetDate,
-                            onValueChange = { },
-                            label = { Text("Target Date") },
-                            placeholder = { Text("Pick a date") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PundarBlue,
-                                focusedLabelColor = PundarBlue,
-                                disabledBorderColor = PundarBorder,
-                                disabledLabelColor = PundarTextSecondary,
-                                disabledTextColor = PundarTextPrimary
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            enabled = false,
-                            readOnly = true
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { showDatePicker = true }
-                        )
-                    }
+                    OutlinedTextField(
+                        value = targetDate,
+                        onValueChange = { targetDate = it },
+                        label = { Text("Target Date") },
+                        placeholder = { Text("e.g. Dec 2025") },
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
                     OutlinedTextField(
                         value = maxMembers,
                         onValueChange = { maxMembers = it },
@@ -301,25 +204,9 @@ fun CreateCircleScreen(navController: NavController) {
             // Invite Members Section
             item {
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Invite Members (${selectedMembers.size} / $maxMembersInt)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = if (isAtCapacity) "Circle Full" else "$remainingSlots slots left",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isAtCapacity) MaterialTheme.colorScheme.error else PundarBlue,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                Text("Invite Members (${selectedMembers.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-
+                
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -394,11 +281,9 @@ fun CreateCircleScreen(navController: NavController) {
                 }
                 items(searchResults) { contact ->
                     Surface(
-                        modifier = Modifier.fillMaxWidth().clickable(enabled = !isAtCapacity) {
-                            if (!isAtCapacity) {
-                                selectedMembers.add(contact)
-                                searchQuery = ""
-                            }
+                        modifier = Modifier.fillMaxWidth().clickable { 
+                            selectedMembers.add(contact) 
+                            searchQuery = ""
                         },
                         shape = RoundedCornerShape(12.dp),
                         color = PundarSurface
@@ -440,7 +325,7 @@ fun CreateCircleScreen(navController: NavController) {
                     )
                 }
             }
-
+            
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
