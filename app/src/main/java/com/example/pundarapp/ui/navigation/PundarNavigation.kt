@@ -17,8 +17,8 @@ import com.example.pundarapp.ui.screens.circle.CircleDetailScreen
 import com.example.pundarapp.ui.screens.circle.CircleInviteScreen
 import com.example.pundarapp.ui.screens.circle.CircleScreen
 import com.example.pundarapp.ui.screens.circle.CreateCircleScreen
-import com.example.pundarapp.ui.screens.circle.CircleAdminScreen
-import com.example.pundarapp.ui.screens.circle.CircleInviteMethodsScreen
+// import com.example.pundarapp.ui.screens.circle.CircleAdminScreen
+// import com.example.pundarapp.ui.screens.circle.CircleInviteMethodsScreen
 import com.example.pundarapp.ui.screens.grow.GrowScreen
 import com.example.pundarapp.ui.screens.grow.StockDetailScreen
 import com.example.pundarapp.ui.screens.home.HomeScreen
@@ -191,6 +191,7 @@ fun PundarNavigation() {
                 val inviteId = backStackEntry.arguments?.getString("inviteId") ?: ""
                 CircleInviteScreen(inviteId = inviteId, navController = navController)
             }
+/*
             composable(
                 route = Routes.CIRCLE_ADMIN,
                 arguments = listOf(navArgument("circleId") { type = NavType.StringType })
@@ -205,6 +206,7 @@ fun PundarNavigation() {
                 val circleId = backStackEntry.arguments?.getString("circleId") ?: ""
                 CircleInviteMethodsScreen(circleId = circleId, navController = navController)
             }
+*/
             composable(Routes.GROW) {
                 GrowScreen(navController = navController)
             }
