@@ -13,3 +13,17 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Firebase — contains project keys, do not commit
+google-services.json
+
+# Android build outputs
+app/build/
+*.apk
+*.aab
+
+# Kotlin incremental compilation
+.kotlin/
+
+# Rust / Cargo build output
+circle_contract/target/
