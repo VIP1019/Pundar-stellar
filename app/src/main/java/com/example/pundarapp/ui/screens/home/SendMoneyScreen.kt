@@ -38,6 +38,7 @@ import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,6 +124,12 @@ fun SendMoneyScreen(navController: NavController) {
                                 )
                                 if (result.isSuccess) {
                                     AppState.refreshWalletBalance()
+                                    val sentAmount = amount.toDoubleOrNull() ?: 0.0
+                                    AppState.processPayRoundUp(
+                                        sourceReference = "PAY-${UUID.randomUUID().toString().take(8).uppercase()}",
+                                        sourceAmount = sentAmount,
+                                        sourceLabel = "Send Money"
+                                    )
                                     val activity = HomeActivity(
                                         icon      = "send",
                                         title     = "Sent to ${recipient.name}",
@@ -177,7 +184,8 @@ fun SendMoneyScreen(navController: NavController) {
                             errorMsg = "Enter a valid amount."
                             return@PundarPrimaryButton
                         }
-                        if (sendAmt > AppState.walletBalance.value) {
+                        val roundUp = AppState.calculateRoundUpAmount(sendAmt)
+                        if (sendAmt + roundUp > AppState.walletBalance.value) {
                             errorMsg = "Insufficient balance."
                             return@PundarPrimaryButton
                         }

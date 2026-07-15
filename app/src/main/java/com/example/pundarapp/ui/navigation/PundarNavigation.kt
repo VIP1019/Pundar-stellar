@@ -20,6 +20,7 @@ import com.example.pundarapp.ui.screens.circle.CreateCircleScreen
 // import com.example.pundarapp.ui.screens.circle.CircleAdminScreen
 // import com.example.pundarapp.ui.screens.circle.CircleInviteMethodsScreen
 import com.example.pundarapp.ui.screens.grow.GrowScreen
+import com.example.pundarapp.ui.screens.grow.RoundUpSettingsScreen
 import com.example.pundarapp.ui.screens.grow.StockDetailScreen
 import com.example.pundarapp.ui.screens.home.HomeScreen
 import com.example.pundarapp.ui.screens.home.NotificationScreen
@@ -55,6 +56,7 @@ object Routes {
     const val CIRCLE_DETAIL = "circle/{circleId}"
     const val CIRCLE_INVITE = "circle/invite/{inviteId}"
     const val GROW = "grow"
+    const val ROUND_UP_SETTINGS = "grow/round_up_settings"
     const val STOCK_DETAIL = "grow/stock/{ticker}"
     fun stockDetail(ticker: String) = "grow/stock/$ticker"
     fun billDetail(billId: String) = "pay/bill/$billId"
@@ -209,6 +211,9 @@ fun PundarNavigation() {
 */
             composable(Routes.GROW) {
                 GrowScreen(navController = navController)
+            }
+            composable(Routes.ROUND_UP_SETTINGS) {
+                RoundUpSettingsScreen(navController = navController)
             }
             composable(Routes.STOCK_DETAIL, arguments = listOf(navArgument("ticker") { type = NavType.StringType })) { backStackEntry ->
                 val ticker = backStackEntry.arguments?.getString("ticker") ?: ""

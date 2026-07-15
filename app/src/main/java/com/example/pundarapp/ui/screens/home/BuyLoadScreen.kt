@@ -35,6 +35,7 @@ import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.theme.*
+import java.util.UUID
 
 enum class MobileNetwork(val displayName: String, val color: Color) {
     UNKNOWN("Select Network", SpaceMedium),
@@ -88,13 +89,19 @@ fun BuyLoadScreen(navController: NavController) {
                             Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
                             return@PundarPrimaryButton
                         }
-                        if (loadAmount > AppState.walletBalance.value) {
+                        val roundUp = AppState.calculateRoundUpAmount(loadAmount)
+                        if (loadAmount + roundUp > AppState.walletBalance.value) {
                             Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
                             return@PundarPrimaryButton
                         }
 
                         // Deduct balance
                         AppState.walletBalance.value -= loadAmount
+                        AppState.processPayRoundUp(
+                            sourceReference = "LOAD-${UUID.randomUUID().toString().take(8).uppercase()}",
+                            sourceAmount = loadAmount,
+                            sourceLabel = "Buy Load"
+                        )
                         
                         // Log activity
                         AppState.homeActivities.add(

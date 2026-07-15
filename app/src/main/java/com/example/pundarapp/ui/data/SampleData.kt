@@ -113,7 +113,7 @@ data class StockHolding(
     val companyName: String,
     val sector: String,
     val exchange: String,
-    val shares: Int,
+    val shares: Double,
     val value: Double,
     val returnPercent: Double,
     val currentPrice: Double,
@@ -139,6 +139,31 @@ data class PortfolioActivity(
 )
 
 enum class ActivityType { AUTO_SWEEP, DIVIDEND, PURCHASE, ROUND_UP, PAYOUT }
+
+data class RoundUpInvestment(
+    val reference: String,
+    val sourceReference: String,
+    val sourceAmount: Double,
+    val roundUpAmount: Double,
+    val convertedAmount: Double,
+    val ticker: String,
+    val companyName: String,
+    val fractionalShares: Double,
+    val pricePerShare: Double,
+    val provider: String,
+    val status: String,
+    val createdAt: Long
+)
+
+data class RoundUpSettings(
+    val isEnabled: Boolean = true,
+    val threshold: Double = 100.0,
+    val roundUpMultiplier: Int = 1,
+    val targetStocks: List<String> = listOf("AC", "SMPH", "BDO", "JFC"),
+    val totalAccumulated: Double = 67.45,
+    val totalInvested: Double = 2340.00,
+    val roundUpCount: Int = 47
+)
 
 data class HomeActivity(
     val icon: String, // icon name
@@ -168,6 +193,8 @@ object SampleData {
     val circleInvitation: CircleInvitation? = null
 
     // ── Grow ────────────────────────────────────────────
+    
+    val roundUpSettings = RoundUpSettings()
 
     val portfolio = Portfolio(
         totalValue = 124500.00,
@@ -181,7 +208,7 @@ object SampleData {
                 companyName = "Ayala Corp",
                 sector = "Real Estate & Conglomerates",
                 exchange = "Philippine Stock Exchange",
-                shares = 150,
+                shares = 150.0,
                 value = 90000.00,
                 returnPercent = 5.2,
                 currentPrice = 850.50,
@@ -202,12 +229,35 @@ object SampleData {
                 )
             ),
             StockHolding(
+                ticker = "MER",
+                companyName = "Meralco",
+                sector = "Utilities",
+                exchange = "Philippine Stock Exchange",
+                shares = 50.0,
+                value = 17500.00,
+                returnPercent = 8.5,
+                currentPrice = 350.00,
+                priceChange = 5.00,
+                priceChangePercent = 1.44,
+                averageCost = 322.00,
+                marketCap = "₱ 394.0B",
+                peRatio = "12.1x",
+                divYield = "5.1%",
+                high52w = 380.00,
+                low52w = 290.00,
+                volume = "850K",
+                description = "Manila Electric Company (Meralco) is the largest private sector electric distribution utility company in the Philippines.",
+                priceHistory = listOf(
+                    320f, 325f, 330f, 335f, 340f, 345f, 350f, 348f, 352f, 350f
+                )
+            ),
+            StockHolding(
                 ticker = "SMPH",
                 companyName = "SM Prime",
                 sector = "Real Estate",
                 exchange = "Philippine Stock Exchange",
-                shares = 500,
-                value = 16500.00,
+                shares = 200.0,
+                value = 6500.00,
                 returnPercent = 1.8,
                 currentPrice = 33.00,
                 priceChange = 0.50,
@@ -230,7 +280,7 @@ object SampleData {
                 companyName = "BDO Unibank",
                 sector = "Banking",
                 exchange = "Philippine Stock Exchange",
-                shares = 120,
+                shares = 120.0,
                 value = 18000.00,
                 returnPercent = -0.5,
                 currentPrice = 150.00,

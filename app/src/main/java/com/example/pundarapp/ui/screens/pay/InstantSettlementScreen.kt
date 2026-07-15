@@ -63,9 +63,13 @@ fun InstantSettlementScreen(navController: NavController) {
     val totalSettlement = remember(selectedBillIds) {
         pendingBills.filter { it.id in selectedBillIds }.sumOf { it.yourShare }
     }
+    val roundUpAmount = remember(totalSettlement) {
+        AppState.calculateRoundUpAmount(totalSettlement)
+    }
+    val totalDebit = totalSettlement + roundUpAmount
     
     val walletBalance = AppState.walletBalance.value
-    val hasSufficientBalance = totalSettlement <= walletBalance
+    val hasSufficientBalance = totalDebit <= walletBalance
     
     Scaffold(
         topBar = {
@@ -161,6 +165,7 @@ fun InstantSettlementScreen(navController: NavController) {
             if (selectedBillIds.isNotEmpty()) {
                 SettlementBottomBar(
                     totalAmount = totalSettlement,
+                    roundUpAmount = roundUpAmount,
                     hasSufficientBalance = hasSufficientBalance,
                     onSettle = { showConfirmDialog = true },
                     modifier = Modifier.align(Alignment.BottomCenter)
@@ -172,6 +177,7 @@ fun InstantSettlementScreen(navController: NavController) {
         if (showConfirmDialog) {
             SettlementConfirmDialog(
                 totalAmount = totalSettlement,
+                roundUpAmount = roundUpAmount,
                 billCount = selectedBillIds.size,
                 walletBalance = walletBalance,
                 hasSufficientBalance = hasSufficientBalance,
@@ -220,10 +226,19 @@ fun InstantSettlementScreen(navController: NavController) {
                         transactionRef = result.getOrNull() ?: ""
                         AppState.walletBalance.value -= totalSettlement
                         selectedBillIds.forEach { billId -> AppState.settleBill(billId) }
+                        val growInvestment = AppState.processPayRoundUp(
+                            sourceReference = transactionRef,
+                            sourceAmount = totalSettlement,
+                            sourceLabel = "Instant Settlement"
+                        )
                         AppState.requestHomeRefresh()
                         AppState.refreshNotifications()
 
-                        processingStage = "Generating receipt..."
+                        processingStage = if (growInvestment != null) {
+                            "Buying fractional ${growInvestment.ticker} shares..."
+                        } else {
+                            "Generating receipt..."
+                        }
                         delay(400)
 
                         isProcessing = false
@@ -243,6 +258,7 @@ fun InstantSettlementScreen(navController: NavController) {
         if (showSuccessDialog) {
             SuccessDialog(
                 totalAmount = totalSettlement,
+                roundUpAmount = roundUpAmount,
                 transactionRef = transactionRef,
                 onDismiss = {
                     showSuccessDialog = false
@@ -358,6 +374,7 @@ private fun SelectableBillCard(
 @Composable
 private fun SettlementBottomBar(
     totalAmount: Double,
+    roundUpAmount: Double,
     hasSufficientBalance: Boolean,
     onSettle: () -> Unit,
     modifier: Modifier = Modifier
@@ -387,6 +404,13 @@ private fun SettlementBottomBar(
                         fontWeight = FontWeight.Bold,
                         color = PundarTextPrimary
                     )
+                    if (roundUpAmount > 0.0) {
+                        Text(
+                            text = "+ ₱${String.format("%,.2f", roundUpAmount)} Grow round-up",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ElectricBlue
+                        )
+                    }
                 }
                 PundarPrimaryButton(
                     text = "Settle Now",
@@ -422,6 +446,7 @@ private fun SettlementBottomBar(
 @Composable
 private fun SettlementConfirmDialog(
     totalAmount: Double,
+    roundUpAmount: Double,
     billCount: Int,
     walletBalance: Double,
     hasSufficientBalance: Boolean,
@@ -476,9 +501,21 @@ private fun SettlementConfirmDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    Text("Grow Round-up:", color = PundarTextSecondary)
+                    Text(
+                        "₱${String.format("%,.2f", roundUpAmount)}",
+                        fontWeight = FontWeight.Bold,
+                        color = ElectricBlue
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text("New Balance:", color = PundarTextSecondary)
                     Text(
-                        "₱${String.format("%,.2f", walletBalance - totalAmount)}",
+                        "₱${String.format("%,.2f", walletBalance - totalAmount - roundUpAmount)}",
                         fontWeight = FontWeight.Bold,
                         color = if (hasSufficientBalance) PundarSuccess else WarningAmber
                     )
@@ -557,6 +594,7 @@ private fun ProcessingDialog(stage: String) {
 @Composable
 private fun SuccessDialog(
     totalAmount: Double,
+    roundUpAmount: Double,
     transactionRef: String,
     onDismiss: () -> Unit
 ) {
@@ -649,6 +687,18 @@ private fun SuccessDialog(
                                 fontWeight = FontWeight.Bold,
                                 color = PundarTextPrimary,
                                 style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Grow Round-up:", color = PundarTextSecondary, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "₱${String.format("%,.2f", roundUpAmount)}",
+                                fontWeight = FontWeight.Bold,
+                                color = ElectricBlue,
+                                style = MaterialTheme.typography.bodyMedium
                             )
                         }
                     }

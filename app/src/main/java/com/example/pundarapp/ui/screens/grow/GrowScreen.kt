@@ -172,6 +172,22 @@ fun GrowScreen(navController: NavController) {
                 )
             }
 
+            // 1.5 ── Round-Up Card
+            item {
+                RoundUpCard(
+                    settings = AppState.roundUpSettings.value,
+                    onSettingsClick = { navController.navigate("grow/round_up_settings") }, // TODO: use Routes.ROUND_UP_SETTINGS
+                    onInvestNowClick = {
+                        // For demo, forcefully trigger auto-invest with current accumulation if > 0
+                        if (AppState.roundUpSettings.value.totalAccumulated > 0) {
+                            // Using private purchaseTokenizedEquity logic is tricky from here without a public wrapper.
+                            // We will add a public `triggerManualRoundUpInvest()` to AppState later.
+                            AppState.triggerManualRoundUpInvest()
+                        }
+                    }
+                )
+            }
+
             // 2 ── Allocation
             item { AllocationSection(portfolio = portfolio) }
 
@@ -540,6 +556,168 @@ private fun PortfolioHeroCard(
     }
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+//  Round-Up Card Section
+// ═══════════════════════════════════════════════════════════════
+
+@Composable
+private fun RoundUpCard(
+    settings: RoundUpSettings,
+    onSettingsClick: () -> Unit,
+    onInvestNowClick: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text       = "Spare Change Round-Up",
+            fontWeight = FontWeight.Bold,
+            fontSize   = 15.sp,
+            color      = TextPrimary
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd))
+                )
+                .border(1.dp, BorderWhiteStrong, RoundedCornerShape(20.dp))
+                .padding(20.dp)
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Accumulated",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "₱ ${String.format("%,.2f", settings.totalAccumulated)}",
+                                color = TextPrimary,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text = " / ₱ ${String.format("%,.0f", settings.threshold)}",
+                                color = TextTertiary,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(bottom = 3.dp, start = 4.dp)
+                            )
+                        }
+                    }
+                    
+                    if (settings.isEnabled) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(NeonGreen.copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "Active",
+                                color = NeonGreen,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(TextTertiary.copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "Paused",
+                                color = TextTertiary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Progress Bar
+                val progress = (settings.totalAccumulated / settings.threshold).toFloat().coerceIn(0f, 1f)
+                val animatedProgress by animateFloatAsState(targetValue = progress, label = "progress")
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Navy800)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedProgress)
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                Brush.horizontalGradient(listOf(ElectricBlue, NeonGreen))
+                            )
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Lifetime Invested", color = TextSecondary, fontSize = 11.sp)
+                        Text(
+                            "₱ ${String.format("%,.2f", settings.totalInvested)}",
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Round-Ups", color = TextSecondary, fontSize = 11.sp)
+                        Text(
+                            "${settings.roundUpCount} (${settings.roundUpMultiplier}x)",
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    PundarSecondaryButton(
+                        text = "Settings",
+                        onClick = onSettingsClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                    PundarPrimaryButton(
+                        text = "Invest Now",
+                        onClick = onInvestNowClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  Allocation Section

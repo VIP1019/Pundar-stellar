@@ -193,6 +193,208 @@ object AppState {
     // ── GROW ────────────────────────────────────────────────────────
     val portfolio = mutableStateOf(SampleData.portfolio)
     val favoriteStocks = mutableStateOf(emptySet<String>())
+    val roundUpSettings = mutableStateOf(SampleData.roundUpSettings)
+
+    fun loadRoundUpState() {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            // Placeholder: Load from repo
+        }
+    }
+
+    fun toggleRoundUp(enabled: Boolean) {
+        roundUpSettings.value = roundUpSettings.value.copy(isEnabled = enabled)
+        persistRoundUpState(null)
+    }
+
+    fun setRoundUpMultiplier(multiplier: Int) {
+        roundUpSettings.value = roundUpSettings.value.copy(roundUpMultiplier = multiplier)
+        persistRoundUpState(null)
+    }
+
+    fun setRoundUpThreshold(threshold: Double) {
+        roundUpSettings.value = roundUpSettings.value.copy(threshold = threshold)
+        persistRoundUpState(null)
+    }
+
+    fun updateTargetStocks(targets: List<String>) {
+        if (targets.isEmpty()) return
+        roundUpSettings.value = roundUpSettings.value.copy(targetStocks = targets)
+        persistRoundUpState(null)
+    }
+
+    private fun persistRoundUpState(investment: RoundUpInvestment?) {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            // Placeholder: persist to backend
+        }
+    }
+
+    fun calculateRoundUpAmount(amount: Double): Double {
+        val settings = roundUpSettings.value
+        if (!settings.isEnabled || amount <= 0.0) return 0.0
+        
+        val roundedTarget = kotlin.math.ceil(amount)
+        val baseRoundUp = roundedTarget - amount
+        
+        return if (baseRoundUp > 0.0) baseRoundUp * settings.roundUpMultiplier else 0.0
+    }
+
+    fun processPayRoundUp(
+        sourceReference: String,
+        sourceAmount: Double,
+        sourceLabel: String
+    ): RoundUpInvestment? {
+        val settings = roundUpSettings.value
+        if (!settings.isEnabled) return null
+
+        val roundUp = calculateRoundUpAmount(sourceAmount)
+        if (roundUp <= 0.0) return null
+
+        if (walletBalance.value < roundUp) {
+            addHomeActivity(
+                HomeActivity(
+                    icon = "trending_up",
+                    title = "Round-up skipped",
+                    subtitle = "Insufficient balance after $sourceLabel",
+                    amount = "₱ ${String.format("%,.2f", roundUp)}",
+                    isPositive = false,
+                    module = "Grow"
+                )
+            )
+            return null
+        }
+
+        walletBalance.value -= roundUp
+        val accumulated = settings.totalAccumulated + roundUp
+        
+        val updatedSettings = settings.copy(
+            totalAccumulated = accumulated,
+            roundUpCount = settings.roundUpCount + 1
+        )
+        roundUpSettings.value = updatedSettings
+
+        return if (accumulated >= settings.threshold) {
+            val investment = purchaseTokenizedEquity(
+                sourceReference = sourceReference,
+                sourceAmount = sourceAmount,
+                roundUpAmount = roundUp,
+                accumulatedAmount = accumulated
+            )
+            // Reset accumulated and update lifetime invested
+            roundUpSettings.value = roundUpSettings.value.copy(
+                totalAccumulated = 0.0,
+                totalInvested = roundUpSettings.value.totalInvested + accumulated
+            )
+            persistRoundUpState(investment)
+            investment
+        } else {
+            persistRoundUpState(null)
+            addHomeActivity(
+                HomeActivity(
+                    icon = "trending_up",
+                    title = "Round-up captured",
+                    subtitle = "$sourceLabel spare change saved for Grow",
+                    amount = "-₱ ${String.format("%,.2f", roundUp)}",
+                    isPositive = false,
+                    module = "Grow"
+                )
+            )
+            null
+        }
+    }
+
+    fun triggerManualRoundUpInvest() {
+        val settings = roundUpSettings.value
+        val accumulated = settings.totalAccumulated
+        if (accumulated <= 0.0) return
+
+        val investment = purchaseTokenizedEquity(
+            sourceReference = "MANUAL-${System.currentTimeMillis()}",
+            sourceAmount = 0.0,
+            roundUpAmount = 0.0,
+            accumulatedAmount = accumulated
+        )
+        // Reset accumulated and update lifetime invested
+        roundUpSettings.value = settings.copy(
+            totalAccumulated = 0.0,
+            totalInvested = settings.totalInvested + accumulated
+        )
+        persistRoundUpState(investment)
+    }
+
+    private fun purchaseTokenizedEquity(
+        sourceReference: String,
+        sourceAmount: Double,
+        roundUpAmount: Double,
+        accumulatedAmount: Double
+    ): RoundUpInvestment {
+        val oldPortfolio = portfolio.value
+        val targetHolding = chooseRoundUpTarget(oldPortfolio.holdings)
+        val fractionalShares = accumulatedAmount / targetHolding.currentPrice
+        val updatedHoldings = oldPortfolio.holdings.map { holding ->
+            if (holding.ticker == targetHolding.ticker) {
+                holding.copy(
+                    shares = holding.shares + fractionalShares,
+                    value = holding.value + accumulatedAmount
+                )
+            } else {
+                holding
+            }
+        }
+        portfolio.value = oldPortfolio.copy(
+            holdings = updatedHoldings,
+            totalValue = oldPortfolio.totalValue + accumulatedAmount,
+            activities = listOf(
+                PortfolioActivity(
+                    type = ActivityType.ROUND_UP,
+                    amount = accumulatedAmount,
+                    date = "Just now",
+                    description = "Round-up auto-invested in ${targetHolding.ticker}",
+                    isPositive = true
+                )
+            ) + oldPortfolio.activities
+        )
+        
+        addHomeActivity(
+            HomeActivity(
+                icon = "trending_up",
+                title = "Auto-Invested",
+                subtitle = "Round-up goal reached!",
+                amount = "₱ ${String.format("%,.2f", accumulatedAmount)}",
+                isPositive = true,
+                module = "Grow"
+            )
+        )
+        
+        return RoundUpInvestment(
+            reference = "RINV-${System.currentTimeMillis()}",
+            sourceReference = sourceReference,
+            sourceAmount = sourceAmount,
+            roundUpAmount = roundUpAmount,
+            convertedAmount = accumulatedAmount,
+            ticker = targetHolding.ticker,
+            companyName = targetHolding.companyName,
+            fractionalShares = fractionalShares,
+            pricePerShare = targetHolding.currentPrice,
+            provider = "Pundar Grow",
+            status = "COMPLETED",
+            createdAt = System.currentTimeMillis()
+        )
+    }
+
+    private fun chooseRoundUpTarget(holdings: List<StockHolding>): StockHolding {
+        val targets = roundUpSettings.value.targetStocks
+        if (targets.isEmpty()) return holdings.first()
+        val preferredHoldings = holdings.filter { it.ticker in targets }
+        return if (preferredHoldings.isNotEmpty()) {
+            preferredHoldings.minByOrNull { it.value } ?: holdings.first()
+        } else {
+            holdings.first()
+        }
+    }
 
     fun loadFavorites() {
         val userId = AuthRepository.getCurrentUserPhone()
