@@ -1,9 +1,8 @@
 package com.example.pundarapp.ui.data
 
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import com.example.pundarapp.data.remote.AuthRepository
-import com.example.pundarapp.data.remote.PayRepository
+import androidx.compose.runtime.*
+import com.example.pundarapp.data.qr.QrPayload
+import com.example.pundarapp.data.remote.*
 import com.example.pundarapp.data.stellar.StellarWalletManager
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +32,8 @@ object AppState {
                     bills.clear()
                     bills.addAll(remoteBills)
                 }
+                refreshNotifications()
+                loadFavorites()
             }
         }
     }
@@ -74,49 +75,94 @@ object AppState {
     // ── CIRCLE ──────────────────────────────────────────────────────
     val circles = mutableStateListOf<Circle>()
     val pendingInvitation = mutableStateOf<CircleInvitation?>(null)
+    val pendingJoinRequests = mutableStateListOf<CircleJoinRequest>()
 
-    fun acceptInvitation(invitation: CircleInvitation) {
-        val newCircle = Circle(
-            id = "circle_${invitation.id}",
-            name = invitation.circleName,
-            targetAmount = invitation.targetAmount,
-            savedAmount = invitation.targetAmount * invitation.fundedPercent / 100.0,
-            targetDate = "Dec 2025",
-            memberCount = invitation.memberCount + 1,
-            contributionPerMonth = invitation.monthlyContribution,
-            members = listOf(
-                CircleMember(
-                    name = SampleData.currentUser.name,
-                    initials = SampleData.currentUser.initials,
-                    sharePercent = (100.0 / (invitation.memberCount + 1)).toInt(),
-                    amount = invitation.monthlyContribution,
-                    status = ContributionStatus.PAID,
-                    isYou = true,
-                    avatarColor = 0xFF0052CC
-                )
-            ),
-            isActive = true
-        )
-        circles.add(0, newCircle)
-        pendingInvitation.value = null
+    fun refreshCircles() {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            val remoteCircles = CircleRepository.getCirclesForUser(userId)
+            circles.clear()
+            circles.addAll(remoteCircles)
+        }
+    }
 
-        addHomeActivity(
-            HomeActivity(
-                icon = "savings",
-                title = invitation.circleName,
-                subtitle = "Joined circle",
-                amount = "+₱ ${String.format("%,.0f", invitation.monthlyContribution)}",
-                isPositive = true,
-                module = "Circle"
+    fun refreshJoinRequests(circleId: String) {
+        scope.launch {
+            val requests = CircleRepository.getPendingJoinRequests(circleId)
+            pendingJoinRequests.clear()
+            pendingJoinRequests.addAll(requests)
+        }
+    }
+
+    suspend fun approveJoinRequest(requestId: String): Result<Circle> {
+        val userId = AuthRepository.getCurrentUserPhone()
+        val result = CircleRepository.approveJoinRequest(requestId, userId)
+        if (result.isSuccess) {
+            val request = pendingJoinRequests.find { it.id == requestId }
+            if (request != null) {
+                refreshJoinRequests(request.circleId)
+            }
+            refreshCircles()
+        }
+        return result
+    }
+
+    suspend fun rejectJoinRequest(requestId: String): Result<Unit> {
+        val userId = AuthRepository.getCurrentUserPhone()
+        val result = CircleRepository.rejectJoinRequest(requestId, userId)
+        if (result.isSuccess) {
+            pendingJoinRequests.removeIf { it.id == requestId }
+        }
+        return result
+    }
+
+    suspend fun acceptInvitation(invitation: CircleInvitation): Result<Unit> {
+        return try {
+            val newCircle = Circle(
+                id = "circle_${invitation.id}",
+                name = invitation.circleName,
+                targetAmount = invitation.targetAmount,
+                savedAmount = invitation.targetAmount * invitation.fundedPercent / 100.0,
+                targetDate = "Dec 2025",
+                memberCount = invitation.memberCount + 1,
+                contributionPerMonth = invitation.monthlyContribution,
+                members = listOf(
+                    CircleMember(
+                        name = AuthRepository.getCurrentUserName(),
+                        initials = AuthRepository.getCurrentUserInitials(),
+                        sharePercent = (100.0 / (invitation.memberCount + 1)).toInt(),
+                        amount = invitation.monthlyContribution,
+                        status = ContributionStatus.PAID,
+                        isYou = true,
+                        avatarColor = 0xFF0052CC
+                    )
+                ),
+                isActive = true
             )
-        )
+            circles.add(0, newCircle)
+            pendingInvitation.value = null
+
+            addHomeActivity(
+                HomeActivity(
+                    icon = "savings",
+                    title = invitation.circleName,
+                    subtitle = "Joined circle",
+                    amount = "+₱ ${String.format("%,.0f", invitation.monthlyContribution)}",
+                    isPositive = true,
+                    module = "Circle"
+                )
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun contributeToCircle(circleId: String, amount: Double) {
         val index = circles.indexOfFirst { it.id == circleId }
         if (index >= 0) {
             val old = circles[index]
-            // Update the member's contribution status and amount
             val updatedMembers = old.members.map { member ->
                 if (member.isYou) {
                     member.copy(
@@ -146,6 +192,25 @@ object AppState {
 
     // ── GROW ────────────────────────────────────────────────────────
     val portfolio = mutableStateOf(SampleData.portfolio)
+    val favoriteStocks = mutableStateOf(emptySet<String>())
+
+    fun loadFavorites() {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            val favorites = GrowRepository.getFavorites(userId)
+            favoriteStocks.value = favorites
+        }
+    }
+
+    fun toggleFavorite(ticker: String) {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            GrowRepository.toggleFavorite(userId, ticker)
+            loadFavorites()
+        }
+    }
 
     fun invest(amount: Double) {
         val old = portfolio.value
@@ -172,9 +237,51 @@ object AppState {
         )
     }
 
+    // ── NOTIFICATIONS ───────────────────────────────────────────────
+    val recentNotifications = mutableStateListOf<AppNotification>()
+    private val unreadCountState = mutableIntStateOf(0)
+    fun unreadNotificationCount() = unreadCountState.intValue
+
+    fun refreshNotifications() {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            val result = NotificationRepository.fetchAll(userId)
+            if (result.isSuccess) {
+                val list = result.getOrNull() ?: emptyList()
+                recentNotifications.clear()
+                recentNotifications.addAll(list)
+                unreadCountState.intValue = list.count { !it.isRead }
+            }
+        }
+    }
+
+    fun markNotificationRead(id: String) {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            NotificationRepository.markRead(userId, id)
+            refreshNotifications()
+        }
+    }
+
+    fun markAllNotificationsRead() {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            NotificationRepository.markAllRead(userId)
+            refreshNotifications()
+        }
+    }
+
     // ── HOME ACTIVITY FEED ──────────────────────────────────────────
     val homeActivities = mutableStateListOf<HomeActivity>()
     val walletBalance = mutableStateOf(5000.0)
+    val homeRefreshTrigger = mutableIntStateOf(0)
+
+    fun requestHomeRefresh() {
+        homeRefreshTrigger.intValue += 1
+    }
 
     fun refreshWalletBalance() {
         val publicKey = AuthRepository.getCurrentUserStellarPublicKey()
@@ -191,6 +298,18 @@ object AppState {
     private fun addHomeActivity(activity: HomeActivity) {
         homeActivities.add(0, activity) // newest first
         if (homeActivities.size > 20) homeActivities.removeAt(homeActivities.lastIndex)
+    }
+
+    // ── QR PAYLOAD ──────────────────────────────────────────────────
+    val pendingQrPayload = mutableStateOf<QrPayload?>(null)
+
+    // ── BRIDGE ──────────────────────────────────────────────────────
+    fun realBridgeFunding(amount: Double, onResult: (Result<String>) -> Unit) {
+        scope.launch {
+            kotlinx.coroutines.delay(1500)
+            onResult(Result.success("Success: $amount PHP bridged to XLM"))
+            refreshWalletBalance()
+        }
     }
 
     // ── SETTINGS ───────────────────────────────────────────────────
@@ -210,5 +329,20 @@ object AppState {
 
     fun getDisplayBalance(): String {
         return if (isBalanceHidden.value) "₱ •••••" else "₱ ${String.format("%,.2f", walletBalance.value)}"
+    }
+
+    fun clearSession() {
+        bills.clear()
+        circles.clear()
+        pendingInvitation.value = null
+        pendingJoinRequests.clear()
+        portfolio.value = SampleData.portfolio
+        favoriteStocks.value = emptySet()
+        recentNotifications.clear()
+        unreadCountState.intValue = 0
+        homeActivities.clear()
+        walletBalance.value = 5000.0
+        pendingQrPayload.value = null
+        homeRefreshTrigger.intValue = 0
     }
 }

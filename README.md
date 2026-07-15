@@ -1,338 +1,127 @@
-# PUNDAR — Build Together. Grow Together.
+OFFICIAL ENTRY — APAC Stellar Hackathon
+Submitted by The University of Camarines Norte
 
-<p align="center">
-  <img src="app/src/main/res/drawable/logo.png" width="120" alt="PUNDAR Logo"/>
-</p>
+# PUNDAR
 
-<p align="center">
-  <strong>A next-generation Filipino fintech super-app powered by Stellar blockchain and Soroban smart contracts.</strong><br/>
-  Pay · Save · Grow · Circle (Paluwagan)
-</p>
+Progressive Unified Network for Digital Asset Resilience
+" Every Peso Keeps Building."
+---
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android"/>
-  <img src="https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=flat-square&logo=kotlin"/>
-  <img src="https://img.shields.io/badge/Stellar-Soroban-000000?style=flat-square&logo=stellar"/>
-  <img src="https://img.shields.io/badge/Firebase-Firestore-FFCA28?style=flat-square&logo=firebase"/>
-  <img src="https://img.shields.io/badge/Jetpack_Compose-BOM_2024.09-4285F4?style=flat-square&logo=jetpackcompose"/>
-  <img src="https://img.shields.io/badge/minSdk-26_(Android_8)-brightgreen?style=flat-square"/>
-</p>
+## Overview
+
+PUNDAR — Filipino for "to build" or "to establish" — is the next-generation financial ecosystem built to empower Filipinos through decentralized group savings, transparent bill management, and accessible investment tools.
+
+Built on the Stellar Network, Pundar bridges traditional Filipino community finance — like the filipino finance culture "paluwagan" with modern blockchain infrastructure, giving every Filipino a fast, low-cost, and trustless way to save, spend, and grow their money together.
 
 ---
 
-## 🌟 Contract Address
+## Core Functionality: The Three Core Function
 
-> **Soroban Smart Contract — Paluwagan Circle Escrow**
->
-> ```
-> PUNDAR_CIRCLE_CONTRACT_ADDRESS = <YOUR_CONTRACT_ADDRESS_HERE>
-> ```
->
-> Network: **Stellar Testnet / Futurenet**
-> Contract: `circle_contract/src/lib.rs`
+Pundar organizes financial life into three tightly integrated modules.
 
----
+### PUNDAR CIRCLE — Decentralized Paluwagan
+The center of Pundar. It digitizes the traditional Filipino "paluwagan"(Rotating Savings and Credit Association).
 
-## 📖 Project Description
+- Soroban Smart Contracts — Group funds are locked in secure Soroban escrows on the Stellar Network, so no single member can abscond with the pot.
+- Automated Cycles — Handles invitations, join requests, and contribution tracking with cryptographic transparency.
+- Pundar Score — A reputation system that rewards consistent contributors, making community trust measurable.
 
-**PUNDAR** is a Filipino-first fintech super-app that combines everyday mobile payments with community-based savings (Paluwagan), micro-investing, and load purchasing — all secured by the **Stellar blockchain** and **Soroban smart contracts**.
+### PUNDAR PAY — Social Payments
+Simplifies group financial obligations through intuitive social tools.
 
-The name *Pundar* (Filipino: "to save/invest") reflects our mission: making financial tools that are trustless, transparent, and built for the Filipino community.
+- Group Bill Splitting— Create and track shared expenses (e.g., "Cafe with friends").
+- QR-Powered Transfers — Stellar-backed QR payloads for instant, low-cost peer-to-peer transfers and bill settlements.
+- Real-Time Activity Feed — A centralized "Home" feed tracking every peso moved within the ecosystem.
 
-### The Problem We're Solving
+### PUNDAR GROW — Inclusive Wealth Building
+Lowers the barrier to entry for the Philippine stock market and fixed-income assets.
 
-1. **Trust in Paluwagan** — Traditional Filipino group savings (Paluwagan) rely on personal trust. Members have no recourse if the organizer disappears with the pot.
-2. **Financial exclusion** — Millions of Filipinos are unbanked or underserved by traditional financial institutions.
-3. **Fragmented apps** — Users juggle separate apps for payments, savings, load, and investments.
-
-### Our Solution
-
-PUNDAR puts all of these into a single, beautiful app:
-- 💳 **Wallet** — Send, receive, cash in via QR
-- 🧾 **Pay (Group Bills)** — Split bills, track settlements, instant QR payments
-- 🌀 **Circle (Paluwagan)** — Blockchain-secured rotating savings with Soroban escrow
-- 📈 **Grow** — Philippine stock market micro-investing
-- 📱 **Load** — Buy mobile load for Smart, Globe, TNT, TM, and DITO with prefix validation
+- Micro-Investments — Access to PH Equities and Fixed Income portfolios.
+- Auto-Sweep & Round-Ups — Automatically invests spare change from daily transactions into a diversified portfolio.
+- Interactive Analytics — Real-time performance tracking with custom-built Compose charts.
 
 ---
 
-## 🏗️ Architecture
+## Tech Stack & Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Android App                          │
-│   Kotlin + Jetpack Compose (Material 3)                  │
-│                                                          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
-│  │   Home   │ │   Pay    │ │  Circle  │ │   Grow   │   │
-│  │  Wallet  │ │  Bills   │ │Paluwagan │ │ Investing│   │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │
-│                                                          │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │               Data Layer                         │   │
-│  │  AuthRepository · CircleRepository · PayRepo     │   │
-│  │  GrowRepository · NotificationRepository         │   │
-│  └──────────────────────────────────────────────────┘   │
-└───────────────┬──────────────────────┬──────────────────┘
-                │                      │
-    ┌───────────▼──────────┐  ┌────────▼────────────────┐
-    │  Google Firebase      │  │  Stellar Network        │
-    │  Firestore (DB)       │  │  • XLM Wallet           │
-    │  Security Rules       │  │  • Soroban Contract     │
-    └───────────────────────┘  │  • Escrow Automation    │
-                               └─────────────────────────┘
-```
+| Layer | Technology |
+
+| Language | 100% Kotlin |
+
+| UI Framework | Jetpack Compose — declarative, reactive UI with a custom "Futuristic" design language |
+
+| State Management | Centralized Compose Snapshot State via a singleton `AppState` for instantaneous UI updates app-wide |
+
+| Backend | Firebase Firestore — real-time database for user profiles, social metadata, and notifications |
+
+| Blockchain — Stellar SDK | Custodial wallet generation, XLM/USDC balance management, testnet funding |
+
+| Blockchain — Soroban| Smart contracts powering decentralized escrow and paluwagan logic |
+
+| Security | 4-digit MPIN for local sessions and transaction signing; AES encryption for stored Stellar secret seeds |
+
+| Hardware Integration | ML Kit & CameraX for high-speed QR code scanning and generation |
 
 ---
 
-## 🔗 Stellar & Soroban Integration
-
-### Soroban Smart Contract — `PundarCircleContract`
-
-The heart of PUNDAR's Paluwagan feature is a **Soroban smart contract** written in Rust that:
-
-| Feature | Description |
-|---------|-------------|
-| `create_circle` | Creates a new savings group with members, payout order, cycle duration, and token address |
-| `contribute` | Members transfer tokens; contract verifies membership, amount, and prevents double-contribution |
-| `check_and_payout` | When all members have contributed, automatically pays the next recipient in the rotation |
-| `check_and_dissolve` | If a cycle deadline passes without full contribution, refunds all contributors |
-| `get_circle_state` | Read-only state query for the mobile app |
-
-**Security guarantees:**
-- Funds are held **in-contract** — no single party controls the pot
-- Payout order is set at creation and cannot be tampered with
-- Automatic refund if cycle fails (deadline protection)
-- Built with `soroban-sdk = "22.0.11"`
-
-### Stellar Wallet Manager
-
-Each PUNDAR user gets a **Stellar XLM wallet** generated and managed on-device:
-- Keys are encrypted and stored locally with a pepper
-- Real-time balance fetched from Stellar Horizon API
-- Transaction signing for Soroban contract calls
-
----
-
-## ✨ Features
-
-### 💳 Home & Wallet
-- Animated flippable wallet card (front: balance, back: virtual card)
-- Hide/show balance toggle
-- Activity feed (Pay, Circle, Grow events)
-- Pull-to-refresh with live balance sync
-- QR code send & receive
-
-### 🧾 Pay — Group Bill Splitting
-- Create group bills with multiple members
-- Track pending, partial, and settled bills
-- QR-based instant settlement
-- Real-time Firestore sync
-- Bill history with PUNDAR Score impact
-
-### 🌀 Circle — Blockchain Paluwagan
-- Create savings circles with configurable rules
-- **Soroban smart contract escrow** — trustless and automated
-- Admin panel: start/end cycle, manage members, set penalties
-- 4 invitation methods: QR Code, Share Link, Username, Phone
-- Join via deep-link invitation
-- Member contribution tracking with status chips
-- Pending join requests with approve/reject flow
-- Cycle status lifecycle: Not Started → Active → Paused → Completed
-
-### 📈 Grow — Micro-Investing
-- Philippine Stock Exchange (PSE) holdings
-- Portfolio overview with return metrics
-- Stock detail screens with price history charts
-- Invest / Withdraw dialogs
-- Portfolio optimization suggestions
-- Favorites system with Firebase persistence
-- Auto-sweep round-up feature
-
-### 📱 Load — Mobile Top-Up
-- **5 networks**: Smart, TNT, Globe, TM, DITO
-- Prefix-based network auto-detection and validation
-- Named product catalog (GoSURF, GigaLife, DITO99, etc.)
-- **Prepaid / Postpaid** architecture (Postpaid: coming soon)
-- Balance check before purchase
-
----
-
-## 🎨 Design System
-
-PUNDAR uses a **custom futuristic fintech design system** built entirely with Jetpack Compose:
-
-- **Color palette**: Deep navy (`#090F1F`) base with electric blue, neon green, and premium gold accents
-- **AnimatedBackground**: Per-screen canvas animations — drifting radial orbs, rotating mesh lines, particle field, shimmer sweep
-- **Flippable Wallet Card**: 3D flip animation with glowing shadow, pulsing orbs, NFC icon, verified badge
-- **App Icon**: Adaptive icon with deep navy gradient, concentric ring reticle, P lettermark, dual arc sweeps in blue and gold
-- **Typography**: Futuristic weight hierarchy from ExtraBold headers to Muted labels
-
----
-
-## 🛠️ Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| **Language** | Kotlin 2.0.21 |
-| **UI** | Jetpack Compose (BOM 2024.09.00) + Material 3 |
-| **Navigation** | Navigation Compose 2.8.5 |
-| **Blockchain** | Stellar SDK 4.0.0 + Soroban (Rust) |
-| **Smart Contract** | Rust · soroban-sdk 22.0.11 |
-| **Database** | Firebase Firestore |
-| **Camera / QR** | CameraX 1.3.1 + ML Kit Barcode Scanning 17.2.0 |
-| **QR Generation** | ZXing 3.5.3 |
-| **Image Loading** | Coil Compose 2.7.0 |
-| **Serialization** | kotlinx.serialization 1.6.3 |
-| **Min SDK** | 26 (Android 8.0 Oreo) |
-| **Target SDK** | 35 |
-
----
-
-## 📁 Project Structure
-
-```
-PundarApp/
-├── app/src/main/java/com/example/pundarapp/
-│   ├── data/
-│   │   ├── qr/              # QR payload model + generator + scanner
-│   │   ├── remote/          # Repositories (Auth, Pay, Circle, Grow, etc.)
-│   │   └── stellar/         # StellarWalletManager
-│   └── ui/
-│       ├── components/      # Shared Composables
-│       │   ├── AnimatedBackground.kt   ← Per-screen canvas animations
-│       │   ├── FlippableWalletCard.kt  ← 3D animated wallet
-│       │   ├── PinInputComponent.kt    ← Secure PIN keypad
-│       │   └── ...
-│       ├── data/            # AppState + Data models
-│       ├── navigation/      # PundarNavigation + Routes
-│       ├── screens/
-│       │   ├── auth/        # Login, Register
-│       │   ├── home/        # Home, Send, Receive, BuyLoad, CashIn, Scan
-│       │   ├── pay/         # PayScreen, BillDetail, InstantSettle, BillQR
-│       │   ├── circle/      # CircleScreen, Detail, Admin, InviteMethods, Create
-│       │   └── grow/        # GrowScreen, StockDetail
-│       ├── theme/           # Color.kt, Type.kt, Theme.kt
-│       └── utils/           # AnimationUtils, DesignTokens
-├── circle_contract/         # Soroban Smart Contract (Rust)
-│   └── src/
-│       ├── lib.rs           # PundarCircleContract
-│       └── test.rs          # Contract unit tests
-├── firestore.rules          # Firestore security rules
-└── supabase_schema.sql      # (Future) Supabase migration schema
-```
-
----
-
-## 🚀 Getting Started
+## Getting Started (For Judges & Developers)
 
 ### Prerequisites
-- Android Studio Meerkat or newer
-- JDK 11+
-- Android device or emulator with API 26+
-- (For contract) Rust + `soroban-cli`
+- Android Studio 
+- Kotlin 1.9.0+
+- A Firebase project with Firestore enabled
+- Stellar Testnet access (Horizon)
 
-### Clone & Run
-
-```bash
-git clone https://github.com/<your-username>/PundarApp.git
-cd PundarApp
-```
-
-1. Open in **Android Studio**
-2. Add your `google-services.json` to `app/`
-3. Add `stellar.pepper=<your_pepper>` to `local.properties`
-4. Click **Run ▶**
-
-### Build the Soroban Contract
+### Installation
 
 ```bash
-cd circle_contract
-cargo build --target wasm32-unknown-unknown --release
+# 1. Clone the repo
+git clone https://github.com/VIP1019/Pundar-stellar.git
+cd Pundar-stellar
 ```
-
-Deploy to Stellar testnet:
-
-```bash
-soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/circle_contract.wasm \
-  --source <your_keypair> \
-  --network testnet
-```
-
-> ⚠️ Update the contract address in this README and in `StellarWalletManager.kt` after deployment.
+2. Firebase Setup — Add your `google-services.json` file to the `/app` directory.
+3. Build the project:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+4. Onboarding — Register with a phone number. Pundar automatically generates and funds a Stellar Testnet wallet for you instantly. No manual wallet setup required.
 
 ---
 
-## 🧪 Smart Contract Tests
+## Roadmap
 
-```bash
-cd circle_contract
-cargo test
-```
-
-The test suite in `src/test.rs` covers:
-- Circle creation
-- Member contribution flow
-- Full-cycle payout triggering
-- Deadline-based dissolution and refund
+- [/] Phase 1 — Core "Circle" logic with Soroban integration 
+- [ ] Phase 2 — Fiat on/off-ramps via local Philippine payment gateways (GCash / Maya bridge)
+- [ ] Phase 3 — AI-driven "Pundar Assistant" to optimize savings based on spending habits
 
 ---
 
-## 🔐 Security
+## Team
 
-- **PIN-protected** transactions (4-digit MPIN, verified against Firestore)
-- **Biometric** authentication hook (future-ready)
-- **Firestore Security Rules** enforce data shape validation, prevent balance manipulation, and restrict mpin field overwrites
-- **Soroban contract** enforces contribution amounts, membership, and payout order — no admin override possible
-- **QR anti-replay tokens** prevent double-spend attacks
-
----
-
-## 🗺️ Roadmap
-
-- [ ] Deploy contract to Stellar Mainnet
-- [ ] Postpaid load support
-- [ ] Real SMS invite via Twilio
-- [ ] Push notifications (Firebase Cloud Messaging)
-- [ ] Biometric authentication (BiometricPrompt)
-- [ ] Real PSE market data feed
-- [ ] KYC / eKYC integration
-- [ ] Penalty management for missed contributions
-- [ ] GCash / Maya cash-in bridge
+**University of Camarines Norte**
+| Name               | Contact                      |
+|--------------------|------------------------------|
+| Marc Lester Acunin | Coach                        |
+| Prince Jheck Juan  | princejheckjuan023@gmail.com |
+| Mark James De Rosa | markjamesderosa73@gmail.com  |
+| Quintin Buena      | buenaquintin5@gmail.com      |
+| Yasmine Abarca     | yasmineabarca495@gmail.com   |
 
 ---
 
-## 🏆 Hackathon Track
+## License
 
-**Track:** Stellar / Soroban DeFi & Web3 Financial Applications
+© 2026 Pundar — University of Camarines Norte. All Rights Reserved.
 
-**Why Stellar?**
-- Fast finality (5 seconds) — critical for Paluwagan payouts
-- Low fees — accessible to unbanked Filipinos
-- Soroban's Rust-based smart contracts give us the security guarantees needed for group savings
-- XLM as a settlement layer bridges fiat (PHP) and decentralized finance
-
----
-
-## 👥 Team
-
-| Role | Contribution |
-|------|-------------|
-| Mobile Developer | Jetpack Compose UI, Navigation, Repositories |
-| Blockchain Developer | Soroban contract, Stellar wallet integration |
-| Product Designer | Design system, UX flow, animated components |
+This project and its source code are proprietary and submitted 
+exclusively for the APAC Stellar Hackathon. No part of this repository 
+may be copied, modified, distributed, or used for commercial purposes 
+without explicit written permission from the team.
 
 ---
 
-## 📄 License
+Pundar: " Every Peso Keeps Building." 
 
-```
-MIT License — © 2026 PUNDAR Team
-```
 
----
 
-<p align="center">
-  <strong>PUNDAR — Build Together. Grow Together. 🇵🇭</strong>
-</p>
+

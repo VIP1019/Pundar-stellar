@@ -229,7 +229,7 @@ object AuthRepository {
         }
     }
 
-    suspend fun logout() {
+    fun logout() {
         currentUserState.value = null
         AppState.clearSession()
     }
