@@ -61,7 +61,7 @@ fun CircleScreen(navController: NavController) {
                 profileImageUrl     = userSession?.profileImageUrl,
                 pundarScore         = SampleData.currentUser.pundarScore,
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
-                onSettingsClick     = { navController.navigate(Routes.SETTINGS) }
+                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
             )
         },
         floatingActionButton = {
@@ -325,12 +325,17 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("TARGET", fontSize = 9.sp, letterSpacing = 1.2.sp, color = TextTertiary)
                     Text(
-                        "₱${String.format("%,.0f", circle.targetAmount)}",
+                        "${String.format("%,.0f", circle.targetAmount)} XLM",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize   = 16.sp,
                         color      = accentColor
+                    )
+                    Text(
+                        AppState.formatFiat(circle.targetAmount),
+                        fontWeight = FontWeight.Medium,
+                        fontSize   = 10.sp,
+                        color      = TextSecondary
                     )
                 }
             }

@@ -8,8 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +32,8 @@ fun BillDetailScreen(billId: String, navController: NavController) {
     val bill = AppState.bills.find { it.id == billId }
         ?: run { navController.navigateUp(); return }
     val context = LocalContext.current
+    val walletBalance = AppState.walletBalance.value
+    val canAffordSettle = walletBalance >= bill.yourShare
 
     Scaffold(
         topBar = {
@@ -84,13 +87,18 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                 color = PundarTextSecondary
                             )
                             Text(
-                                text = "₱ ${String.format("%,.2f", bill.totalAmount)}",
+                                text = "${String.format("%,.2f", bill.totalAmount)} XLM",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = PundarTextPrimary
                             )
                             Text(
-                                text = "Your share: ₱ ${String.format("%,.2f", bill.yourShare)}",
+                                text = "(${AppState.formatFiat(bill.totalAmount)})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = PundarTextSecondary
+                            )
+                            Text(
+                                text = "Your share: ${String.format("%,.2f", bill.yourShare)} XLM",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = PundarBlue,
                                 fontWeight = FontWeight.SemiBold
@@ -185,13 +193,25 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                     )
                 }
                 item {
-                    PundarPrimaryButton(
-                        text = "Settle My Share — ₱ ${String.format("%,.2f", bill.yourShare)}",
-                        onClick = { 
-                            AppState.settleBill(bill.id)
-                            navController.navigateUp()
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        PundarPrimaryButton(
+                            text = "Settle My Share — ${String.format("%,.2f", bill.yourShare)} XLM",
+                            enabled = canAffordSettle,
+                            onClick = {
+                                AppState.settleBill(bill.id)
+                                Toast.makeText(context, "Bill settled! ${String.format("%,.2f", bill.yourShare)} XLM deducted.", Toast.LENGTH_SHORT).show()
+                                navController.navigateUp()
+                            }
+                        )
+                        if (!canAffordSettle) {
+                            Text(
+                                text = "Insufficient balance (${String.format("%,.2f", walletBalance)} XLM available)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = PundarWarning,
+                                modifier = androidx.compose.ui.Modifier.fillMaxWidth()
+                            )
                         }
-                    )
+                    }
                 }
             }
 

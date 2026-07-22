@@ -38,6 +38,7 @@ fun NewGroupBillScreen(navController: NavController) {
     var expenseName by remember { mutableStateOf("") }
     var selectedTabIndex by remember { mutableStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
+    var isFiatMode by remember { mutableStateOf(false) }
 
     // Start with "You" already in the list
     val selectedMembers = remember {
@@ -45,16 +46,19 @@ fun NewGroupBillScreen(navController: NavController) {
             BillMember("You", "", "You", 0.0)
         )
     }
+    val walletBalance = AppState.walletBalance.value
 
     // Itemized amounts
     val itemizedAmounts = remember { mutableStateMapOf<String, String>() }
 
     // Dynamically compute per-member share or total
-    val total = if (selectedTabIndex == 0) {
+    val rawTotal = if (selectedTabIndex == 0) {
         totalAmount.toDoubleOrNull() ?: 0.0
     } else {
         itemizedAmounts.values.sumOf { it.toDoubleOrNull() ?: 0.0 }
     }
+    
+    val total = if (isFiatMode) rawTotal / AppState.currentExchangeRate.doubleValue else rawTotal
     
     val sharePerMember = if (selectedTabIndex == 0 && selectedMembers.isNotEmpty() && total > 0)
         total / selectedMembers.size else 0.0
@@ -127,24 +131,33 @@ fun NewGroupBillScreen(navController: NavController) {
                     text = "Create & Request ▷",
                     enabled = expenseName.isNotBlank() && total > 0 && selectedMembers.size >= 2,
                     onClick = {
-                        val newBill = GroupBill(
-                            id = "bill_${System.currentTimeMillis()}",
-                            name = expenseName,
-                            totalAmount = total,
-                            memberCount = selectedMembers.size,
-                            status = BillStatus.PENDING,
-                            date = "Today",
-                            yourShare = if (selectedTabIndex == 0) sharePerMember else (itemizedAmounts["You"]?.toDoubleOrNull() ?: 0.0),
-                            members = selectedMembers.map { m ->
-                                if (selectedTabIndex == 0) {
-                                    m.copy(amount = sharePerMember)
-                                } else {
-                                    m.copy(amount = itemizedAmounts[m.name]?.toDoubleOrNull() ?: 0.0)
-                                }
-                            }
-                        )
-                        AppState.addBill(newBill)
-                        navController.navigateUp()
+                val yourShare = if (selectedTabIndex == 0) sharePerMember
+                    else {
+                        val rawShare = itemizedAmounts["You"]?.toDoubleOrNull() ?: 0.0
+                        if (isFiatMode) rawShare / AppState.currentExchangeRate.doubleValue else rawShare
+                    }
+                // Deduct your share from wallet immediately
+                AppState.walletBalance.value = (AppState.walletBalance.value - yourShare).coerceAtLeast(0.0)
+                val newBill = GroupBill(
+                    id = "bill_${System.currentTimeMillis()}",
+                    name = expenseName,
+                    totalAmount = total,
+                    memberCount = selectedMembers.size,
+                    status = BillStatus.PENDING,
+                    date = "Today",
+                    yourShare = yourShare,
+                    members = selectedMembers.map { m ->
+                        if (selectedTabIndex == 0) {
+                            m.copy(amount = sharePerMember)
+                        } else {
+                            val rawAmt = itemizedAmounts[m.name]?.toDoubleOrNull() ?: 0.0
+                            val xlmAmt = if (isFiatMode) rawAmt / AppState.currentExchangeRate.doubleValue else rawAmt
+                            m.copy(amount = xlmAmt)
+                        }
+                    }
+                )
+                AppState.addBill(newBill)
+                navController.navigateUp()
                     }
                 )
             }
@@ -160,25 +173,22 @@ fun NewGroupBillScreen(navController: NavController) {
             // ── Amount + Name ────────────────────────────────────
             item {
                 PundarAccentCard {
-                    Text("Total Amount (PHP)", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
+                    Text("Total Amount (XLM)", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Balance: ${String.format("%,.2f", walletBalance)} XLM",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (walletBalance >= total && total > 0) PundarSuccess else PundarWarning
+                    )
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = if (selectedTabIndex == 0) totalAmount else total.toString(),
+                    CurrencyAmountInput(
+                        value = if (selectedTabIndex == 0) totalAmount else if (rawTotal > 0) rawTotal.toString() else "",
                         onValueChange = { if (selectedTabIndex == 0) totalAmount = it },
+                        isFiatMode = isFiatMode,
+                        onToggleMode = { isFiatMode = !isFiatMode },
                         readOnly = selectedTabIndex == 1,
-                        modifier = Modifier.fillMaxWidth(),
-                        textStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        leadingIcon = {
-                            Text("₱", style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold, color = PundarBlue)
-                        },
-                        placeholder = { Text("0.00", style = MaterialTheme.typography.headlineMedium, color = PundarTextTertiary) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PundarBlue,
-                            unfocusedBorderColor = PundarBorder
-                        ),
-                        shape = RoundedCornerShape(12.dp)
+                        label = "Total Amount",
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(16.dp))
                     Text("Expense Name", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
@@ -235,14 +245,14 @@ fun NewGroupBillScreen(navController: NavController) {
                     )
                     if (selectedTabIndex == 0 && sharePerMember > 0) {
                         Text(
-                            text = "₱ ${String.format("%,.2f", sharePerMember)} each",
+                            text = "${String.format("%,.2f", sharePerMember)} XLM each",
                             style = MaterialTheme.typography.labelLarge,
                             color = PundarBlue,
                             fontWeight = FontWeight.SemiBold
                         )
                     } else if (selectedTabIndex == 1 && total > 0) {
                         Text(
-                            text = "Total: ₱ ${String.format("%,.2f", total)}",
+                            text = "Total: ${String.format("%,.2f", total)} XLM",
                             style = MaterialTheme.typography.labelLarge,
                             color = PundarBlue,
                             fontWeight = FontWeight.SemiBold

@@ -60,7 +60,7 @@ fun PayScreen(navController: NavController) {
                 profileImageUrl     = userSession?.profileImageUrl,
                 pundarScore         = SampleData.currentUser.pundarScore,
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
-                onSettingsClick     = { navController.navigate(Routes.SETTINGS) }
+                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
             )
         },
         floatingActionButton = { PayFab { navController.navigate(Routes.PAY_NEW_BILL) } },
@@ -184,9 +184,11 @@ private fun PayStatsCard(settled: Int, pending: Int, total: Double) {
             Text("MONTHLY SPEND", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 2.sp, color = ElectricBlue.copy(0.85f))
             Spacer(Modifier.height(8.dp))
-            Text("₱${String.format("%,.2f", total)}", fontWeight = FontWeight.Black,
-                fontSize = 34.sp, color = TextOnDark, letterSpacing = (-1).sp)
-            Spacer(Modifier.height(20.dp))
+            Text("${String.format("%,.2f", total)} XLM", fontWeight = FontWeight.Black,
+                fontSize = 30.sp, color = TextOnDark, letterSpacing = (-1).sp)
+            Text(AppState.formatFiat(total), fontWeight = FontWeight.Medium,
+                fontSize = 14.sp, color = Green400)
+            Spacer(Modifier.height(16.dp))
             // Divider
             Box(Modifier.fillMaxWidth().height(1.dp)
                 .background(Brush.horizontalGradient(listOf(Color.Transparent, BorderWhiteStrong, Color.Transparent))))

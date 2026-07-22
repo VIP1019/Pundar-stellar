@@ -8,6 +8,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -92,7 +94,7 @@ fun HomeScreen(navController: NavController) {
                 profileImageUrl     = session?.profileImageUrl,
                 pundarScore         = user.pundarScore,
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
-                onSettingsClick     = { navController.navigate(Routes.SETTINGS) }
+                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
             )
         },
         containerColor = Color.Transparent
@@ -222,16 +224,22 @@ private fun QuickActionsSection(navController: NavController) {
     Text("Quick Actions", style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold, color = TextWhite)
     Spacer(Modifier.height(12.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        val items = listOf(
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()), 
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        val items: List<Pair<Triple<ImageVector, String, Color>, () -> Unit>> = listOf(
             Triple(Icons.Filled.Send,         "Send",    Blue400)    to { navController.navigate(Routes.SEND_MONEY) },
             Triple(Icons.Filled.QrCode2,      "Receive", Green400)   to { navController.navigate(Routes.RECEIVE_MONEY) },
             Triple(Icons.Filled.PhoneAndroid, "Load",    Gold500)    to { navController.navigate(Routes.BUY_LOAD) },
             Triple(Icons.Filled.Receipt,      "Split",   Orange500)  to { navController.navigate(Routes.PAY_NEW_BILL) },
+            Triple(Icons.Filled.CurrencyExchange, "Convert", Color(0xFF8B5CF6)) to { navController.navigate(Routes.XLM_CONVERTER) }
         )
         items.forEachIndexed { idx, (info, action) ->
             val (icon, title, accent) = info
-            QuickTile(icon, title, accent, Modifier.weight(1f), idx * 55, action)
+            QuickTile(icon, title, accent, Modifier.width(72.dp), idx * 55, action)
         }
     }
 }

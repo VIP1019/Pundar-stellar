@@ -138,7 +138,7 @@ data class PortfolioActivity(
     val isPositive: Boolean = true
 )
 
-enum class ActivityType { AUTO_SWEEP, DIVIDEND, PURCHASE, ROUND_UP, PAYOUT }
+enum class ActivityType { AUTO_SWEEP, DIVIDEND, PURCHASE, ROUND_UP, PAYOUT, DEPOSIT, WITHDRAWAL }
 
 data class RoundUpInvestment(
     val reference: String,

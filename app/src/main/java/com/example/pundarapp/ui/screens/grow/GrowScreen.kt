@@ -32,6 +32,8 @@ import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.components.AnimatedBackground
+import com.example.pundarapp.ui.components.PundarGrowTopBar
+import com.example.pundarapp.ui.components.CurrencyAmountInput
 import com.example.pundarapp.ui.components.BgAccent
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.navigation.Routes
@@ -59,6 +61,10 @@ fun GrowScreen(navController: NavController) {
     var showOptimizeDialog by remember { mutableStateOf(false) }
     var investAmount       by remember { mutableStateOf("") }
     var withdrawAmount     by remember { mutableStateOf("") }
+    var investError        by remember { mutableStateOf("") }
+    var withdrawError      by remember { mutableStateOf("") }
+    var isInvestFiatMode   by remember { mutableStateOf(false) }
+    var isWithdrawFiatMode by remember { mutableStateOf(false) }
 
     // ── Scaffold ─────────────────────────────────────────────────
     AnimatedBackground(accent = BgAccent.Gold) {
@@ -68,18 +74,34 @@ fun GrowScreen(navController: NavController) {
         GrowAlertDialog(
             title        = "Invest More",
             confirmLabel = "Invest",
-            onDismiss    = { showInvestDialog = false; investAmount = "" },
+            onDismiss    = { showInvestDialog = false; investAmount = ""; investError = "" },
             onConfirm    = {
-                investAmount.toDoubleOrNull()?.let { amt -> AppState.invest(amt) }
-                showInvestDialog = false
-                investAmount = ""
+                val amt = investAmount.toDoubleOrNull()
+                val finalAmt = if (amt != null && isInvestFiatMode) amt / AppState.currentExchangeRate.doubleValue else amt
+                if (finalAmt == null || finalAmt <= 0.0) {
+                    investError = "Enter a valid amount"
+                } else {
+                    val success = AppState.invest(finalAmt)
+                    if (success) {
+                        showInvestDialog = false; investAmount = ""; investError = ""
+                    } else {
+                        investError = "Insufficient balance (${String.format("%,.2f", AppState.walletBalance.value)} XLM)"
+                    }
+                }
             }
         ) {
-            GrowTextField(
+            androidx.compose.material3.Text(
+                "Wallet: ${String.format("%,.2f", AppState.walletBalance.value)} XLM",
+                style = MaterialTheme.typography.labelMedium,
+                color = NeonGreen
+            )
+            Spacer(Modifier.height(8.dp))
+            CurrencyAmountInput(
                 value         = investAmount,
-                onValueChange = { investAmount = it },
-                label         = "Amount (₱)",
-                placeholder   = "e.g. 5000"
+                onValueChange = { investAmount = it; investError = "" },
+                isFiatMode    = isInvestFiatMode,
+                onToggleMode  = { isInvestFiatMode = !isInvestFiatMode },
+                errorMessage  = investError
             )
         }
     }
@@ -89,18 +111,34 @@ fun GrowScreen(navController: NavController) {
         GrowAlertDialog(
             title        = "Withdraw",
             confirmLabel = "Withdraw",
-            onDismiss    = { showWithdrawDialog = false; withdrawAmount = "" },
+            onDismiss    = { showWithdrawDialog = false; withdrawAmount = ""; withdrawError = "" },
             onConfirm    = {
-                withdrawAmount.toDoubleOrNull()?.let { amt -> AppState.withdraw(amt) }
-                showWithdrawDialog = false
-                withdrawAmount = ""
+                val amt = withdrawAmount.toDoubleOrNull()
+                val finalAmt = if (amt != null && isWithdrawFiatMode) amt / AppState.currentExchangeRate.doubleValue else amt
+                if (finalAmt == null || finalAmt <= 0.0) {
+                    withdrawError = "Enter a valid amount"
+                } else {
+                    val success = AppState.withdraw(finalAmt)
+                    if (success) {
+                        showWithdrawDialog = false; withdrawAmount = ""; withdrawError = ""
+                    } else {
+                        withdrawError = "Insufficient portfolio value (${String.format("%,.2f", AppState.portfolio.value.totalValue)} XLM)"
+                    }
+                }
             }
         ) {
-            GrowTextField(
+            androidx.compose.material3.Text(
+                "Portfolio: ${String.format("%,.2f", AppState.portfolio.value.totalValue)} XLM",
+                style = MaterialTheme.typography.labelMedium,
+                color = NeonGreen
+            )
+            Spacer(Modifier.height(8.dp))
+            CurrencyAmountInput(
                 value         = withdrawAmount,
-                onValueChange = { withdrawAmount = it },
-                label         = "Amount (₱)",
-                placeholder   = "e.g. 1000"
+                onValueChange = { withdrawAmount = it; withdrawError = "" },
+                isFiatMode    = isWithdrawFiatMode,
+                onToggleMode  = { isWithdrawFiatMode = !isWithdrawFiatMode },
+                errorMessage  = withdrawError
             )
         }
     }
@@ -811,6 +849,8 @@ private fun ActivityRow(activity: PortfolioActivity, index: Int) {
     val iconColor = when (activity.type) {
         ActivityType.AUTO_SWEEP -> ElectricBlue
         ActivityType.DIVIDEND   -> PremiumGoldWarm
+        ActivityType.DEPOSIT    -> NeonGreen
+        ActivityType.WITHDRAWAL -> WarningAmber
         else                    -> TextSecondary
     }
     val iconVector = when (activity.type) {
@@ -819,6 +859,8 @@ private fun ActivityRow(activity: PortfolioActivity, index: Int) {
         ActivityType.PURCHASE   -> Icons.Filled.ShoppingCart
         ActivityType.ROUND_UP   -> Icons.Filled.ArrowUpward
         ActivityType.PAYOUT     -> Icons.Filled.AccountBalanceWallet
+        ActivityType.DEPOSIT    -> Icons.Filled.Add
+        ActivityType.WITHDRAWAL -> Icons.Filled.Remove
     }
 
     Row(

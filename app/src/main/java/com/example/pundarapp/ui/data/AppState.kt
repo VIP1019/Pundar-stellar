@@ -10,6 +10,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import android.util.Log
 
+fun getCurrencySymbol(code: String): String {
+    return when (code.uppercase()) {
+        "PHP" -> "₱"
+        "USD", "CAD", "AUD", "NZD", "SGD", "HKD", "TWD" -> "$"
+        "EUR" -> "€"
+        "JPY", "CNY" -> "¥"
+        "KRW" -> "₩"
+        "GBP" -> "£"
+        "IDR" -> "Rp"
+        "VND" -> "₫"
+        "INR" -> "₹"
+        "MYR" -> "RM"
+        "THB" -> "฿"
+        else -> "$"
+    }
+}
+
 /**
  * Central in-memory app state shared across all screens.
  * Uses Compose snapshot state so changes automatically recompose subscribers.
@@ -52,7 +69,7 @@ object AppState {
                 icon = "payment",
                 title = bill.name,
                 subtitle = "Pending • ${bill.memberCount} members",
-                amount = "₱ ${String.format("%,.2f", bill.yourShare)}",
+                amount = "-${String.format("%,.2f", bill.yourShare)} XLM",
                 isPositive = false,
                 module = "Pay"
             )
@@ -63,7 +80,22 @@ object AppState {
         val index = bills.indexOfFirst { it.id == billId }
         if (index >= 0) {
             val old = bills[index]
+            if (old.status == BillStatus.SETTLED) return // already settled
+            // Deduct user's share from wallet
+            val share = old.yourShare
+            walletBalance.value = (walletBalance.value - share).coerceAtLeast(0.0)
             bills[index] = old.copy(status = BillStatus.SETTLED)
+            // Record as home activity
+            addHomeActivity(
+                HomeActivity(
+                    icon = "payment",
+                    title = old.name,
+                    subtitle = "Bill settled",
+                    amount = "-${String.format("%,.2f", share)} XLM",
+                    isPositive = false,
+                    module = "Pay"
+                )
+            )
             scope.launch {
                 if (AuthRepository.isUserLoggedIn()) {
                     PayRepository.createBill(bills[index])
@@ -148,7 +180,7 @@ object AppState {
                     icon = "savings",
                     title = invitation.circleName,
                     subtitle = "Joined circle",
-                    amount = "+₱ ${String.format("%,.0f", invitation.monthlyContribution)}",
+                    amount = "+${String.format("%,.0f", invitation.monthlyContribution)} XLM/mo",
                     isPositive = true,
                     module = "Circle"
                 )
@@ -159,7 +191,9 @@ object AppState {
         }
     }
 
-    fun contributeToCircle(circleId: String, amount: Double) {
+    fun contributeToCircle(circleId: String, amount: Double): Boolean {
+        // Guard: insufficient balance
+        if (walletBalance.value < amount) return false
         val index = circles.indexOfFirst { it.id == circleId }
         if (index >= 0) {
             val old = circles[index]
@@ -177,17 +211,20 @@ object AppState {
                 savedAmount = (old.savedAmount + amount).coerceAtMost(old.targetAmount),
                 members = updatedMembers
             )
+            // Deduct from wallet
+            walletBalance.value -= amount
             addHomeActivity(
                 HomeActivity(
                     icon = "savings",
                     title = old.name,
                     subtitle = "Contribution sent",
-                    amount = "+₱ ${String.format("%,.0f", amount)}",
-                    isPositive = true,
+                    amount = "-${String.format("%,.2f", amount)} XLM",
+                    isPositive = false,
                     module = "Circle"
                 )
             )
         }
+        return true
     }
 
     // ── GROW ────────────────────────────────────────────────────────
@@ -414,29 +451,65 @@ object AppState {
         }
     }
 
-    fun invest(amount: Double) {
+    fun invest(amount: Double): Boolean {
+        if (walletBalance.value < amount) return false
         val old = portfolio.value
         portfolio.value = old.copy(
             totalValue = old.totalValue + amount,
-            totalReturnAmount = old.totalReturnAmount + amount * 0.01
+            totalReturnAmount = old.totalReturnAmount + amount * 0.01,
+            activities = listOf(
+                PortfolioActivity(
+                    type = ActivityType.DEPOSIT,
+                    amount = amount,
+                    date = "Just now",
+                    description = "Invested via Grow",
+                    isPositive = true
+                )
+            ) + old.activities
         )
+        // Deduct from wallet
+        walletBalance.value -= amount
         addHomeActivity(
             HomeActivity(
                 icon = "trending_up",
                 title = "Investment",
                 subtitle = "Invested via Grow",
-                amount = "+₱ ${String.format("%,.2f", amount)}",
+                amount = "-${String.format("%,.2f", amount)} XLM",
+                isPositive = false,
+                module = "Grow"
+            )
+        )
+        return true
+    }
+
+    fun withdraw(amount: Double): Boolean {
+        val old = portfolio.value
+        if (old.totalValue < amount) return false
+        portfolio.value = old.copy(
+            totalValue = (old.totalValue - amount).coerceAtLeast(0.0),
+            activities = listOf(
+                PortfolioActivity(
+                    type = ActivityType.WITHDRAWAL,
+                    amount = amount,
+                    date = "Just now",
+                    description = "Withdrawn from Grow",
+                    isPositive = false
+                )
+            ) + old.activities
+        )
+        // Add back to wallet
+        walletBalance.value += amount
+        addHomeActivity(
+            HomeActivity(
+                icon = "trending_up",
+                title = "Withdrawal",
+                subtitle = "Withdrawn from Grow",
+                amount = "+${String.format("%,.2f", amount)} XLM",
                 isPositive = true,
                 module = "Grow"
             )
         )
-    }
-
-    fun withdraw(amount: Double) {
-        val old = portfolio.value
-        portfolio.value = old.copy(
-            totalValue = (old.totalValue - amount).coerceAtLeast(0.0)
-        )
+        return true
     }
 
     // ── NOTIFICATIONS ───────────────────────────────────────────────
@@ -516,11 +589,29 @@ object AppState {
 
     // ── SETTINGS ───────────────────────────────────────────────────
     val isBalanceHidden = mutableStateOf(false)
+    val preferredCurrency = mutableStateOf("PHP")
+    val currentExchangeRate = mutableDoubleStateOf(1.0)
+    
     private var prefs: android.content.SharedPreferences? = null
 
     fun initPreferences(context: android.content.Context) {
         prefs = context.getSharedPreferences("pundar_prefs", android.content.Context.MODE_PRIVATE)
         isBalanceHidden.value = prefs?.getBoolean("hide_balance", false) ?: false
+        preferredCurrency.value = prefs?.getString("preferred_currency", "PHP") ?: "PHP"
+        fetchExchangeRate()
+    }
+    
+    fun setCurrency(currencyCode: String) {
+        preferredCurrency.value = currencyCode.uppercase()
+        prefs?.edit()?.putString("preferred_currency", preferredCurrency.value)?.apply()
+        fetchExchangeRate()
+    }
+    
+    private fun fetchExchangeRate() {
+        scope.launch {
+            val rates = CurrencyRepository.getXlmRates(forceRefresh = false)
+            currentExchangeRate.doubleValue = rates[preferredCurrency.value] ?: 1.0
+        }
     }
 
     fun toggleBalanceVisibility() {
@@ -530,7 +621,18 @@ object AppState {
     }
 
     fun getDisplayBalance(): String {
-        return if (isBalanceHidden.value) "₱ •••••" else "₱ ${String.format("%,.2f", walletBalance.value)}"
+        return if (isBalanceHidden.value) "••••• XLM" else "${String.format("%,.2f", walletBalance.value)} XLM"
+    }
+
+    fun getFiatDisplayBalance(): String {
+        return if (isBalanceHidden.value) "${getCurrencySymbol(preferredCurrency.value)} •••••"
+        else formatFiat(walletBalance.value)
+    }
+
+    fun formatFiat(xlmAmount: Double): String {
+        val fiatValue = xlmAmount * currentExchangeRate.doubleValue
+        val symbol = getCurrencySymbol(preferredCurrency.value)
+        return "~ $symbol ${String.format("%,.2f", fiatValue)}"
     }
 
     fun clearSession() {

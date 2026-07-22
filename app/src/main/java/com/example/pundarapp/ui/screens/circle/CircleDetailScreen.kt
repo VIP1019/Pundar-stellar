@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import com.example.pundarapp.ui.components.CurrencyAmountInput
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,8 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
     var showContributeDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
     var contributeAmount by remember { mutableStateOf("") }
+    var contributeError by remember { mutableStateOf("") }
+    var isFiatMode by remember { mutableStateOf(false) }
 
     // Contribute Dialog
     if (showContributeDialog) {
@@ -54,18 +57,19 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
             title = { Text("Contribute to ${circle.name}", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("Enter the amount to contribute:", style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                    Text(
+                        "Wallet Balance: ${String.format("%,.2f", AppState.walletBalance.value)} XLM",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (AppState.walletBalance.value >= circle.contributionPerMonth) PundarSuccess else PundarWarning
+                    )
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
+                    CurrencyAmountInput(
                         value = contributeAmount,
-                        onValueChange = { contributeAmount = it },
-                        label = { Text("Amount (₱)") },
-                        placeholder = { Text("${String.format("%,.0f", circle.contributionPerMonth)}") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        onValueChange = { contributeAmount = it; contributeError = "" },
+                        isFiatMode = isFiatMode,
+                        onToggleMode = { isFiatMode = !isFiatMode },
+                        errorMessage = contributeError,
+                        label = "Contribution Amount"
                     )
                 }
             },
@@ -73,9 +77,15 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                 Button(
                     onClick = {
                         val amount = contributeAmount.toDoubleOrNull() ?: circle.contributionPerMonth
-                        AppState.contributeToCircle(circleId, amount)
-                        showContributeDialog = false
-                        contributeAmount = ""
+                        val finalAmt = if (isFiatMode) amount / AppState.currentExchangeRate.doubleValue else amount
+                        val success = AppState.contributeToCircle(circleId, finalAmt)
+                        if (success) {
+                            Toast.makeText(context, "${String.format("%,.2f", finalAmt)} XLM contributed!", Toast.LENGTH_SHORT).show()
+                            showContributeDialog = false
+                            contributeAmount = ""
+                        } else {
+                            contributeError = "Insufficient balance!"
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PundarGold, contentColor = PundarTextPrimary),
                     shape = RoundedCornerShape(12.dp)

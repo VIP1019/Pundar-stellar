@@ -31,6 +31,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.CurrencyData
+import com.example.pundarapp.data.remote.supportedCurrencies
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import com.example.pundarapp.ui.components.PundarAvatar
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
@@ -48,6 +52,8 @@ fun UserSettingsScreen(navController: NavController) {
     val userPhone      = userSession?.phone ?: ""
     val initials       = AuthRepository.getCurrentUserInitials()
     var profileUri     by remember { mutableStateOf<Uri?>(null) }
+    var isLoggingOut by remember { mutableStateOf(false) }
+    var showCurrencyDialog by remember { mutableStateOf(false) }
     var showPhotoSheet by remember { mutableStateOf(false) }
 
     // Gallery picker
@@ -96,6 +102,49 @@ fun UserSettingsScreen(navController: NavController) {
                 Spacer(Modifier.height(28.dp))
             }
         }
+    }
+
+    if (showCurrencyDialog) {
+        AlertDialog(
+            onDismissRequest = { showCurrencyDialog = false },
+            containerColor = Navy800,
+            title = {
+                Text("Select Currency", color = TextWhite, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(supportedCurrencies) { currency ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (AppState.preferredCurrency.value == currency.code) Blue500.copy(0.2f) else Navy700)
+                                .clickable {
+                                    AppState.setCurrency(currency.code)
+                                    showCurrencyDialog = false
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(currency.flag, fontSize = 24.sp)
+                            Spacer(Modifier.width(16.dp))
+                            Column {
+                                Text(currency.name, color = TextWhite, fontWeight = FontWeight.SemiBold)
+                                Text("${currency.code} - ${currency.symbol}", color = TextMuted, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCurrencyDialog = false }) {
+                    Text("Close", color = Blue400)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -222,6 +271,16 @@ fun UserSettingsScreen(navController: NavController) {
                 }
                 RowDivider()
                 SettingsRow(Icons.Filled.Policy, "Manage Data Preferences", Blue400) {}
+            }
+
+            Spacer(Modifier.height(16.dp))
+            
+            // ── Preferences ──────────────────────────────────────────
+            SectionHeader("Preferences")
+            SettingsGroup {
+                SettingsRow(Icons.Filled.CurrencyExchange, "Preferred Currency", Blue400, sub = AppState.preferredCurrency.value) {
+                    showCurrencyDialog = true
+                }
             }
 
             Spacer(Modifier.height(16.dp))

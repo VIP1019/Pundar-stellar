@@ -339,7 +339,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                         modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = 90f }
                     )
                     Spacer(Modifier.width(8.dp))
-                    // PHP badge
+                    // Currency badge
                     Box(
                         Modifier.clip(RoundedCornerShape(8.dp))
                             .background(
@@ -350,7 +350,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                             .border(1.dp, Blue300.copy(0.35f), RoundedCornerShape(8.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Text("PHP", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Blue200)
+                        Text(AppState.preferredCurrency.value, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Blue200)
                     }
                 }
             }
@@ -390,6 +390,14 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                     fontWeight    = FontWeight.Black,
                     color         = White,
                     letterSpacing = (-0.8).sp
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    AppState.getFiatDisplayBalance(),
+                    fontSize      = 14.sp,
+                    fontWeight    = FontWeight.Medium,
+                    color         = Green400,
+                    letterSpacing = 0.5.sp
                 )
             }
 

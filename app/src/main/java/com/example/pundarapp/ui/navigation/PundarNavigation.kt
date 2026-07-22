@@ -39,6 +39,7 @@ import com.example.pundarapp.ui.screens.home.BuyLoadScreen
 import com.example.pundarapp.ui.screens.home.PinVerificationScreen
 import com.example.pundarapp.ui.screens.home.CashInScreen
 import com.example.pundarapp.ui.screens.home.LinkCardScreen
+import com.example.pundarapp.ui.screens.home.XlmConverterScreen
 import com.example.pundarapp.ui.screens.SplashScreen
 
 object Routes {
@@ -78,6 +79,7 @@ object Routes {
     const val PIN_VERIFICATION = "pin_verification"
     const val CASH_IN = "cash_in"
     const val LINK_CARD = "link_card"
+    const val XLM_CONVERTER = "xlm_converter"
 }
 
 // Routes where bottom bar should be visible
@@ -146,6 +148,9 @@ fun PundarNavigation() {
             }
             composable(Routes.SCAN) {
                 ScanScreen(navController = navController)
+            }
+            composable(Routes.XLM_CONVERTER) {
+                XlmConverterScreen(navController = navController)
             }
             composable(Routes.RECEIVE_MONEY) {
                 ReceiveMoneyScreen(navController = navController)
