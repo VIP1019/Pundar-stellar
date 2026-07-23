@@ -201,6 +201,9 @@ fun GrowScreen(navController: NavController) {
             ),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // 0 ── Hero Header
+            item { GrowHeroHeader() }
+
             // 1 ── Portfolio Hero Card
             item {
                 PortfolioHeroCard(
@@ -247,6 +250,33 @@ fun GrowScreen(navController: NavController) {
     } // AnimatedBackground
 }
 
+
+// ── Hero Header ───────────────────────────────────────────────────
+@Composable
+private fun GrowHeroHeader() {
+    val alpha  = remember { Animatable(0f) }
+    val slideY = remember { Animatable(-24f) }
+    LaunchedEffect(Unit) {
+        alpha.animateTo(1f,  tween(500, easing = EaseOutExpo))
+        slideY.animateTo(0f, tween(500, easing = EaseOutExpo))
+    }
+    Column(Modifier.graphicsLayer(alpha = alpha.value, translationY = slideY.value)) {
+        Text(
+            "PUNDAR Grow",
+            fontWeight    = FontWeight.Black,
+            fontSize      = 32.sp,
+            color         = TextPrimary,
+            letterSpacing = (-0.5).sp
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Tokenized PSE Equities & Spare Change Round-Ups",
+            style         = MaterialTheme.typography.bodyMedium,
+            color         = TextSecondary,
+            letterSpacing = 0.3.sp
+        )
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  Shared Dialog Helpers

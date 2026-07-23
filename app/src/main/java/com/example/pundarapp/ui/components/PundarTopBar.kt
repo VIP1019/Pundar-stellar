@@ -184,8 +184,8 @@ fun PundarCircleTopBar(
     ) {
         TopAppBar(
             title = {
-                Text("Pundar Circle", fontWeight = FontWeight.Bold, fontSize = 18.sp,
-                    color = TextWhite, letterSpacing = 0.5.sp)
+                Text("PUNDAR", fontWeight = FontWeight.Black, fontSize = 18.sp,
+                    color = TextWhite, letterSpacing = 2.sp)
             },
             navigationIcon = {
                 IconButton(onClick = onBack) {
@@ -230,8 +230,8 @@ fun PundarGrowTopBar(
                     PundarAvatar(userInitials, imageUrl = profileImageUrl, size = 34.dp,
                         showRing = true, initialsFontSize = 12.sp)
                     Spacer(Modifier.width(10.dp))
-                    Text("Pundar Grow", fontWeight = FontWeight.Bold, fontSize = 18.sp,
-                        color = TextWhite, letterSpacing = 0.5.sp)
+                    Text("PUNDAR", fontWeight = FontWeight.Black, fontSize = 18.sp,
+                        color = TextWhite, letterSpacing = 2.sp)
                 }
             },
             actions = {
