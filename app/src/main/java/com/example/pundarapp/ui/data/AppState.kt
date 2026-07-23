@@ -559,15 +559,11 @@ object AppState {
     }
 
     fun refreshWalletBalance() {
-        val publicKey = AuthRepository.getCurrentUserStellarPublicKey()
-        if (publicKey == null) {
-            Log.w("AppState", "No Stellar public key found for current user")
-            return
-        }
-        scope.launch {
-            val balance = StellarWalletManager.getXlmBalance(publicKey)
-            walletBalance.value = balance
-        }
+        // Local wallet balance is the source of truth, managed by
+        // Cash In / Send / Pay / Circle / Grow operations within the app.
+        // The Stellar on-chain balance is not used for display because
+        // Cash In is a simulated fiat bridge, not an actual Stellar tx.
+        // No-op: balance is already tracked in walletBalance.value.
     }
 
     private fun addHomeActivity(activity: HomeActivity) {
