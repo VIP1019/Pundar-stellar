@@ -100,7 +100,7 @@ fun CashInScreen(navController: NavController) {
                                         delay(1500) // Simulate processing
                                         val cashInAmt = amount.toDoubleOrNull() ?: 0.0
                                         if (cashInAmt > 0) {
-                                            AppState.walletBalance.value += cashInAmt
+                                            AppState.updateWalletBalance(AppState.walletBalance.value + cashInAmt)
                                             AppState.requestHomeRefresh()
                                         }
                                         isProcessing = false

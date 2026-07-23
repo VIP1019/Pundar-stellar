@@ -63,6 +63,12 @@ fun NewGroupBillScreen(navController: NavController) {
     val sharePerMember = if (selectedTabIndex == 0 && selectedMembers.isNotEmpty() && total > 0)
         total / selectedMembers.size else 0.0
 
+    val yourShare = if (selectedTabIndex == 0) sharePerMember
+    else {
+        val rawShare = itemizedAmounts["You"]?.toDoubleOrNull() ?: 0.0
+        if (isFiatMode) rawShare / AppState.currentExchangeRate.doubleValue else rawShare
+    }
+
     // Available contacts to add (search results)
     var searchResults by remember { mutableStateOf<List<BillMember>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
@@ -105,25 +111,66 @@ fun NewGroupBillScreen(navController: NavController) {
                     .padding(16.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = PundarBlueSubtle,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
+                    val displayShare = if (selectedTabIndex == 0) sharePerMember else yourShare
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(14.dp)
                     ) {
-                        Icon(Icons.Filled.Verified, null, tint = PundarBlue, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "Settlement builds your PUNDAR Score.",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = PundarBlueDark
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = if (selectedTabIndex == 0) "Share Per Person (${selectedMembers.size} members)" else "Your Share",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = PundarTextSecondary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Text(
+                                        text = "${String.format("%,.2f", displayShare)} XLM",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PundarBlueDark
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "(${AppState.formatFiat(displayShare)})",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = PundarBlue
+                                    )
+                                }
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "Total Bill",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = PundarTextSecondary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = "${String.format("%,.2f", total)} XLM",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PundarTextPrimary
+                                )
+                                Text(
+                                    text = AppState.formatFiat(total),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = PundarTextSecondary
+                                )
+                            }
+                        }
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -131,33 +178,26 @@ fun NewGroupBillScreen(navController: NavController) {
                     text = "Create & Request ▷",
                     enabled = expenseName.isNotBlank() && total > 0 && selectedMembers.size >= 2,
                     onClick = {
-                val yourShare = if (selectedTabIndex == 0) sharePerMember
-                    else {
-                        val rawShare = itemizedAmounts["You"]?.toDoubleOrNull() ?: 0.0
-                        if (isFiatMode) rawShare / AppState.currentExchangeRate.doubleValue else rawShare
-                    }
-                // Deduct your share from wallet immediately
-                AppState.walletBalance.value = (AppState.walletBalance.value - yourShare).coerceAtLeast(0.0)
-                val newBill = GroupBill(
-                    id = "bill_${System.currentTimeMillis()}",
-                    name = expenseName,
-                    totalAmount = total,
-                    memberCount = selectedMembers.size,
-                    status = BillStatus.PENDING,
-                    date = "Today",
-                    yourShare = yourShare,
-                    members = selectedMembers.map { m ->
-                        if (selectedTabIndex == 0) {
-                            m.copy(amount = sharePerMember)
-                        } else {
-                            val rawAmt = itemizedAmounts[m.name]?.toDoubleOrNull() ?: 0.0
-                            val xlmAmt = if (isFiatMode) rawAmt / AppState.currentExchangeRate.doubleValue else rawAmt
-                            m.copy(amount = xlmAmt)
-                        }
-                    }
-                )
-                AppState.addBill(newBill)
-                navController.navigateUp()
+                        val newBill = GroupBill(
+                            id = "bill_${System.currentTimeMillis()}",
+                            name = expenseName,
+                            totalAmount = total,
+                            memberCount = selectedMembers.size,
+                            status = BillStatus.PENDING,
+                            date = "Today",
+                            yourShare = yourShare,
+                            members = selectedMembers.map { m ->
+                                if (selectedTabIndex == 0) {
+                                    m.copy(amount = sharePerMember)
+                                } else {
+                                    val rawAmt = itemizedAmounts[m.name]?.toDoubleOrNull() ?: 0.0
+                                    val xlmAmt = if (isFiatMode) rawAmt / AppState.currentExchangeRate.doubleValue else rawAmt
+                                    m.copy(amount = xlmAmt)
+                                }
+                            }
+                        )
+                        AppState.addBill(newBill)
+                        navController.navigateUp()
                     }
                 )
             }
@@ -314,11 +354,19 @@ fun NewGroupBillScreen(navController: NavController) {
                         }
                         if (selectedTabIndex == 0) {
                             if (sharePerMember > 0) {
-                                Text(
-                                    text = "₱ ${String.format("%,.2f", sharePerMember)}",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "${String.format("%,.2f", sharePerMember)} XLM",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PundarTextPrimary
+                                    )
+                                    Text(
+                                        text = AppState.formatFiat(sharePerMember),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = PundarTextSecondary
+                                    )
+                                }
                             }
                         } else {
                             OutlinedTextField(

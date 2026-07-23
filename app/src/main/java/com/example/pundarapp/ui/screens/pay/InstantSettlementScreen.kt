@@ -224,7 +224,6 @@ fun InstantSettlementScreen(navController: NavController) {
 
                         processingStage = "Updating balance..."
                         transactionRef = result.getOrNull() ?: ""
-                        AppState.walletBalance.value -= totalSettlement
                         selectedBillIds.forEach { billId -> AppState.settleBill(billId) }
                         val growInvestment = AppState.processPayRoundUp(
                             sourceReference = transactionRef,

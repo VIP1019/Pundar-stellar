@@ -129,10 +129,10 @@ fun QrSendConfirmScreen(navController: NavController) {
                             pin = ""
 
                             transfer.onSuccess { ref ->
-                                AppState.walletBalance.value -= sendAmount
+                                AppState.updateWalletBalance(AppState.walletBalance.value - sendAmount)
                                 if (payload.type == QrPayload.TYPE_BILL_PAYMENT) {
                                     BillQrRepository.getRecord(payload.securityToken)?.billId?.let {
-                                        AppState.settleBill(it)
+                                        AppState.markBillSettled(it)
                                     }
                                     AppState.homeActivities.add(
                                         0,

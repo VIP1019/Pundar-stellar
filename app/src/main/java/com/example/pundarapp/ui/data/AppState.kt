@@ -83,7 +83,7 @@ object AppState {
             if (old.status == BillStatus.SETTLED) return // already settled
             // Deduct user's share from wallet
             val share = old.yourShare
-            walletBalance.value = (walletBalance.value - share).coerceAtLeast(0.0)
+            updateWalletBalance((walletBalance.value - share).coerceAtLeast(0.0))
             bills[index] = old.copy(status = BillStatus.SETTLED)
             // Record as home activity
             addHomeActivity(
@@ -96,6 +96,20 @@ object AppState {
                     module = "Pay"
                 )
             )
+            scope.launch {
+                if (AuthRepository.isUserLoggedIn()) {
+                    PayRepository.createBill(bills[index])
+                }
+            }
+        }
+    }
+
+    fun markBillSettled(billId: String) {
+        val index = bills.indexOfFirst { it.id == billId }
+        if (index >= 0) {
+            val old = bills[index]
+            if (old.status == BillStatus.SETTLED) return
+            bills[index] = old.copy(status = BillStatus.SETTLED)
             scope.launch {
                 if (AuthRepository.isUserLoggedIn()) {
                     PayRepository.createBill(bills[index])
@@ -212,7 +226,7 @@ object AppState {
                 members = updatedMembers
             )
             // Deduct from wallet
-            walletBalance.value -= amount
+            updateWalletBalance(walletBalance.value - amount)
             addHomeActivity(
                 HomeActivity(
                     icon = "savings",
@@ -304,7 +318,7 @@ object AppState {
             return null
         }
 
-        walletBalance.value -= roundUp
+        updateWalletBalance(walletBalance.value - roundUp)
         val accumulated = settings.totalAccumulated + roundUp
         
         val updatedSettings = settings.copy(
@@ -468,7 +482,7 @@ object AppState {
             ) + old.activities
         )
         // Deduct from wallet
-        walletBalance.value -= amount
+        updateWalletBalance(walletBalance.value - amount)
         addHomeActivity(
             HomeActivity(
                 icon = "trending_up",
@@ -498,7 +512,7 @@ object AppState {
             ) + old.activities
         )
         // Add back to wallet
-        walletBalance.value += amount
+        updateWalletBalance(walletBalance.value + amount)
         addHomeActivity(
             HomeActivity(
                 icon = "trending_up",
@@ -558,6 +572,45 @@ object AppState {
         homeRefreshTrigger.intValue += 1
     }
 
+    fun loadUserBalance(phone: String, remoteBalance: Double) {
+        val key = "wallet_balance_$phone"
+        val hasLocal = prefs?.contains(key) == true
+        val localBalance = if (hasLocal) prefs?.getFloat(key, 0f)?.toDouble() ?: 0.0 else -1.0
+        val finalBalance = if (localBalance >= 0.0) localBalance else remoteBalance
+        walletBalance.value = finalBalance
+
+        prefs?.edit()?.putFloat(key, finalBalance.toFloat())?.apply()
+        if (phone.isNotBlank()) {
+            scope.launch {
+                try {
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("users").document(phone)
+                        .update(mapOf("wallet_balance" to finalBalance, "walletBalance" to finalBalance))
+                } catch (e: Exception) {
+                    Log.e("AppState", "Failed to sync balance to Firestore", e)
+                }
+            }
+        }
+    }
+
+    fun updateWalletBalance(newBalance: Double) {
+        val clamped = newBalance.coerceAtLeast(0.0)
+        walletBalance.value = clamped
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isNotBlank()) {
+            prefs?.edit()?.putFloat("wallet_balance_$phone", clamped.toFloat())?.apply()
+            scope.launch {
+                try {
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("users").document(phone)
+                        .update(mapOf("wallet_balance" to clamped, "walletBalance" to clamped))
+                } catch (e: Exception) {
+                    Log.e("AppState", "Failed to update Firestore wallet balance", e)
+                }
+            }
+        }
+    }
+
     fun refreshWalletBalance() {
         // Local wallet balance is the source of truth, managed by
         // Cash In / Send / Pay / Circle / Grow operations within the app.
@@ -595,6 +648,14 @@ object AppState {
         isBalanceHidden.value = prefs?.getBoolean("hide_balance", false) ?: false
         preferredCurrency.value = prefs?.getString("preferred_currency", "PHP") ?: "PHP"
         fetchExchangeRate()
+
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isNotBlank()) {
+            val key = "wallet_balance_$phone"
+            if (prefs?.contains(key) == true) {
+                walletBalance.value = prefs?.getFloat(key, 0f)?.toDouble() ?: 0.0
+            }
+        }
     }
     
     fun setCurrency(currencyCode: String) {

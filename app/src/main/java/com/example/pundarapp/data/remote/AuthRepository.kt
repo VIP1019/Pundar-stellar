@@ -20,7 +20,8 @@ object AuthRepository {
         val name: String,
         val phone: String,
         val stellarPublicKey: String? = null,
-        val profileImageUrl: String? = null
+        val profileImageUrl: String? = null,
+        val walletBalance: Double = 0.0
     )
 
     suspend fun registerWithPhone(phone: String, fullName: String, mpin: String): Result<Boolean> {
@@ -60,18 +61,22 @@ object AuthRepository {
                 "created_at" to System.currentTimeMillis(),
                 "stellarPublicKey" to publicKey,
                 "encryptedStellarSeed" to encryptedSeed,
-                "isCustodial" to true
+                "isCustodial" to true,
+                "wallet_balance" to 0.0,
+                "walletBalance" to 0.0
             )
             usersCollection.document(cleanPhone).set(userData).await()
             Log.d(TAG, "registerWithPhone: success")
 
-            // Auto-login: set session
+            // Auto-login: set session & load balance
             currentUserState.value = UserData(
                 id = cleanPhone,
                 name = fullName.trim(),
                 phone = cleanPhone,
-                stellarPublicKey = publicKey
+                stellarPublicKey = publicKey,
+                walletBalance = 0.0
             )
+            AppState.loadUserBalance(cleanPhone, 0.0)
 
             Result.success(true)
         } catch (e: Exception) {
@@ -106,14 +111,20 @@ object AuthRepository {
             val name = doc.getString("full_name") ?: "User"
             val publicKey = doc.getString("stellarPublicKey")
             val profileImage = doc.getString("profile_image_url")
+            val balance = doc.getDouble("wallet_balance")
+                ?: doc.getDouble("walletBalance")
+                ?: 0.0
+
             currentUserState.value = UserData(
                 id = cleanPhone,
                 name = name,
                 phone = cleanPhone,
                 stellarPublicKey = publicKey,
-                profileImageUrl = profileImage
+                profileImageUrl = profileImage,
+                walletBalance = balance
             )
-            Log.d(TAG, "loginWithPhone: success")
+            AppState.loadUserBalance(cleanPhone, balance)
+            Log.d(TAG, "loginWithPhone: success (balance=$balance)")
 
             Result.success(true)
         } catch (e: Exception) {

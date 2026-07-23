@@ -96,7 +96,7 @@ fun BuyLoadScreen(navController: NavController) {
                         }
 
                         // Deduct balance
-                        AppState.walletBalance.value -= loadAmount
+                        AppState.updateWalletBalance(AppState.walletBalance.value - loadAmount)
                         AppState.processPayRoundUp(
                             sourceReference = "LOAD-${UUID.randomUUID().toString().take(8).uppercase()}",
                             sourceAmount = loadAmount,

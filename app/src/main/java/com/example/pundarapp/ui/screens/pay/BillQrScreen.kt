@@ -91,7 +91,7 @@ fun BillQrScreen(billId: String, navController: NavController) {
                 val remote = BillQrRepository.resolveStatus(token)
                 if (remote == BillQrStatus.PAID) {
                     qrStatus = BillQrStatus.PAID
-                    AppState.settleBill(billId)
+                    AppState.markBillSettled(billId)
                     break
                 }
                 if (remote == BillQrStatus.EXPIRED) qrStatus = BillQrStatus.EXPIRED
