@@ -35,6 +35,8 @@ import com.example.pundarapp.data.remote.CurrencyData
 import com.example.pundarapp.data.remote.supportedCurrencies
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import com.example.pundarapp.ui.components.AnimatedBackground
+import com.example.pundarapp.ui.components.BgAccent
 import com.example.pundarapp.ui.components.PundarAvatar
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
@@ -147,9 +149,10 @@ fun UserSettingsScreen(navController: NavController) {
         )
     }
 
+    AnimatedBackground(accent = BgAccent.Purple) {
     Scaffold(
         topBar         = { PundarDetailTopBar("Settings") { navController.navigateUp() } },
-        containerColor = Navy900
+        containerColor = Color.Transparent
     ) { padding ->
         Column(
             modifier = Modifier
@@ -344,6 +347,7 @@ fun UserSettingsScreen(navController: NavController) {
             Spacer(Modifier.height(36.dp))
         }
     }
+    } // AnimatedBackground
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
