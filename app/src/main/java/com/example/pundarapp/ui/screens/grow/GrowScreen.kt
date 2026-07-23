@@ -216,10 +216,8 @@ fun GrowScreen(navController: NavController) {
                     settings = AppState.roundUpSettings.value,
                     onSettingsClick = { navController.navigate("grow/round_up_settings") }, // TODO: use Routes.ROUND_UP_SETTINGS
                     onInvestNowClick = {
-                        // For demo, forcefully trigger auto-invest with current accumulation if > 0
-                        if (AppState.roundUpSettings.value.totalAccumulated > 0) {
-                            // Using private purchaseTokenizedEquity logic is tricky from here without a public wrapper.
-                            // We will add a public `triggerManualRoundUpInvest()` to AppState later.
+                        val swept = AppState.sweepBalanceRemainderToGrow()
+                        if (swept == 0.0 && AppState.roundUpSettings.value.totalAccumulated > 0) {
                             AppState.triggerManualRoundUpInvest()
                         }
                     }

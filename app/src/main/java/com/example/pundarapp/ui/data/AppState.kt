@@ -287,10 +287,44 @@ object AppState {
         val settings = roundUpSettings.value
         if (!settings.isEnabled || amount <= 0.0) return 0.0
         
-        val roundedTarget = kotlin.math.ceil(amount)
-        val baseRoundUp = roundedTarget - amount
+        val targetMultiplier = 10.0
+        val mod = amount % targetMultiplier
+        val baseRoundUp = if (mod == 0.0) 0.0 else (targetMultiplier - mod)
         
-        return if (baseRoundUp > 0.0) baseRoundUp * settings.roundUpMultiplier else 0.0
+        return baseRoundUp * settings.roundUpMultiplier
+    }
+
+    fun sweepBalanceRemainderToGrow(): Double {
+        val current = walletBalance.value
+        if (current <= 0.0) return 0.0
+        val mod = current % 10.0
+        val remainder = if (mod == 0.0) 0.0 else mod
+        if (remainder <= 0.0 || current < remainder) return 0.0
+
+        updateWalletBalance(current - remainder)
+        val settings = roundUpSettings.value
+        val accumulated = settings.totalAccumulated + remainder
+        val updatedSettings = settings.copy(
+            totalAccumulated = accumulated,
+            roundUpCount = settings.roundUpCount + 1
+        )
+        roundUpSettings.value = updatedSettings
+
+        addHomeActivity(
+            HomeActivity(
+                icon = "trending_up",
+                title = "Spare Change Swept",
+                subtitle = "Placed in Pundar Grow",
+                amount = "-${String.format("%,.2f", remainder)} XLM",
+                isPositive = false,
+                module = "Grow"
+            )
+        )
+
+        if (accumulated >= settings.threshold) {
+            triggerManualRoundUpInvest()
+        }
+        return remainder
     }
 
     fun processPayRoundUp(
