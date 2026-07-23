@@ -551,7 +551,7 @@ object AppState {
 
     // ── HOME ACTIVITY FEED ──────────────────────────────────────────
     val homeActivities = mutableStateListOf<HomeActivity>()
-    val walletBalance = mutableStateOf(5000.0)
+    val walletBalance = mutableStateOf(0.0)
     val homeRefreshTrigger = mutableIntStateOf(0)
 
     fun requestHomeRefresh() {
@@ -642,10 +642,11 @@ object AppState {
         pendingJoinRequests.clear()
         portfolio.value = SampleData.portfolio
         favoriteStocks.value = emptySet()
+        roundUpSettings.value = SampleData.roundUpSettings
         recentNotifications.clear()
         unreadCountState.intValue = 0
         homeActivities.clear()
-        walletBalance.value = 5000.0
+        walletBalance.value = 0.0
         pendingQrPayload.value = null
         homeRefreshTrigger.intValue = 0
     }

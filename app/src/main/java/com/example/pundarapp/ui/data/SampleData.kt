@@ -156,13 +156,13 @@ data class RoundUpInvestment(
 )
 
 data class RoundUpSettings(
-    val isEnabled: Boolean = true,
+    val isEnabled: Boolean = false,
     val threshold: Double = 100.0,
     val roundUpMultiplier: Int = 1,
     val targetStocks: List<String> = listOf("AC", "SMPH", "BDO", "JFC"),
-    val totalAccumulated: Double = 67.45,
-    val totalInvested: Double = 2340.00,
-    val roundUpCount: Int = 47
+    val totalAccumulated: Double = 0.0,
+    val totalInvested: Double = 0.0,
+    val roundUpCount: Int = 0
 )
 
 data class HomeActivity(
@@ -197,24 +197,24 @@ object SampleData {
     val roundUpSettings = RoundUpSettings()
 
     val portfolio = Portfolio(
-        totalValue = 124500.00,
-        totalReturnPercent = 12.4,
-        totalReturnAmount = 15436.00,
-        phEquitiesPercent = 80,
-        fixedIncomePercent = 20,
+        totalValue = 0.0,
+        totalReturnPercent = 0.0,
+        totalReturnAmount = 0.0,
+        phEquitiesPercent = 0,
+        fixedIncomePercent = 0,
         holdings = listOf(
             StockHolding(
                 ticker = "AC",
                 companyName = "Ayala Corp",
                 sector = "Real Estate & Conglomerates",
                 exchange = "Philippine Stock Exchange",
-                shares = 150.0,
-                value = 90000.00,
-                returnPercent = 5.2,
+                shares = 0.0,
+                value = 0.0,
+                returnPercent = 0.0,
                 currentPrice = 850.50,
                 priceChange = 12.50,
                 priceChangePercent = 1.49,
-                averageCost = 808.00,
+                averageCost = 0.0,
                 marketCap = "₱ 520.4B",
                 peRatio = "14.2x",
                 divYield = "2.8%",
@@ -233,13 +233,13 @@ object SampleData {
                 companyName = "Meralco",
                 sector = "Utilities",
                 exchange = "Philippine Stock Exchange",
-                shares = 50.0,
-                value = 17500.00,
-                returnPercent = 8.5,
+                shares = 0.0,
+                value = 0.0,
+                returnPercent = 0.0,
                 currentPrice = 350.00,
                 priceChange = 5.00,
                 priceChangePercent = 1.44,
-                averageCost = 322.00,
+                averageCost = 0.0,
                 marketCap = "₱ 394.0B",
                 peRatio = "12.1x",
                 divYield = "5.1%",
@@ -256,13 +256,13 @@ object SampleData {
                 companyName = "SM Prime",
                 sector = "Real Estate",
                 exchange = "Philippine Stock Exchange",
-                shares = 200.0,
-                value = 6500.00,
-                returnPercent = 1.8,
+                shares = 0.0,
+                value = 0.0,
+                returnPercent = 0.0,
                 currentPrice = 33.00,
                 priceChange = 0.50,
                 priceChangePercent = 1.54,
-                averageCost = 32.40,
+                averageCost = 0.0,
                 marketCap = "₱ 950.2B",
                 peRatio = "25.1x",
                 divYield = "1.2%",
@@ -280,13 +280,13 @@ object SampleData {
                 companyName = "BDO Unibank",
                 sector = "Banking",
                 exchange = "Philippine Stock Exchange",
-                shares = 120.0,
-                value = 18000.00,
-                returnPercent = -0.5,
+                shares = 0.0,
+                value = 0.0,
+                returnPercent = 0.0,
                 currentPrice = 150.00,
                 priceChange = -0.80,
                 priceChangePercent = -0.53,
-                averageCost = 150.75,
+                averageCost = 0.0,
                 marketCap = "₱ 660.1B",
                 peRatio = "10.8x",
                 divYield = "3.1%",
@@ -300,12 +300,7 @@ object SampleData {
                 )
             )
         ),
-        activities = listOf(
-            PortfolioActivity(ActivityType.AUTO_SWEEP, "Auto-Sweep", 500.00, "Today, 9:00 AM"),
-            PortfolioActivity(ActivityType.DIVIDEND, "Dividend: MER", 120.50, "Yesterday"),
-            PortfolioActivity(ActivityType.ROUND_UP, "Round-up from Pay", 33.33, "Jul 4"),
-            PortfolioActivity(ActivityType.PURCHASE, "Buy: AC x5", 4252.50, "Jul 3", false)
-        )
+        activities = emptyList()
     )
 
     // ── Home Activities ─────────────────────────────────
@@ -314,8 +309,8 @@ object SampleData {
     // ── Chart Data ──────────────────────────────────────
 
     val portfolioChartData = listOf(
-        85000f, 87000f, 86500f, 89000f, 92000f, 91000f, 94000f, 96000f, 95500f,
-        98000f, 100000f, 99000f, 102000f, 105000f, 103000f, 108000f, 110000f,
-        112000f, 115000f, 118000f, 116000f, 119000f, 121000f, 122000f, 124000f, 124500f
+        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+        0f, 0f, 0f, 0f, 0f, 0f
     )
 }

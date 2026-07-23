@@ -149,10 +149,9 @@ fun UserSettingsScreen(navController: NavController) {
         )
     }
 
-    AnimatedBackground(accent = BgAccent.Purple) {
     Scaffold(
-        topBar         = { PundarDetailTopBar("Settings") { navController.navigateUp() } },
-        containerColor = Color.Transparent
+        topBar         = { PundarDetailTopBar(title = "Settings", onBack = { navController.navigateUp() }) },
+        containerColor = Navy900
     ) { padding ->
         Column(
             modifier = Modifier
@@ -347,7 +346,6 @@ fun UserSettingsScreen(navController: NavController) {
             Spacer(Modifier.height(36.dp))
         }
     }
-    } // AnimatedBackground
 }
 
 // ── Helpers ───────────────────────────────────────────────────────

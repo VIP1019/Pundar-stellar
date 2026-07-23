@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.*
+import com.example.pundarapp.ui.data.AppState
+import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,6 +98,11 @@ fun CashInScreen(navController: NavController) {
                                     isProcessing = true
                                     scope.launch {
                                         delay(1500) // Simulate processing
+                                        val cashInAmt = amount.toDoubleOrNull() ?: 0.0
+                                        if (cashInAmt > 0) {
+                                            AppState.walletBalance.value += cashInAmt
+                                            AppState.requestHomeRefresh()
+                                        }
                                         isProcessing = false
                                         currentStep = CashInStep.RECEIPT
                                     }
@@ -355,7 +362,7 @@ private fun ReceiptView(
         
         Text("Cash In Successful", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
         Spacer(Modifier.height(8.dp))
-        Text("Your wallet will be updated shortly.", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Text("Your wallet has been credited.", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         
         Spacer(Modifier.height(32.dp))
         
