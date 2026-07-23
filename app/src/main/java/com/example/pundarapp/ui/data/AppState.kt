@@ -34,7 +34,7 @@ fun getCurrencySymbol(code: String): String {
 object AppState {
 
     // ── PAY ─────────────────────────────────────────────────────────
-    val bills = mutableStateListOf<GroupBill>()
+    val bills = mutableStateListOf<GroupBill>().apply { addAll(SampleData.recentBills) }
     private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
         Log.e("AppState", "Background operation failed", exception)
     }
@@ -119,7 +119,7 @@ object AppState {
     }
 
     // ── CIRCLE ──────────────────────────────────────────────────────
-    val circles = mutableStateListOf<Circle>()
+    val circles = mutableStateListOf<Circle>().apply { addAll(SampleData.circles) }
     val pendingInvitation = mutableStateOf<CircleInvitation?>(null)
     val pendingJoinRequests = mutableStateListOf<CircleJoinRequest>()
 
@@ -598,7 +598,7 @@ object AppState {
     }
 
     // ── HOME ACTIVITY FEED ──────────────────────────────────────────
-    val homeActivities = mutableStateListOf<HomeActivity>()
+    val homeActivities = mutableStateListOf<HomeActivity>().apply { addAll(SampleData.homeActivities) }
     val walletBalance = mutableStateOf(0.0)
     val homeRefreshTrigger = mutableIntStateOf(0)
 
@@ -728,7 +728,9 @@ object AppState {
 
     fun clearSession() {
         bills.clear()
+        bills.addAll(SampleData.recentBills)
         circles.clear()
+        circles.addAll(SampleData.circles)
         pendingInvitation.value = null
         pendingJoinRequests.clear()
         portfolio.value = SampleData.portfolio
@@ -737,6 +739,7 @@ object AppState {
         recentNotifications.clear()
         unreadCountState.intValue = 0
         homeActivities.clear()
+        homeActivities.addAll(SampleData.homeActivities)
         walletBalance.value = 0.0
         pendingQrPayload.value = null
         homeRefreshTrigger.intValue = 0

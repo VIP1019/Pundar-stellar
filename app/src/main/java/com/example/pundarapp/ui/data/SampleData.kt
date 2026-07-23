@@ -185,11 +185,79 @@ object SampleData {
     )
 
     // ── Pay ─────────────────────────────────────────────
-    val recentBills = emptyList<GroupBill>()
-    val recentContacts = emptyList<BillMember>()
+    val recentBills = listOf(
+        GroupBill(
+            id = "bill_sample_1",
+            name = "Dinner at BGC",
+            totalAmount = 1500.00,
+            memberCount = 3,
+            status = BillStatus.PENDING,
+            date = "Today",
+            yourShare = 500.00,
+            members = listOf(
+                BillMember("You", "", "You", 500.00),
+                BillMember("Maria Santos", "09171234567", "MS", 500.00),
+                BillMember("Mark Cruz", "09189876543", "MC", 500.00)
+            )
+        ),
+        GroupBill(
+            id = "bill_sample_2",
+            name = "Weekend Groceries",
+            totalAmount = 2400.00,
+            memberCount = 4,
+            status = BillStatus.SETTLED,
+            date = "Yesterday",
+            yourShare = 600.00,
+            members = listOf(
+                BillMember("You", "", "You", 600.00),
+                BillMember("Anna Reyes", "09191112233", "AR", 600.00),
+                BillMember("Leo Garcia", "09204445566", "LG", 600.00),
+                BillMember("Sarah Tan", "09217778899", "ST", 600.00)
+            )
+        )
+    )
+    val recentContacts = listOf(
+        BillMember("Maria Santos", "09171234567", "MS", 0.0),
+        BillMember("Mark Cruz", "09189876543", "MC", 0.0),
+        BillMember("Anna Reyes", "09191112233", "AR", 0.0)
+    )
 
     // ── Circle ──────────────────────────────────────────
-    val circles = emptyList<Circle>()
+    val circles = listOf(
+        Circle(
+            id = "circle_sample_1",
+            name = "Emergency Fund 2026",
+            targetAmount = 50000.00,
+            savedAmount = 22500.00,
+            targetDate = "Dec 2026",
+            memberCount = 5,
+            contributionPerMonth = 5000.00,
+            members = listOf(
+                CircleMember("1", "You", "JD", 20, 5000.00, ContributionStatus.PAID, isYou = true),
+                CircleMember("2", "Maria S.", "MS", 20, 5000.00, ContributionStatus.PAID),
+                CircleMember("3", "Mark C.", "MC", 20, 5000.00, ContributionStatus.PENDING),
+                CircleMember("4", "Anna R.", "AR", 20, 5000.00, ContributionStatus.PAID),
+                CircleMember("5", "Leo G.", "LG", 20, 5000.00, ContributionStatus.PAID)
+            ),
+            isActive = true
+        ),
+        Circle(
+            id = "circle_sample_2",
+            name = "Travel Fund - Japan",
+            targetAmount = 30000.00,
+            savedAmount = 15000.00,
+            targetDate = "Nov 2026",
+            memberCount = 4,
+            contributionPerMonth = 3750.00,
+            members = listOf(
+                CircleMember("1", "You", "JD", 25, 3750.00, ContributionStatus.PAID, isYou = true),
+                CircleMember("2", "Sarah T.", "ST", 25, 3750.00, ContributionStatus.PAID),
+                CircleMember("3", "Mark C.", "MC", 25, 3750.00, ContributionStatus.PAID),
+                CircleMember("4", "Leo G.", "LG", 25, 3750.00, ContributionStatus.PENDING)
+            ),
+            isActive = true
+        )
+    )
     val circleInvitation: CircleInvitation? = null
 
     // ── Grow ────────────────────────────────────────────
@@ -300,11 +368,20 @@ object SampleData {
                 )
             )
         ),
-        activities = emptyList()
+        activities = listOf(
+            PortfolioActivity(ActivityType.AUTO_SWEEP, "Auto-Sweep to AC", 15.50, "Today, 9:00 AM"),
+            PortfolioActivity(ActivityType.DIVIDEND, "Dividend: MER", 120.50, "Yesterday"),
+            PortfolioActivity(ActivityType.ROUND_UP, "Round-up from Pay", 33.33, "Jul 14")
+        )
     )
 
     // ── Home Activities ─────────────────────────────────
-    val homeActivities = emptyList<HomeActivity>()
+    val homeActivities = listOf(
+        HomeActivity("payment", "Dinner at BGC", "Pending • 3 members", "-500.00 XLM", false, "Pay"),
+        HomeActivity("savings", "Emergency Fund 2026", "Contribution sent", "-5,000.00 XLM", false, "Circle"),
+        HomeActivity("trending_up", "Spare Change Swept", "Placed in Pundar Grow", "-5.00 XLM", false, "Grow"),
+        HomeActivity("payment", "Weekend Groceries", "Settled", "-600.00 XLM", false, "Pay")
+    )
 
     // ── Chart Data ──────────────────────────────────────
 
