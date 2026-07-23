@@ -23,6 +23,7 @@ import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 @Composable
 fun RoundUpSettingsScreen(navController: NavController) {
@@ -37,7 +38,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = Navy900
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -53,7 +54,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Navy800)
+                        .background(PundarTheme.colors.surfacePrimary)
                         .padding(20.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -61,14 +62,14 @@ fun RoundUpSettingsScreen(navController: NavController) {
                     Column {
                         Text(
                             text = "Enable Round-Ups",
-                            color = TextPrimary,
+                            color = PundarTheme.colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = "Auto-invest spare change from Pay",
-                            color = TextSecondary,
+                            color = PundarTheme.colors.textSecondary,
                             fontSize = 12.sp
                         )
                     }
@@ -76,10 +77,10 @@ fun RoundUpSettingsScreen(navController: NavController) {
                         checked = settings.isEnabled,
                         onCheckedChange = { AppState.toggleRoundUp(it) },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
+                            checkedThumbColor = PundarTheme.colors.surfacePrimary,
                             checkedTrackColor = ElectricBlue,
-                            uncheckedThumbColor = Color.White,
-                            uncheckedTrackColor = SpaceMedium
+                            uncheckedThumbColor = PundarTheme.colors.surfacePrimary,
+                            uncheckedTrackColor = PundarTheme.colors.surfaceTertiary
                         )
                     )
                 }
@@ -89,7 +90,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
             item {
                 Text(
                     text = "Multiplier",
-                    color = TextPrimary,
+                    color = PundarTheme.colors.textPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -104,10 +105,10 @@ fun RoundUpSettingsScreen(navController: NavController) {
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) ElectricBlue else Navy800)
+                                .background(if (isSelected) ElectricBlue else PundarTheme.colors.surfacePrimary)
                                 .border(
                                     1.dp,
-                                    if (isSelected) ElectricBlue else NavyBorder,
+                                    if (isSelected) ElectricBlue else PundarTheme.colors.borderPrimary,
                                     RoundedCornerShape(12.dp)
                                 )
                                 .clickable { AppState.setRoundUpMultiplier(multiplier) }
@@ -116,7 +117,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
                         ) {
                             Text(
                                 text = "${multiplier}x",
-                                color = if (isSelected) Color.White else TextPrimary,
+                                color = if (isSelected) PundarTheme.colors.surfacePrimary else PundarTheme.colors.textPrimary,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 fontSize = 14.sp
                             )
@@ -126,7 +127,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = "A ₱5.00 round-up at ${settings.roundUpMultiplier}x will invest ₱${5.0 * settings.roundUpMultiplier}.",
-                    color = TextSecondary,
+                    color = PundarTheme.colors.textSecondary,
                     fontSize = 12.sp
                 )
             }
@@ -135,7 +136,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
             item {
                 Text(
                     text = "Auto-Invest Threshold",
-                    color = TextPrimary,
+                    color = PundarTheme.colors.textPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -150,10 +151,10 @@ fun RoundUpSettingsScreen(navController: NavController) {
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) ElectricBlue else Navy800)
+                                .background(if (isSelected) ElectricBlue else PundarTheme.colors.surfacePrimary)
                                 .border(
                                     1.dp,
-                                    if (isSelected) ElectricBlue else NavyBorder,
+                                    if (isSelected) ElectricBlue else PundarTheme.colors.borderPrimary,
                                     RoundedCornerShape(12.dp)
                                 )
                                 .clickable { AppState.setRoundUpThreshold(threshold) }
@@ -162,7 +163,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
                         ) {
                             Text(
                                 text = "₱${threshold.toInt()}",
-                                color = if (isSelected) Color.White else TextPrimary,
+                                color = if (isSelected) PundarTheme.colors.surfacePrimary else PundarTheme.colors.textPrimary,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 fontSize = 13.sp
                             )
@@ -175,14 +176,14 @@ fun RoundUpSettingsScreen(navController: NavController) {
             item {
                 Text(
                     text = "Target Stocks",
-                    color = TextPrimary,
+                    color = PundarTheme.colors.textPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = "Your round-ups will be distributed across these stocks.",
-                    color = TextSecondary,
+                    color = PundarTheme.colors.textSecondary,
                     fontSize = 12.sp
                 )
                 Spacer(Modifier.height(16.dp))
@@ -196,8 +197,8 @@ fun RoundUpSettingsScreen(navController: NavController) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Navy800)
-                                .border(1.dp, if (isSelected) ElectricBlue.copy(alpha = 0.5f) else NavyBorder, RoundedCornerShape(12.dp))
+                                .background(PundarTheme.colors.surfacePrimary)
+                                .border(1.dp, if (isSelected) ElectricBlue.copy(alpha = 0.5f) else PundarTheme.colors.borderPrimary, RoundedCornerShape(12.dp))
                                 .clickable {
                                     val newTargets = if (isSelected) {
                                         if (settings.targetStocks.size > 1) {
@@ -224,7 +225,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
                                 ) {
                                     Text(
                                         text = ticker.take(2),
-                                        color = Color.White,
+                                        color = PundarTheme.colors.surfacePrimary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp
                                     )
@@ -232,7 +233,7 @@ fun RoundUpSettingsScreen(navController: NavController) {
                                 Spacer(Modifier.width(16.dp))
                                 Text(
                                     text = ticker,
-                                    color = TextPrimary,
+                                    color = PundarTheme.colors.textPrimary,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -243,14 +244,14 @@ fun RoundUpSettingsScreen(navController: NavController) {
                                     .size(24.dp)
                                     .clip(CircleShape)
                                     .background(if (isSelected) ElectricBlue else Color.Transparent)
-                                    .border(1.dp, if (isSelected) ElectricBlue else TextSecondary, CircleShape),
+                                    .border(1.dp, if (isSelected) ElectricBlue else PundarTheme.colors.textSecondary, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (isSelected) {
                                     Icon(
                                         Icons.Filled.Check,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = PundarTheme.colors.surfacePrimary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }

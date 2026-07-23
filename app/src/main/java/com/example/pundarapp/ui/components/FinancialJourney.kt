@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
@@ -56,7 +57,7 @@ fun FinancialJourneySection(modifier: Modifier = Modifier) {
             "Your Financial Journey",
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
-            color = TextPrimary,
+            color = PundarTheme.colors.textPrimary,
             letterSpacing = 0.2.sp
         )
         Spacer(Modifier.height(12.dp))
@@ -66,7 +67,9 @@ fun FinancialJourneySection(modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = ElectricBlue.copy(0.15f))
                 .clip(RoundedCornerShape(24.dp))
-                .background(Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd)))
+                .background(Brush.linearGradient(
+                    listOf(PundarTheme.colors.surfaceSecondary, PundarTheme.colors.surfacePrimary)
+                ))
                 .border(
                     1.dp,
                     Brush.linearGradient(listOf(ElectricBlue.copy(0.35f), GlassWhite, ElectricPurple.copy(0.2f))),
@@ -81,7 +84,7 @@ fun FinancialJourneySection(modifier: Modifier = Modifier) {
                         Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(2.dp))
-                            .background(SpaceMedium)
+                            .background(PundarTheme.colors.surfaceTertiary)
                     )
                     Box(
                         Modifier
@@ -180,11 +183,11 @@ private fun JourneyNode(
                         if (step.completed || step.active)
                             Brush.linearGradient(listOf(step.accent.copy(0.35f), step.accent.copy(0.12f)))
                         else
-                            Brush.linearGradient(listOf(SpaceMedium, SpaceDeep))
+                            Brush.linearGradient(listOf(PundarTheme.colors.surfaceTertiary, PundarTheme.colors.surfacePrimary))
                     )
                     .border(
                         1.5.dp,
-                        if (step.completed || step.active) step.accent.copy(0.7f) else SpaceBorder,
+                        if (step.completed || step.active) step.accent.copy(0.7f) else PundarTheme.colors.borderPrimary,
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -200,7 +203,7 @@ private fun JourneyNode(
                     Icon(
                         step.icon,
                         contentDescription = step.label,
-                        tint = if (step.completed || step.active) step.accent else TextTertiary,
+                        tint = if (step.completed || step.active) step.accent else PundarTheme.colors.textMuted,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -213,8 +216,8 @@ private fun JourneyNode(
             fontWeight = if (step.active) FontWeight.Black else if (step.completed) FontWeight.Bold else FontWeight.Medium,
             color = when {
                 step.active -> step.accent
-                step.completed -> TextPrimary
-                else -> TextTertiary
+                step.completed -> PundarTheme.colors.textPrimary
+                else -> PundarTheme.colors.textMuted
             },
             textAlign = TextAlign.Center,
             letterSpacing = 0.3.sp

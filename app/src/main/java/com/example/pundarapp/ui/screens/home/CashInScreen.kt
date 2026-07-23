@@ -28,6 +28,8 @@ import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.theme.*
+
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -73,7 +75,7 @@ fun CashInScreen(navController: NavController) {
                 }
             )
         },
-        containerColor = PundarBackground,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
             if (currentStep != CashInStep.RECEIPT) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -154,7 +156,7 @@ private fun MethodSelectionView(
                 "Select Cash In Method",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = PundarTheme.colors.textPrimary
             )
             Spacer(Modifier.height(16.dp))
         }
@@ -168,7 +170,7 @@ private fun MethodSelectionView(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .clickable { onMethodSelected(method) },
-                color = if (isSelected) method.color.copy(alpha = 0.15f) else SpaceMedium,
+                color = if (isSelected) method.color.copy(alpha = 0.15f) else PundarTheme.colors.surfaceTertiary,
                 shape = RoundedCornerShape(16.dp),
                 border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, method.color)
                 else androidx.compose.foundation.BorderStroke(1.dp, SpaceBorder)
@@ -192,12 +194,12 @@ private fun MethodSelectionView(
                             method.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = PundarTheme.colors.textPrimary
                         )
                         Text(
                             method.description,
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = PundarTheme.colors.textSecondary
                         )
                     }
                     if (isSelected) {
@@ -226,15 +228,15 @@ private fun AmountEntryView(
                 Icon(selectedMethod?.icon ?: Icons.Filled.AccountBalance, null, tint = selectedMethod?.color ?: ElectricBlue)
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text("Cash in via", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                    Text(selectedMethod?.name ?: "", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                    Text("Cash in via", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
+                    Text(selectedMethod?.name ?: "", style = MaterialTheme.typography.titleMedium, color = PundarTheme.colors.textPrimary)
                 }
             }
         }
 
         Spacer(Modifier.height(48.dp))
 
-        Text("Enter Amount", style = MaterialTheme.typography.titleMedium, color = TextSecondary)
+        Text("Enter Amount", style = MaterialTheme.typography.titleMedium, color = PundarTheme.colors.textSecondary)
         Spacer(Modifier.height(8.dp))
 
         OutlinedTextField(
@@ -244,8 +246,8 @@ private fun AmountEntryView(
                     onAmountChange(it)
                 }
             },
-            prefix = { Text("₱ ", style = MaterialTheme.typography.displayMedium, color = TextPrimary) },
-            textStyle = MaterialTheme.typography.displayMedium.copy(color = TextPrimary),
+            prefix = { Text("₱ ", style = MaterialTheme.typography.displayMedium, color = PundarTheme.colors.textPrimary) },
+            textStyle = MaterialTheme.typography.displayMedium.copy(color = PundarTheme.colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
@@ -282,7 +284,7 @@ private fun ConfirmationView(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("Confirm Cash In", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Confirm Cash In", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
         Spacer(Modifier.height(24.dp))
 
         PundarCard {
@@ -299,7 +301,7 @@ private fun ConfirmationView(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Total to Pay", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text("Total to Pay", style = MaterialTheme.typography.titleMedium, color = PundarTheme.colors.textPrimary)
                 Text(
                     "₱${String.format("%,.2f", total)}",
                     style = MaterialTheme.typography.titleLarge,
@@ -360,9 +362,9 @@ private fun ReceiptView(
         
         Spacer(Modifier.height(24.dp))
         
-        Text("Cash In Successful", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Cash In Successful", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
         Spacer(Modifier.height(8.dp))
-        Text("Your wallet has been credited.", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Text("Your wallet has been credited.", style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
         
         Spacer(Modifier.height(32.dp))
         
@@ -388,7 +390,7 @@ private fun DetailRow(label: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
+        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
     }
 }

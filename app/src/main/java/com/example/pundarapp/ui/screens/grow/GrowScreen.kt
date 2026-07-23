@@ -39,6 +39,8 @@ import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 
+import com.example.pundarapp.ui.theme.PundarTheme
+
 // ── Easing curves ────────────────────────────────────────────────
 private val EaseOutBack  = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
 private val EaseOutExpo  = CubicBezierEasing(0.16f, 1f,    0.3f,  1f)
@@ -153,7 +155,7 @@ fun GrowScreen(navController: NavController) {
         ) {
             Text(
                 text  = "Our AI-powered engine will rebalance your holdings to maximize risk-adjusted returns based on your current allocation targets.",
-                color = TextSecondary,
+                color = PundarTheme.colors.textSecondary,
                 style = MaterialTheme.typography.bodyMedium,
                 lineHeight = 20.sp
             )
@@ -162,16 +164,16 @@ fun GrowScreen(navController: NavController) {
                 modifier              = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(SpaceMedium)
+                    .background(PundarTheme.colors.surfaceTertiary)
                     .padding(14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("PH Equities", color = TextSecondary, fontSize = 12.sp)
+                    Text("PH Equities", color = PundarTheme.colors.textSecondary, fontSize = 12.sp)
                     Text("80%  →  75%", color = ElectricBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Fixed Income", color = TextSecondary, fontSize = 12.sp)
+                    Text("Fixed Income", color = PundarTheme.colors.textSecondary, fontSize = 12.sp)
                     Text("20%  →  25%", color = NeonGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
@@ -265,14 +267,14 @@ private fun GrowHeroHeader() {
             "PUNDAR Grow",
             fontWeight    = FontWeight.Black,
             fontSize      = 32.sp,
-            color         = TextPrimary,
+            color         = PundarTheme.colors.textPrimary,
             letterSpacing = (-0.5).sp
         )
         Spacer(Modifier.height(4.dp))
         Text(
             "Tokenized PSE Equities & Spare Change Round-Ups",
             style         = MaterialTheme.typography.bodyMedium,
-            color         = TextSecondary,
+            color         = PundarTheme.colors.textSecondary,
             letterSpacing = 0.3.sp
         )
     }
@@ -292,7 +294,7 @@ private fun GrowAlertDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = Navy800,
+        containerColor   = PundarTheme.colors.surfacePrimary,
         tonalElevation   = 0.dp,
         shape            = RoundedCornerShape(20.dp),
         title = {
@@ -300,7 +302,7 @@ private fun GrowAlertDialog(
                 text       = title,
                 fontWeight = FontWeight.Bold,
                 fontSize   = 18.sp,
-                color      = TextPrimary
+                color      = PundarTheme.colors.textPrimary
             )
         },
         text = {
@@ -318,7 +320,7 @@ private fun GrowAlertDialog(
             ) {
                 Text(
                     text       = confirmLabel,
-                    color      = TextOnDark,
+                    color      = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize   = 14.sp
                 )
@@ -326,7 +328,7 @@ private fun GrowAlertDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary, fontSize = 14.sp)
+                Text("Cancel", color = PundarTheme.colors.textSecondary, fontSize = 14.sp)
             }
         }
     )
@@ -342,21 +344,21 @@ private fun GrowTextField(
     OutlinedTextField(
         value            = value,
         onValueChange    = onValueChange,
-        label            = { Text(label, color = TextSecondary) },
-        placeholder      = { Text(placeholder, color = TextTertiary) },
+        label            = { Text(label, color = PundarTheme.colors.textSecondary) },
+        placeholder      = { Text(placeholder, color = PundarTheme.colors.textMuted) },
         singleLine       = true,
         keyboardOptions  = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier         = Modifier.fillMaxWidth(),
         colors           = OutlinedTextFieldDefaults.colors(
             focusedBorderColor      = AccentCyanBlue,
-            unfocusedBorderColor    = NavyBorder,
+            unfocusedBorderColor    = PundarTheme.colors.borderPrimary,
             focusedLabelColor       = AccentCyanBlue,
-            unfocusedLabelColor     = TextSecondary,
-            focusedContainerColor   = Navy700,
-            unfocusedContainerColor = Navy700,
+            unfocusedLabelColor     = PundarTheme.colors.textSecondary,
+            focusedContainerColor   = PundarTheme.colors.surfaceSecondary,
+            unfocusedContainerColor = PundarTheme.colors.surfaceSecondary,
             cursorColor             = AccentCyanBlue,
-            focusedTextColor        = TextPrimary,
-            unfocusedTextColor      = TextPrimary
+            focusedTextColor        = PundarTheme.colors.textPrimary,
+            unfocusedTextColor      = PundarTheme.colors.textPrimary
         ),
         shape = RoundedCornerShape(12.dp)
     )
@@ -437,8 +439,8 @@ private fun PortfolioHeroCard(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Navy800,
-                        Navy700
+                        PundarTheme.colors.surfacePrimary,
+                        PundarTheme.colors.surfaceSecondary
                     )
                 )
             )
@@ -451,7 +453,7 @@ private fun PortfolioHeroCard(
                     Brush.linearGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.White.copy(alpha = 0.04f),
+                            PundarTheme.colors.surfacePrimary.copy(alpha = 0.04f),
                             Color.Transparent
                         ),
                         start = Offset(shimmerX, 0f),
@@ -485,7 +487,7 @@ private fun PortfolioHeroCard(
                 // ── TOTAL ASSETS label ──────────────────────────
                 Text(
                     text          = "TOTAL ASSETS",
-                    color         = TextSecondary,
+                    color         = PundarTheme.colors.textSecondary,
                     fontSize      = 11.sp,
                     fontWeight    = FontWeight.SemiBold,
                     letterSpacing = 2.sp
@@ -496,7 +498,7 @@ private fun PortfolioHeroCard(
                 // ── Balance value ───────────────────────────────
                 Text(
                     text       = "₱ ${String.format("%,.2f", portfolio.totalValue)}",
-                    color      = TextPrimary,
+                    color      = PundarTheme.colors.textPrimary,
                     fontSize   = 32.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-0.5).sp
@@ -562,13 +564,13 @@ private fun PortfolioHeroCard(
                             Icon(
                                 imageVector        = Icons.Filled.Add,
                                 contentDescription = null,
-                                tint               = TextOnDark,
+                                tint               = Color.White,
                                 modifier           = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text       = "Invest More",
-                                color      = TextOnDark,
+                                color      = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize   = 14.sp
                             )
@@ -594,13 +596,13 @@ private fun PortfolioHeroCard(
                             Icon(
                                 imageVector        = Icons.Filled.ArrowDownward,
                                 contentDescription = null,
-                                tint               = TextPrimary,
+                                tint               = Color.White,
                                 modifier           = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text       = "Withdraw",
-                                color      = TextPrimary,
+                                color      = Color.White,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize   = 14.sp
                             )
@@ -638,7 +640,7 @@ private fun RoundUpCard(
             text       = "Spare Change Round-Up",
             fontWeight = FontWeight.Bold,
             fontSize   = 15.sp,
-            color      = TextPrimary
+            color      = PundarTheme.colors.textPrimary
         )
 
         Spacer(Modifier.height(12.dp))
@@ -648,7 +650,7 @@ private fun RoundUpCard(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(
-                    Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd))
+                    Brush.linearGradient(listOf(PundarTheme.colors.surfaceSecondary, PundarTheme.colors.surfacePrimary))
                 )
                 .border(1.dp, BorderWhiteStrong, RoundedCornerShape(20.dp))
                 .padding(20.dp)
@@ -662,20 +664,20 @@ private fun RoundUpCard(
                     Column {
                         Text(
                             text = "Accumulated",
-                            color = TextSecondary,
+                            color = PundarTheme.colors.textSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text = "₱ ${String.format("%,.2f", settings.totalAccumulated)}",
-                                color = TextPrimary,
+                                color = PundarTheme.colors.textPrimary,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Black
                             )
                             Text(
                                 text = " / ₱ ${String.format("%,.0f", settings.threshold)}",
-                                color = TextTertiary,
+                                color = PundarTheme.colors.textMuted,
                                 fontSize = 14.sp,
                                 modifier = Modifier.padding(bottom = 3.dp, start = 4.dp)
                             )
@@ -700,12 +702,12 @@ private fun RoundUpCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(TextTertiary.copy(alpha = 0.15f))
+                                .background(PundarTheme.colors.textMuted.copy(alpha = 0.15f))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "Paused",
-                                color = TextTertiary,
+                                color = PundarTheme.colors.textMuted,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -724,7 +726,7 @@ private fun RoundUpCard(
                         .fillMaxWidth()
                         .height(8.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(Navy800)
+                        .background(PundarTheme.colors.surfacePrimary)
                 ) {
                     Box(
                         modifier = Modifier
@@ -744,19 +746,19 @@ private fun RoundUpCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("Lifetime Invested", color = TextSecondary, fontSize = 11.sp)
+                        Text("Lifetime Invested", color = PundarTheme.colors.textSecondary, fontSize = 11.sp)
                         Text(
                             "₱ ${String.format("%,.2f", settings.totalInvested)}",
-                            color = TextPrimary,
+                            color = PundarTheme.colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Round-Ups", color = TextSecondary, fontSize = 11.sp)
+                        Text("Round-Ups", color = PundarTheme.colors.textSecondary, fontSize = 11.sp)
                         Text(
                             "${settings.roundUpCount} (${settings.roundUpMultiplier}x)",
-                            color = TextPrimary,
+                            color = PundarTheme.colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -797,7 +799,7 @@ private fun AllocationSection(portfolio: Portfolio) {
             text       = "Allocation",
             fontWeight = FontWeight.Bold,
             fontSize   = 15.sp,
-            color      = TextPrimary
+            color      = PundarTheme.colors.textPrimary
         )
 
         Spacer(Modifier.height(12.dp))
@@ -807,7 +809,7 @@ private fun AllocationSection(portfolio: Portfolio) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(
-                    Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd))
+                    Brush.linearGradient(listOf(PundarTheme.colors.surfaceSecondary, PundarTheme.colors.surfacePrimary))
                 )
                 .border(1.dp, BorderWhiteStrong, RoundedCornerShape(20.dp))
                 .padding(20.dp)
@@ -840,7 +842,7 @@ private fun ActivitySection(activities: List<PortfolioActivity>) {
             text       = "Recent Activity",
             fontWeight = FontWeight.Bold,
             fontSize   = 15.sp,
-            color      = TextPrimary
+            color      = PundarTheme.colors.textPrimary
         )
 
         Spacer(Modifier.height(12.dp))
@@ -879,7 +881,7 @@ private fun ActivityRow(activity: PortfolioActivity, index: Int) {
         ActivityType.DIVIDEND   -> PremiumGoldWarm
         ActivityType.DEPOSIT    -> NeonGreen
         ActivityType.WITHDRAWAL -> WarningAmber
-        else                    -> TextSecondary
+        else                    -> PundarTheme.colors.textSecondary
     }
     val iconVector = when (activity.type) {
         ActivityType.AUTO_SWEEP -> Icons.Filled.Autorenew
@@ -897,7 +899,7 @@ private fun ActivityRow(activity: PortfolioActivity, index: Int) {
             .graphicsLayer(translationY = offsetY, alpha = alphaVal)
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.linearGradient(listOf(CardSurfaceStart, CardSurfaceEnd))
+                Brush.linearGradient(listOf(PundarTheme.colors.surfaceSecondary, PundarTheme.colors.surfacePrimary))
             )
             .border(1.dp, BorderWhiteStrong, RoundedCornerShape(14.dp))
             .padding(14.dp),
@@ -925,7 +927,7 @@ private fun ActivityRow(activity: PortfolioActivity, index: Int) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text       = activity.description,
-                color      = TextPrimary,
+                color      = PundarTheme.colors.textPrimary,
                 fontSize   = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines   = 1,
@@ -933,7 +935,7 @@ private fun ActivityRow(activity: PortfolioActivity, index: Int) {
             )
             Text(
                 text     = activity.date,
-                color    = TextTertiary,
+                color    = PundarTheme.colors.textMuted,
                 fontSize = 12.sp
             )
         }
@@ -974,7 +976,7 @@ private fun HoldingsSection(
                 text       = "Holdings",
                 fontWeight = FontWeight.Bold,
                 fontSize   = 15.sp,
-                color      = TextPrimary
+                color      = PundarTheme.colors.textPrimary
             )
             // Optimize pill
             Box(
@@ -1019,34 +1021,34 @@ private fun HoldingsSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SpaceMedium.copy(alpha = 0.6f))
+                    .background(PundarTheme.colors.surfaceTertiary.copy(alpha = 0.6f))
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text      = "Stock",
-                    color     = TextSecondary,
+                    color     = PundarTheme.colors.textSecondary,
                     fontSize  = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier  = Modifier.weight(2.5f)
                 )
                 Text(
                     text      = "Shares",
-                    color     = TextSecondary,
+                    color     = PundarTheme.colors.textSecondary,
                     fontSize  = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier  = Modifier.weight(1f)
                 )
                 Text(
                     text      = "Value",
-                    color     = TextSecondary,
+                    color     = PundarTheme.colors.textSecondary,
                     fontSize  = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier  = Modifier.weight(1.3f)
                 )
                 Text(
                     text      = "Return",
-                    color     = TextSecondary,
+                    color     = PundarTheme.colors.textSecondary,
                     fontSize  = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier  = Modifier.weight(1f)
@@ -1135,7 +1137,7 @@ private fun HoldingRow(
             ) {
                 Text(
                     text       = holding.ticker.take(2),
-                    color      = Color.White,
+                    color      = PundarTheme.colors.surfacePrimary,
                     fontSize   = 11.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -1144,7 +1146,7 @@ private fun HoldingRow(
             Column {
                 Text(
                     text       = holding.companyName,
-                    color      = TextPrimary,
+                    color      = PundarTheme.colors.textPrimary,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines   = 1,
@@ -1152,7 +1154,7 @@ private fun HoldingRow(
                 )
                 Text(
                     text     = holding.ticker,
-                    color    = TextTertiary,
+                    color    = PundarTheme.colors.textMuted,
                     fontSize = 11.sp
                 )
             }
@@ -1161,7 +1163,7 @@ private fun HoldingRow(
         // Shares — weight 1
         Text(
             text     = "${holding.shares}",
-            color    = TextSecondary,
+            color    = PundarTheme.colors.textSecondary,
             fontSize = 13.sp,
             modifier = Modifier.weight(1f)
         )
@@ -1169,7 +1171,7 @@ private fun HoldingRow(
         // Value — weight 1.3
         Text(
             text       = "₱${String.format("%,.0f", holding.value)}",
-            color      = TextPrimary,
+            color      = PundarTheme.colors.textPrimary,
             fontSize   = 13.sp,
             fontWeight = FontWeight.SemiBold,
             modifier   = Modifier.weight(1.3f)
@@ -1198,7 +1200,7 @@ private fun HoldingRow(
             Icon(
                 imageVector = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
                 contentDescription = if (isFavorite) "Remove favorite" else "Add favorite",
-                tint = if (isFavorite) PremiumGoldWarm else TextTertiary,
+                tint = if (isFavorite) PremiumGoldWarm else PundarTheme.colors.textMuted,
                 modifier = Modifier.size(20.dp)
             )
         }

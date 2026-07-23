@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pundarapp.ui.data.ContributionStatus
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 // ── Progress bar ─────────────────────────────────────────────────
 @Composable
@@ -29,7 +30,7 @@ fun PundarProgressBar(
     progress:        Float,
     modifier:        Modifier = Modifier,
     color:           Color    = Blue400,
-    backgroundColor: Color    = Navy600,
+    backgroundColor: Color    = PundarTheme.colors.surfaceTertiary,
     height:          Int      = 6
 ) {
     val anim by animateFloatAsState(
@@ -59,7 +60,7 @@ fun PundarProgressBar(
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.linearGradient(
-                        listOf(Color.Transparent, White.copy(0.18f), Color.Transparent),
+                        listOf(Color.Transparent, PundarTheme.colors.surfacePrimary.copy(0.18f), Color.Transparent),
                         start = Offset(sx, 0f), end = Offset(sx + 180f, 0f)
                     )
                 )
@@ -81,7 +82,7 @@ fun PundarAllocationBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
             Text("$percentage%", style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold, color = color)
         }
@@ -99,15 +100,15 @@ fun MemberListItem(
     sharePercent:  Int,
     status:        ContributionStatus,
     isYou:         Boolean = false,
-    avatarColor:   Color   = Blue500,
+    avatarColor:   Color   = PundarTheme.colors.brandPrimary,
     showNudge:     Boolean = false,
     isHighlighted: Boolean = false,
     modifier:      Modifier = Modifier
 ) {
     val statusColor = when (status) {
-        ContributionStatus.PAID    -> Green400
-        ContributionStatus.PENDING -> Orange500
-        ContributionStatus.OVERDUE -> Red500
+        ContributionStatus.PAID    -> PundarTheme.colors.accentGreen
+        ContributionStatus.PENDING -> PundarTheme.colors.accentOrange
+        ContributionStatus.OVERDUE -> PundarTheme.colors.accentRed
     }
     val statusIcon = when (status) {
         ContributionStatus.PAID    -> Icons.Filled.CheckCircle
@@ -126,11 +127,11 @@ fun MemberListItem(
             .clip(RoundedCornerShape(14.dp))
             .background(
                 if (isHighlighted)
-                    Brush.horizontalGradient(listOf(GoldBg, Navy800))
+                    Brush.horizontalGradient(listOf(GoldBg, PundarTheme.colors.surfacePrimary))
                 else
-                    Brush.linearGradient(listOf(Navy800, Navy700))
+                    Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary))
             )
-            .border(1.dp, if (isHighlighted) Gold500.copy(0.3f) else Glass10, RoundedCornerShape(14.dp))
+            .border(1.dp, if (isHighlighted) PundarTheme.colors.accentGold.copy(0.3f) else PundarTheme.colors.glassSubtle, RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -141,13 +142,13 @@ fun MemberListItem(
                     .clip(CircleShape)
                     .background(Brush.linearGradient(listOf(avatarColor, avatarColor.copy(0.6f))))
             ) {
-                Text(initials, color = White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Text(initials, color = PundarTheme.colors.surfacePrimary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(name, style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold, color = TextWhite)
+                        fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
                     if (isYou) {
                         Spacer(Modifier.width(6.dp))
                         Box(
@@ -156,7 +157,7 @@ fun MemberListItem(
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text("You", style = MaterialTheme.typography.labelSmall,
-                                color = Blue300, fontWeight = FontWeight.Bold)
+                                color = PundarTheme.colors.brandLight, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -169,9 +170,9 @@ fun MemberListItem(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("₱${String.format("%,.0f", amount)}",
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextWhite)
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                 Text("$sharePercent% share",
-                    style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textMuted)
             }
             if (showNudge) {
                 Spacer(Modifier.width(8.dp))
@@ -185,10 +186,10 @@ fun MemberListItem(
 @Composable
 fun PundarScoreChip(score: Int, modifier: Modifier = Modifier, label: String = "") {
     val (color, level) = when {
-        score >= 800 -> Green400 to "Excellent"
+        score >= 800 -> PundarTheme.colors.accentGreen to "Excellent"
         score >= 650 -> Blue400  to "Good"
-        score >= 500 -> Orange500 to "Fair"
-        else         -> TextMuted to "Building"
+        score >= 500 -> PundarTheme.colors.accentOrange to "Fair"
+        else         -> PundarTheme.colors.textMuted to "Building"
     }
     Box(
         modifier = modifier
@@ -212,7 +213,7 @@ fun PundarScoreChip(score: Int, modifier: Modifier = Modifier, label: String = "
 
 // ── Status badge ──────────────────────────────────────────────────
 @Composable
-fun StatusBadge(text: String, color: Color = Green400, modifier: Modifier = Modifier) {
+fun StatusBadge(text: String, color: Color = PundarTheme.colors.accentGreen, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -232,17 +233,17 @@ fun EscrowStatusCard(contractAddress: String, network: String, modifier: Modifie
             Icon3DLock(size = 36.dp)
             Spacer(Modifier.width(10.dp))
             Text("Soroban Escrow", style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold, color = TextWhite)
+                fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
             Spacer(Modifier.weight(1f))
-            StatusBadge("SECURED", Green400)
+            StatusBadge("SECURED", PundarTheme.colors.accentGreen)
         }
         Spacer(Modifier.height(12.dp))
         Text("$contractAddress · $network", style = MaterialTheme.typography.bodySmall,
-            color = TextMuted, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            color = PundarTheme.colors.textMuted, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
         Spacer(Modifier.height(8.dp))
         Text(
             "Funds are cryptographically locked in a Soroban smart contract.",
-            style = MaterialTheme.typography.bodySmall, color = TextDim, lineHeight = 18.sp
+            style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textDim, lineHeight = 18.sp
         )
     }
 }
@@ -254,7 +255,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
         text       = text,
         style      = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
-        color      = TextWhite,
+        color      = PundarTheme.colors.textPrimary,
         modifier   = modifier
     )
 }
@@ -270,7 +271,7 @@ fun ShimmerBox(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.clip(RoundedCornerShape(12.dp)).background(
             Brush.linearGradient(
-                listOf(Navy700, Navy600, Navy700),
+                listOf(PundarTheme.colors.surfaceSecondary, PundarTheme.colors.surfaceTertiary, PundarTheme.colors.surfaceSecondary),
                 start = Offset(x, 0f), end = Offset(x + 300f, 0f)
             )
         )

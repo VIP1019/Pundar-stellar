@@ -25,6 +25,7 @@ import com.example.pundarapp.data.remote.CircleRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,9 +77,9 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                         }
                     },
                     enabled = !isJoining && !isFull,
-                    colors = ButtonDefaults.buttonColors(containerColor = PundarBlue),
+                    colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.brandPrimary),
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Confirm & Join", color = Color.White, fontWeight = FontWeight.Bold) }
+                ) { Text("Confirm & Join", color = PundarTheme.colors.surfacePrimary, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmDialog = false }) { Text("Cancel") }
@@ -94,9 +95,9 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                 showHelp = true
             )
         },
-        containerColor = PundarBackground,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
-            Column(modifier = Modifier.background(PundarSurface).padding(16.dp)) {
+            Column(modifier = Modifier.background(PundarTheme.colors.surfacePrimary).padding(16.dp)) {
                 if (isFull) {
                     Text(
                         CircleRepository.MAX_MEMBER_LIMIT_MESSAGE,
@@ -132,34 +133,34 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                 Surface(shape = RoundedCornerShape(16.dp), color = PundarBlueSubtle) {
                     Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Payments, null, tint = PundarBlue, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.Payments, null, tint = PundarTheme.colors.brandPrimary, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Invitation Received", style = MaterialTheme.typography.labelMedium,
-                            color = PundarBlue, fontWeight = FontWeight.SemiBold)
+                            color = PundarTheme.colors.brandPrimary, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Spacer(Modifier.height(16.dp))
                 Text("You're Invited to Join:", style = MaterialTheme.typography.bodyMedium,
-                    color = PundarTextPrimary, fontWeight = FontWeight.SemiBold)
+                    color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(invite.circleName, style = MaterialTheme.typography.titleLarge,
-                    color = PundarBlue, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    color = PundarTheme.colors.brandPrimary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
                 Text("Invited by ${invite.inviterName}",
-                    style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                    style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
             }
 
             item {
                 PundarAccentCard {
-                    Text("Total Target Amount", style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                    Text("Total Target Amount", style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                     Spacer(Modifier.height(4.dp))
                     Text("₱${String.format("%,.0f", invite.targetAmount)}",
-                        style = MaterialTheme.typography.titleMedium, color = PundarBlue, fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.titleMedium, color = PundarTheme.colors.brandPrimary, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(12.dp))
-                    PundarProgressBar(progress = invite.fundedPercent / 100f, color = PundarBlue, height = 6)
+                    PundarProgressBar(progress = invite.fundedPercent / 100f, color = PundarTheme.colors.brandPrimary, height = 6)
                     Spacer(Modifier.height(4.dp))
                     Text("${invite.fundedPercent}% funded",
-                        style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary,
+                        style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary,
                         modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
                 }
             }
@@ -168,27 +169,27 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     PundarCard(modifier = Modifier.weight(1f)) {
                         Box(contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(40.dp).clip(CircleShape).background(PundarBlue)) {
-                            Icon(Icons.Filled.Payments, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            modifier = Modifier.size(40.dp).clip(CircleShape).background(PundarTheme.colors.brandPrimary)) {
+                            Icon(Icons.Filled.Payments, null, tint = PundarTheme.colors.surfacePrimary, modifier = Modifier.size(20.dp))
                         }
                         Spacer(Modifier.height(16.dp))
-                        Text("Monthly Contrib.", style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                        Text("Monthly Contrib.", style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                         Text("₱${String.format("%,.0f", invite.monthlyContribution)}",
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                     PundarCard(modifier = Modifier.weight(1f)) {
                         Box(contentAlignment = Alignment.Center,
                             modifier = Modifier.size(40.dp).clip(CircleShape).background(PundarBlueSubtle)) {
-                            Icon(Icons.Filled.Group, null, tint = PundarBlue, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Filled.Group, null, tint = PundarTheme.colors.brandPrimary, modifier = Modifier.size(20.dp))
                         }
                         Spacer(Modifier.height(16.dp))
-                        Text("Members", style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                        Text("Members", style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                         Text("${invite.memberCount} / ${invite.maxMembers}",
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(
                             text = if (remainingSlots == 0) "Paluwagan Full" else "$remainingSlots slots left",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (remainingSlots == 0) MaterialTheme.colorScheme.error else PundarBlue
+                            color = if (remainingSlots == 0) MaterialTheme.colorScheme.error else PundarTheme.colors.brandPrimary
                         )
                     }
                 }
@@ -196,7 +197,7 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
 
             item {
                 Text("Trust & Security", style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold, color = PundarTextPrimary, modifier = Modifier.fillMaxWidth())
+                    fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary, modifier = Modifier.fillMaxWidth())
             }
 
             item {
@@ -204,7 +205,7 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                         Box(contentAlignment = Alignment.Center,
                             modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(invite.inviterAvatarColor))) {
-                            Text(invite.inviterInitials, color = Color.White,
+                            Text(invite.inviterInitials, color = PundarTheme.colors.surfacePrimary,
                                 style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.width(16.dp))
@@ -213,21 +214,21 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                                 Text(invite.inviterName, style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold)
                                 Spacer(Modifier.width(8.dp))
-                                Surface(shape = RoundedCornerShape(4.dp), color = PundarGold) {
+                                Surface(shape = RoundedCornerShape(4.dp), color = PundarTheme.colors.accentGold) {
                                     Text("ORGANIZER", style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
                                 }
                             }
                             Spacer(Modifier.height(4.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.VerifiedUser, null, tint = PundarBlue, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Filled.VerifiedUser, null, tint = PundarTheme.colors.brandPrimary, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(4.dp))
                                 Text("PUNDAR Score: ${invite.inviterScore} (Excellent)",
-                                    style = MaterialTheme.typography.labelMedium, color = PundarBlue, fontWeight = FontWeight.Bold)
+                                    style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.brandPrimary, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.height(4.dp))
                             Text("Successfully completed ${invite.inviterCirclesCompleted} Paluwagans.",
-                                style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                                style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                         }
                     }
                 }
@@ -236,15 +237,15 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
             item {
                 PundarCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = RoundedCornerShape(8.dp), color = PundarSurfaceVariant) {
-                            Icon(Icons.Filled.Security, null, tint = PundarTextPrimary,
+                        Surface(shape = RoundedCornerShape(8.dp), color = PundarTheme.colors.surfaceTertiary) {
+                            Icon(Icons.Filled.Security, null, tint = PundarTheme.colors.textPrimary,
                                 modifier = Modifier.padding(12.dp).size(24.dp))
                         }
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text("Soroban Smart Contract", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                             Text("Funds are securely locked and automatically distributed.",
-                                style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                                style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                         }
                     }
                 }

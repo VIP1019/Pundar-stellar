@@ -34,6 +34,7 @@ import com.example.pundarapp.ui.components.PundarCard
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -87,7 +88,7 @@ fun XlmConverterScreen(navController: NavController) {
                                 isRefreshing = false
                             }
                         }) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh", tint = PundarTextPrimary)
+                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh", tint = PundarTheme.colors.textPrimary)
                         }
                     }
                 )
@@ -125,7 +126,7 @@ fun XlmConverterScreen(navController: NavController) {
                             Icon(
                                 imageVector = Icons.Filled.CurrencyExchange,
                                 contentDescription = null,
-                                tint = PundarGold,
+                                tint = PundarTheme.colors.accentGold,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(Modifier.height(16.dp))
@@ -133,7 +134,7 @@ fun XlmConverterScreen(navController: NavController) {
                             Text(
                                 text = "Enter XLM Amount",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = PundarTextSecondary
+                                color = PundarTheme.colors.textSecondary
                             )
                             Spacer(Modifier.height(8.dp))
                             
@@ -146,17 +147,17 @@ fun XlmConverterScreen(navController: NavController) {
                                 },
                                 textStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = PundarBlue,
+                                    focusedBorderColor = PundarTheme.colors.brandPrimary,
                                     unfocusedBorderColor = PundarBorder,
-                                    focusedContainerColor = PundarSurface,
-                                    unfocusedContainerColor = PundarSurface,
-                                    focusedTextColor = PundarTextPrimary,
-                                    unfocusedTextColor = PundarTextPrimary
+                                    focusedContainerColor = PundarTheme.colors.surfacePrimary,
+                                    unfocusedContainerColor = PundarTheme.colors.surfacePrimary,
+                                    focusedTextColor = PundarTheme.colors.textPrimary,
+                                    unfocusedTextColor = PundarTheme.colors.textPrimary
                                 ),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true,
                                 suffix = {
-                                    Text("XLM", color = PundarTextSecondary, style = MaterialTheme.typography.titleMedium)
+                                    Text("XLM", color = PundarTheme.colors.textSecondary, style = MaterialTheme.typography.titleMedium)
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -176,7 +177,7 @@ fun XlmConverterScreen(navController: NavController) {
                                     onClick = { xlmAmountText = AppState.walletBalance.value.toString() },
                                     contentPadding = PaddingValues(0.dp)
                                 ) {
-                                    Text("Use Max", color = PundarBlue, style = MaterialTheme.typography.labelMedium)
+                                    Text("Use Max", color = PundarTheme.colors.brandPrimary, style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                         }
@@ -196,7 +197,7 @@ fun XlmConverterScreen(navController: NavController) {
                     // Conversions Grid
                     if (isLoading && rates.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = PundarBlue)
+                            CircularProgressIndicator(color = PundarTheme.colors.brandPrimary)
                         }
                     } else {
                         val xlmAmount = xlmAmountText.toDoubleOrNull() ?: 0.0
@@ -229,13 +230,13 @@ fun XlmConverterScreen(navController: NavController) {
                                             Box(
                                                 modifier = Modifier
                                                     .clip(RoundedCornerShape(4.dp))
-                                                    .background(PundarBlue.copy(alpha = 0.2f))
+                                                    .background(PundarTheme.colors.brandPrimary.copy(alpha = 0.2f))
                                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
                                                     text = currency.code,
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = PundarBlue,
+                                                    color = PundarTheme.colors.brandPrimary,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
@@ -246,7 +247,7 @@ fun XlmConverterScreen(navController: NavController) {
                                         Text(
                                             text = currency.name,
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = PundarTextSecondary
+                                            color = PundarTheme.colors.textSecondary
                                         )
                                         
                                         Spacer(Modifier.height(4.dp))
@@ -255,7 +256,7 @@ fun XlmConverterScreen(navController: NavController) {
                                             text = "${currency.symbol}${if (convertedValue > 0) String.format("%,.2f", convertedValue) else "0.00"}",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.ExtraBold,
-                                            color = PundarTextPrimary
+                                            color = PundarTheme.colors.textPrimary
                                         )
                                         
                                         Spacer(Modifier.height(8.dp))
@@ -288,7 +289,7 @@ fun XlmConverterScreen(navController: NavController) {
                                         text = "CoinGecko & Stellar",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = PundarTextSecondary
+                                        color = PundarTheme.colors.textSecondary
                                     )
                                 }
                             }

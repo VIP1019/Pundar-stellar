@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.getCurrencySymbol
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,8 +52,8 @@ fun CurrencyAmountInput(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            label = { Text(currentLabel, color = TextMuted) },
-            placeholder = { Text(placeholderText, color = TextDim) },
+            label = { Text(currentLabel, color = PundarTheme.colors.textMuted) },
+            placeholder = { Text(placeholderText, color = PundarTheme.colors.textDim) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
             readOnly = readOnly,
@@ -62,7 +63,7 @@ fun CurrencyAmountInput(
                     modifier = Modifier
                         .padding(end = 8.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Navy600)
+                        .background(PundarTheme.colors.surfaceTertiary)
                         .clickable(onClick = onToggleMode)
                         .padding(8.dp)
                 ) {
@@ -75,12 +76,12 @@ fun CurrencyAmountInput(
                 }
             },
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Blue500,
-                unfocusedBorderColor = NavyBorder,
-                focusedTextColor = TextWhite,
-                unfocusedTextColor = TextWhite,
-                cursorColor = Blue500,
-                errorBorderColor = Red500
+                focusedBorderColor = PundarTheme.colors.brandPrimary,
+                unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+                focusedTextColor = PundarTheme.colors.textPrimary,
+                unfocusedTextColor = PundarTheme.colors.textPrimary,
+                cursorColor = PundarTheme.colors.brandPrimary,
+                errorBorderColor = PundarTheme.colors.accentRed
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -104,7 +105,7 @@ fun CurrencyAmountInput(
             if (value.isNotEmpty()) {
                 Text(
                     text = equivalentText,
-                    color = TextMuted,
+                    color = PundarTheme.colors.textMuted,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium
                 )

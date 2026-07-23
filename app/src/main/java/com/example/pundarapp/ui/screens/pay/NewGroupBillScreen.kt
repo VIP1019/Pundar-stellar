@@ -31,6 +31,8 @@ import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
 
+import com.example.pundarapp.ui.theme.PundarTheme
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewGroupBillScreen(navController: NavController) {
@@ -103,11 +105,11 @@ fun NewGroupBillScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
             Column(
                 modifier = Modifier
-                    .background(PundarSurface)
+                    .background(PundarTheme.colors.surfacePrimary)
                     .padding(16.dp)
             ) {
                 Surface(
@@ -130,7 +132,7 @@ fun NewGroupBillScreen(navController: NavController) {
                                 Text(
                                     text = if (selectedTabIndex == 0) "Share Per Person (${selectedMembers.size} members)" else "Your Share",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = PundarTextSecondary,
+                                    color = PundarTheme.colors.textSecondary,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(Modifier.height(2.dp))
@@ -146,7 +148,7 @@ fun NewGroupBillScreen(navController: NavController) {
                                         text = "(${AppState.formatFiat(displayShare)})",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = PundarBlue
+                                        color = PundarTheme.colors.brandPrimary
                                     )
                                 }
                             }
@@ -154,7 +156,7 @@ fun NewGroupBillScreen(navController: NavController) {
                                 Text(
                                     text = "Total Bill",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = PundarTextSecondary,
+                                    color = PundarTheme.colors.textSecondary,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(Modifier.height(2.dp))
@@ -162,12 +164,12 @@ fun NewGroupBillScreen(navController: NavController) {
                                     text = "${String.format("%,.2f", total)} XLM",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = PundarTextPrimary
+                                    color = PundarTheme.colors.textPrimary
                                 )
                                 Text(
                                     text = AppState.formatFiat(total),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = PundarTextSecondary
+                                    color = PundarTheme.colors.textSecondary
                                 )
                             }
                         }
@@ -213,7 +215,7 @@ fun NewGroupBillScreen(navController: NavController) {
             // ── Amount + Name ────────────────────────────────────
             item {
                 PundarAccentCard {
-                    Text("Total Amount (XLM)", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
+                    Text("Total Amount (XLM)", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "Balance: ${String.format("%,.2f", walletBalance)} XLM",
@@ -231,7 +233,7 @@ fun NewGroupBillScreen(navController: NavController) {
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(16.dp))
-                    Text("Expense Name", style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
+                    Text("Expense Name", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = expenseName,
@@ -239,7 +241,7 @@ fun NewGroupBillScreen(navController: NavController) {
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("e.g. Dinner at BGC", color = PundarTextTertiary) },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PundarBlue,
+                            focusedBorderColor = PundarTheme.colors.brandPrimary,
                             unfocusedBorderColor = PundarBorder
                         ),
                         shape = RoundedCornerShape(12.dp)
@@ -249,19 +251,19 @@ fun NewGroupBillScreen(navController: NavController) {
 
             // ── Split Mode Tabs ──────────────────────────────────
             item {
-                Surface(shape = RoundedCornerShape(12.dp), color = PundarSurfaceVariant, modifier = Modifier.fillMaxWidth()) {
+                Surface(shape = RoundedCornerShape(12.dp), color = PundarTheme.colors.surfaceTertiary, modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
                         listOf("Equal Split", "Itemized").forEachIndexed { index, label ->
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (selectedTabIndex == index) PundarSurface else Color.Transparent,
+                                color = if (selectedTabIndex == index) PundarTheme.colors.surfacePrimary else Color.Transparent,
                                 modifier = Modifier.weight(1f).clickable { selectedTabIndex = index }
                             ) {
                                 Text(
                                     text = label,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.SemiBold,
-                                    color = if (selectedTabIndex == index) PundarBlue else PundarTextSecondary,
+                                    color = if (selectedTabIndex == index) PundarTheme.colors.brandPrimary else PundarTheme.colors.textSecondary,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(vertical = 12.dp)
                                 )
@@ -287,14 +289,14 @@ fun NewGroupBillScreen(navController: NavController) {
                         Text(
                             text = "${String.format("%,.2f", sharePerMember)} XLM each",
                             style = MaterialTheme.typography.labelLarge,
-                            color = PundarBlue,
+                            color = PundarTheme.colors.brandPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                     } else if (selectedTabIndex == 1 && total > 0) {
                         Text(
                             text = "Total: ${String.format("%,.2f", total)} XLM",
                             style = MaterialTheme.typography.labelLarge,
-                            color = PundarBlue,
+                            color = PundarTheme.colors.brandPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -306,11 +308,11 @@ fun NewGroupBillScreen(navController: NavController) {
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Name, @username, or phone", color = PundarTextSecondary) },
-                    leadingIcon = { Icon(Icons.Filled.Search, null, tint = PundarTextSecondary) },
+                    placeholder = { Text("Name, @username, or phone", color = PundarTheme.colors.textSecondary) },
+                    leadingIcon = { Icon(Icons.Filled.Search, null, tint = PundarTheme.colors.textSecondary) },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = PundarSurfaceVariant,
-                        unfocusedContainerColor = PundarSurfaceVariant,
+                        focusedContainerColor = PundarTheme.colors.surfaceTertiary,
+                        unfocusedContainerColor = PundarTheme.colors.surfaceTertiary,
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
                     ),
@@ -324,7 +326,7 @@ fun NewGroupBillScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, PundarBorder),
-                    color = PundarSurface
+                    color = PundarTheme.colors.surfacePrimary
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -340,7 +342,7 @@ fun NewGroupBillScreen(navController: NavController) {
                         ) {
                             Text(
                                 text = member.initials,
-                                color = if (member.name == "You") PundarBlue else Color.White,
+                                color = if (member.name == "You") PundarTheme.colors.brandPrimary else PundarTheme.colors.surfacePrimary,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -349,7 +351,7 @@ fun NewGroupBillScreen(navController: NavController) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(member.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                             if (member.username.isNotEmpty()) {
-                                Text(member.username, style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                                Text(member.username, style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                             }
                         }
                         if (selectedTabIndex == 0) {
@@ -359,12 +361,12 @@ fun NewGroupBillScreen(navController: NavController) {
                                         text = "${String.format("%,.2f", sharePerMember)} XLM",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = PundarTextPrimary
+                                        color = PundarTheme.colors.textPrimary
                                     )
                                     Text(
                                         text = AppState.formatFiat(sharePerMember),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = PundarTextSecondary
+                                        color = PundarTheme.colors.textSecondary
                                     )
                                 }
                             }
@@ -378,7 +380,7 @@ fun NewGroupBillScreen(navController: NavController) {
                                 singleLine = true,
                                 placeholder = { Text("0.00") },
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = PundarBlue,
+                                    focusedBorderColor = PundarTheme.colors.brandPrimary,
                                     unfocusedBorderColor = PundarBorder,
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent
@@ -391,7 +393,7 @@ fun NewGroupBillScreen(navController: NavController) {
                                 onClick = { selectedMembers.remove(member) },
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Filled.Close, "Remove", tint = PundarTextSecondary, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Close, "Remove", tint = PundarTheme.colors.textSecondary, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
@@ -401,14 +403,14 @@ fun NewGroupBillScreen(navController: NavController) {
             // ── Available Contacts to Add ────────────────────────
             if (isSearching) {
                 item {
-                    Text("Searching...", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                    Text("Searching...", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                 }
             } else if (searchResults.isNotEmpty()) {
                 item {
                     Text(
                         text = "Search Results",
                         style = MaterialTheme.typography.labelMedium,
-                        color = PundarTextSecondary
+                        color = PundarTheme.colors.textSecondary
                     )
                 }
                 items(searchResults) { contact ->
@@ -418,7 +420,7 @@ fun NewGroupBillScreen(navController: NavController) {
                             searchQuery = "" // Clear search after adding
                         },
                         shape = RoundedCornerShape(12.dp),
-                        color = PundarSurface
+                        color = PundarTheme.colors.surfacePrimary
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -431,7 +433,7 @@ fun NewGroupBillScreen(navController: NavController) {
                             ) {
                                 Text(
                                     contact.initials,
-                                    color = PundarTextPrimary,
+                                    color = PundarTheme.colors.textPrimary,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -440,10 +442,10 @@ fun NewGroupBillScreen(navController: NavController) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(contact.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                                 if (contact.username.isNotEmpty()) {
-                                    Text(contact.username, style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                                    Text(contact.username, style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                                 }
                             }
-                            Icon(Icons.Filled.Add, "Add", tint = PundarBlue)
+                            Icon(Icons.Filled.Add, "Add", tint = PundarTheme.colors.brandPrimary)
                         }
                     }
                 }

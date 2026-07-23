@@ -11,6 +11,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pundarapp.ui.components.PundarBottomBar
+import com.example.pundarapp.ui.theme.PundarTheme
 import com.example.pundarapp.ui.screens.auth.LoginScreen
 import com.example.pundarapp.ui.screens.auth.RegisterScreen
 import com.example.pundarapp.ui.screens.circle.CircleDetailScreen
@@ -94,6 +95,8 @@ fun PundarNavigation() {
     val showBottomBar = currentRoute in bottomBarRoutes
 
     Scaffold(
+        containerColor = PundarTheme.colors.bgPrimary,
+        contentColor = PundarTheme.colors.textPrimary,
         bottomBar = {
             if (showBottomBar) {
                 PundarBottomBar(

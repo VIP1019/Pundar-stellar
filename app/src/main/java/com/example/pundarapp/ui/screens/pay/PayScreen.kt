@@ -34,6 +34,8 @@ import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+
+import com.example.pundarapp.ui.theme.PundarTheme
 import com.example.pundarapp.data.remote.AuthRepository
 
 private val EaseOutBack   = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
@@ -90,7 +92,7 @@ fun PayScreen(navController: NavController) {
                     Icon(Icons.Filled.Verified, null, tint = ElectricBlue, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Settlement builds your PUNDAR Score.", style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary)
+                        color = PundarTheme.colors.textSecondary)
                 }
             }
         }
@@ -116,16 +118,21 @@ private fun PayFab(onClick: () -> Unit) {
         ExtendedFloatingActionButton(
             onClick          = onClick,
             containerColor   = Color.Transparent,
-            contentColor     = SpaceBlack,
+            contentColor     = PundarTheme.colors.textPrimary,
             shape            = RoundedCornerShape(18.dp),
             modifier         = Modifier
                 .clip(RoundedCornerShape(18.dp))
-                .background(Brush.horizontalGradient(listOf(PremiumGoldDim, PremiumGoldWarm)))
+                .background(Brush.horizontalGradient(listOf(PundarTheme.colors.surfacePrimary.copy(0.7f), PundarTheme.colors.surfaceSecondary.copy(0.7f))))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(listOf(PremiumGoldWarm.copy(0.8f), PremiumGoldWarm.copy(0.2f))),
+                    shape = RoundedCornerShape(18.dp)
+                )
         ) {
-            Icon(Icons.Filled.Add, "New Bill")
+            Icon(Icons.Filled.AddCircleOutline, "New Bill", tint = PremiumGoldWarm)
             Spacer(Modifier.width(8.dp))
             Text("New Group Bill", fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.labelLarge)
+                style = MaterialTheme.typography.labelLarge, color = PundarTheme.colors.textPrimary)
         }
     }
 }
@@ -141,10 +148,10 @@ private fun PayHeroHeader() {
     }
     Column(Modifier.graphicsLayer(alpha = alpha.value, translationY = slideY.value)) {
         Text("PUNDAR Pay", fontWeight = FontWeight.Black, fontSize = 32.sp,
-            color = TextOnDark, letterSpacing = (-0.5).sp)
+            color = PundarTheme.colors.textPrimary, letterSpacing = (-0.5).sp)
         Spacer(Modifier.height(4.dp))
         Text("Intelligent Settlement · Stellar Rails",
-            style = MaterialTheme.typography.bodyMedium, color = TextSecondary, letterSpacing = 0.3.sp)
+            style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary, letterSpacing = 0.3.sp)
     }
 }
 
@@ -170,11 +177,11 @@ private fun PayStatsCard(settled: Int, pending: Int, total: Double) {
             .shadow(20.dp, RoundedCornerShape(24.dp),
                 ambientColor = ElectricBlue.copy(0.22f), spotColor = ElectricBlue.copy(0.22f))
             .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
     ) {
         // shimmer
         Box(Modifier.matchParentSize().background(
-            Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(0.04f), Color.Transparent),
+            Brush.linearGradient(listOf(Color.Transparent, PundarTheme.colors.surfacePrimary.copy(0.04f), Color.Transparent),
                 start = Offset(sweepX, 0f), end = Offset(sweepX + 280f, 300f))))
         // top glow line
         Box(Modifier.fillMaxWidth().height(1.dp)
@@ -185,9 +192,9 @@ private fun PayStatsCard(settled: Int, pending: Int, total: Double) {
                 letterSpacing = 2.sp, color = ElectricBlue.copy(0.85f))
             Spacer(Modifier.height(8.dp))
             Text("${String.format("%,.2f", total)} XLM", fontWeight = FontWeight.Black,
-                fontSize = 30.sp, color = TextOnDark, letterSpacing = (-1).sp)
+                fontSize = 30.sp, color = PundarTheme.colors.textPrimary, letterSpacing = (-1).sp)
             Text(AppState.formatFiat(total), fontWeight = FontWeight.Medium,
-                fontSize = 14.sp, color = Green400)
+                fontSize = 14.sp, color = PundarTheme.colors.accentGreen)
             Spacer(Modifier.height(16.dp))
             // Divider
             Box(Modifier.fillMaxWidth().height(1.dp)
@@ -195,7 +202,7 @@ private fun PayStatsCard(settled: Int, pending: Int, total: Double) {
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 PayStatPill(settled, "Settled", Icons.Filled.CheckCircle, NeonGreen)
-                Box(Modifier.width(1.dp).height(36.dp).background(NavyBorder))
+                Box(Modifier.width(1.dp).height(36.dp).background(PundarTheme.colors.borderPrimary))
                 PayStatPill(pending, "Pending", Icons.Filled.Schedule, WarningAmber)
             }
         }
@@ -226,7 +233,7 @@ private fun PayStatPill(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
     }
 }
 
@@ -247,7 +254,7 @@ private fun PayActionRow(navController: NavController) {
             label = "Instant\nSettle",
             icon  = Icons.Filled.FlashOn,
             brush = Brush.horizontalGradient(listOf(PremiumGoldDim, PremiumGoldWarm)),
-            tint  = SpaceBlack,
+            tint  = PundarTheme.colors.bgSecondary,
             modifier = Modifier.weight(1f)
         ) { navController.navigate(Routes.INSTANT_SETTLE) }
     }
@@ -313,7 +320,7 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, index: Int, 
             .shadow(12.dp, RoundedCornerShape(20.dp),
                 ambientColor = accent.copy(0.18f), spotColor = accent.copy(0.18f))
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
             .border(1.dp, Brush.linearGradient(listOf(accent.copy(0.35f), GlassWhite)), RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(16.dp)
@@ -328,7 +335,7 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, index: Int, 
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(bill.name, style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
                 Spacer(Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.clip(RoundedCornerShape(5.dp))
@@ -337,15 +344,15 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, index: Int, 
                             color = accent, fontWeight = FontWeight.Bold)
                     }
                     Text(" · ${bill.memberCount} members · ${bill.date}",
-                        style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                 }
             }
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
                 Text("₱${String.format("%,.2f", bill.totalAmount)}",
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                 Text("Your: ₱${String.format("%,.2f", bill.yourShare)}",
-                    style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
             }
         }
     }
@@ -356,7 +363,7 @@ private fun PayEmptyState() {
     Box(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
             .border(1.dp, BorderCharcoal, RoundedCornerShape(20.dp))
             .padding(32.dp),
         contentAlignment = Alignment.Center
@@ -364,15 +371,15 @@ private fun PayEmptyState() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon3DReceipt(size = 56.dp)
             Spacer(Modifier.height(10.dp))
-            Text("No bills yet.", fontWeight = FontWeight.SemiBold, color = TextSecondary)
+            Text("No bills yet.", fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textSecondary)
             Spacer(Modifier.height(4.dp))
             Text("Tap \"New Group Bill\" to get started.", style = MaterialTheme.typography.bodySmall,
-                color = TextTertiary, textAlign = TextAlign.Center)
+                color = PundarTheme.colors.textMuted, textAlign = TextAlign.Center)
         }
     }
 }
 
 @Composable
 private fun PaySectionLabel(text: String) {
-    Text(text, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary, letterSpacing = 0.2.sp)
+    Text(text, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = PundarTheme.colors.textPrimary, letterSpacing = 0.2.sp)
 }

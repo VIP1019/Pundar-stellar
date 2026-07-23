@@ -20,6 +20,7 @@ import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -39,7 +40,7 @@ fun LinkCardScreen(navController: NavController) {
         topBar = {
             PundarDetailTopBar(title = "Link Bank Card", onBack = { navController.navigateUp() })
         },
-        containerColor = PundarBackground,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
             Column(modifier = Modifier.padding(16.dp)) {
                 if (errorMessage != null) {
@@ -97,7 +98,7 @@ fun LinkCardScreen(navController: NavController) {
                     Text(
                         "Your card details are securely encrypted and protected.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        color = PundarTheme.colors.textSecondary
                     )
                 }
             }
@@ -109,8 +110,8 @@ fun LinkCardScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PundarBlue,
-                    focusedLabelColor = PundarBlue
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -128,8 +129,8 @@ fun LinkCardScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PundarBlue,
-                    focusedLabelColor = PundarBlue
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -148,8 +149,8 @@ fun LinkCardScreen(navController: NavController) {
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PundarBlue,
-                        focusedLabelColor = PundarBlue
+                        focusedBorderColor = PundarTheme.colors.brandPrimary,
+                        focusedLabelColor = PundarTheme.colors.brandPrimary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -167,8 +168,8 @@ fun LinkCardScreen(navController: NavController) {
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PundarBlue,
-                        focusedLabelColor = PundarBlue
+                        focusedBorderColor = PundarTheme.colors.brandPrimary,
+                        focusedLabelColor = PundarTheme.colors.brandPrimary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )

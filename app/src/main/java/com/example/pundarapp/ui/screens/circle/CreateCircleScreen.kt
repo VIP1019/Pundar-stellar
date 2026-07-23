@@ -30,6 +30,8 @@ import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
 
+import com.example.pundarapp.ui.theme.PundarTheme
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateCircleScreen(navController: NavController) {
@@ -87,7 +89,7 @@ fun CreateCircleScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
             Column(modifier = Modifier.padding(16.dp)) {
                 PundarPrimaryButton(
@@ -129,7 +131,7 @@ fun CreateCircleScreen(navController: NavController) {
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text("New PUNDAR Circle", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("Secured by Soroban smart contract", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                        Text("Secured by Soroban smart contract", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                     }
                 }
             }
@@ -144,7 +146,7 @@ fun CreateCircleScreen(navController: NavController) {
                     label = { Text("Circle Name") },
                     placeholder = { Text("e.g. Family Dream House") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarTheme.colors.brandPrimary, focusedLabelColor = PundarTheme.colors.brandPrimary),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true
                 )
@@ -157,7 +159,7 @@ fun CreateCircleScreen(navController: NavController) {
                     label = { Text("Target Amount (₱)") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarTheme.colors.brandPrimary, focusedLabelColor = PundarTheme.colors.brandPrimary),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true
                 )
@@ -170,7 +172,7 @@ fun CreateCircleScreen(navController: NavController) {
                     label = { Text("Monthly Contribution per Member (₱)") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarTheme.colors.brandPrimary, focusedLabelColor = PundarTheme.colors.brandPrimary),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true
                 )
@@ -184,7 +186,7 @@ fun CreateCircleScreen(navController: NavController) {
                         label = { Text("Target Date") },
                         placeholder = { Text("e.g. Dec 2025") },
                         modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarTheme.colors.brandPrimary, focusedLabelColor = PundarTheme.colors.brandPrimary),
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true
                     )
@@ -194,7 +196,7 @@ fun CreateCircleScreen(navController: NavController) {
                         label = { Text("Max Members") },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarBlue, focusedLabelColor = PundarBlue),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PundarTheme.colors.brandPrimary, focusedLabelColor = PundarTheme.colors.brandPrimary),
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true
                     )
@@ -211,11 +213,11 @@ fun CreateCircleScreen(navController: NavController) {
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Name, @username, or phone", color = PundarTextSecondary) },
-                    leadingIcon = { Icon(Icons.Filled.Search, null, tint = PundarTextSecondary) },
+                    placeholder = { Text("Name, @username, or phone", color = PundarTheme.colors.textSecondary) },
+                    leadingIcon = { Icon(Icons.Filled.Search, null, tint = PundarTheme.colors.textSecondary) },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = PundarSurfaceVariant,
-                        unfocusedContainerColor = PundarSurfaceVariant,
+                        focusedContainerColor = PundarTheme.colors.surfaceTertiary,
+                        unfocusedContainerColor = PundarTheme.colors.surfaceTertiary,
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
                     ),
@@ -229,7 +231,7 @@ fun CreateCircleScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, PundarBorder),
-                    color = PundarSurface
+                    color = PundarTheme.colors.surfacePrimary
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -245,7 +247,7 @@ fun CreateCircleScreen(navController: NavController) {
                         ) {
                             Text(
                                 text = member.initials,
-                                color = if (member.isYou) PundarBlue else Color.White,
+                                color = if (member.isYou) PundarTheme.colors.brandPrimary else PundarTheme.colors.surfacePrimary,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -259,7 +261,7 @@ fun CreateCircleScreen(navController: NavController) {
                                 onClick = { selectedMembers.remove(member) },
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Filled.Close, "Remove", tint = PundarTextSecondary, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Close, "Remove", tint = PundarTheme.colors.textSecondary, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
@@ -269,14 +271,14 @@ fun CreateCircleScreen(navController: NavController) {
             // Search Results
             if (isSearching) {
                 item {
-                    Text("Searching...", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                    Text("Searching...", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                 }
             } else if (searchResults.isNotEmpty()) {
                 item {
                     Text(
                         text = "Search Results",
                         style = MaterialTheme.typography.labelMedium,
-                        color = PundarTextSecondary
+                        color = PundarTheme.colors.textSecondary
                     )
                 }
                 items(searchResults) { contact ->
@@ -286,7 +288,7 @@ fun CreateCircleScreen(navController: NavController) {
                             searchQuery = ""
                         },
                         shape = RoundedCornerShape(12.dp),
-                        color = PundarSurface
+                        color = PundarTheme.colors.surfacePrimary
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -299,7 +301,7 @@ fun CreateCircleScreen(navController: NavController) {
                             ) {
                                 Text(
                                     contact.initials,
-                                    color = PundarTextPrimary,
+                                    color = PundarTheme.colors.textPrimary,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -308,7 +310,7 @@ fun CreateCircleScreen(navController: NavController) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(contact.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                             }
-                            Icon(Icons.Filled.Add, "Add", tint = PundarBlue)
+                            Icon(Icons.Filled.Add, "Add", tint = PundarTheme.colors.brandPrimary)
                         }
                     }
                 }
@@ -321,7 +323,7 @@ fun CreateCircleScreen(navController: NavController) {
                     Text(
                         "All contributions will be locked in a Soroban smart contract on the Stellar network. Funds can only be released when the target amount is met and all members agree.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = PundarTextSecondary
+                        color = PundarTheme.colors.textSecondary
                     )
                 }
             }

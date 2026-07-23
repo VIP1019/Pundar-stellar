@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -69,10 +70,10 @@ fun PinInputComponent(
     ) {
         // Title
         Text(title, style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold, color = TextWhite)
+            fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
         if (subtitle.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textMuted,
                 textAlign = TextAlign.Center)
         }
 
@@ -134,9 +135,9 @@ private fun PinDot(filled: Boolean, hasError: Boolean) {
         label = "dotSize"
     )
     val dotColor = when {
-        hasError && filled -> Red500
+        hasError && filled -> PundarTheme.colors.accentRed
         filled             -> Blue400
-        else               -> NavyBorder
+        else               -> PundarTheme.colors.borderPrimary
     }
     Box(
         modifier = Modifier
@@ -200,15 +201,15 @@ private fun KeypadButton(
                 modifier = Modifier
                     .size(buttonSize)
                     .clip(CircleShape)
-                    .background(Navy700)
-                    .border(1.dp, NavyBorder, CircleShape)
+                    .background(PundarTheme.colors.surfaceSecondary)
+                    .border(1.dp, PundarTheme.colors.borderPrimary, CircleShape)
                     .clickable(interactionSource = interactionSource, indication = null) { onBackspace() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Backspace,
                     contentDescription = "Delete",
-                    tint     = TextSoft,
+                    tint     = PundarTheme.colors.textSecondary,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -219,8 +220,8 @@ private fun KeypadButton(
                     modifier = Modifier
                         .size(buttonSize)
                         .clip(CircleShape)
-                        .background(Navy700)
-                        .border(1.dp, NavyBorder, CircleShape)
+                        .background(PundarTheme.colors.surfaceSecondary)
+                        .border(1.dp, PundarTheme.colors.borderPrimary, CircleShape)
                         .clickable(interactionSource = interactionSource, indication = null) { onBiometric() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -242,9 +243,9 @@ private fun KeypadButton(
                     .size(buttonSize)
                     .clip(CircleShape)
                     .background(
-                        Brush.linearGradient(listOf(Navy700, Navy800))
+                        Brush.linearGradient(listOf(PundarTheme.colors.surfaceSecondary, PundarTheme.colors.surfacePrimary))
                     )
-                    .border(1.dp, NavyBorder, CircleShape)
+                    .border(1.dp, PundarTheme.colors.borderPrimary, CircleShape)
                     .clickable(interactionSource = interactionSource, indication = null) { onDigit(key) },
                 contentAlignment = Alignment.Center
             ) {
@@ -252,7 +253,7 @@ private fun KeypadButton(
                     text       = key,
                     fontSize   = 22.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color      = TextWhite
+                    color      = PundarTheme.colors.textPrimary
                 )
             }
         }

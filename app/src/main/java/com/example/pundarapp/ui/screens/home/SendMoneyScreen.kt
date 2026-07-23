@@ -37,6 +37,7 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -58,17 +59,17 @@ fun SendMoneyScreen(navController: NavController) {
     if (showPinDialog) {
         AlertDialog(
             onDismissRequest = { showPinDialog = false; isSending = false; mpinInput = "" },
-            containerColor   = Navy800,
+            containerColor   = PundarTheme.colors.surfacePrimary,
             shape            = RoundedCornerShape(20.dp),
             title = {
-                Text("Confirm Transfer", fontWeight = FontWeight.Bold, color = TextWhite)
+                Text("Confirm Transfer", fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
             },
             text = {
                 Column {
                     Text(
                         "Sending ₱${String.format("%,.2f", amount.toDoubleOrNull() ?: 0.0)} to $recipientPhone",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSoft
+                        color = PundarTheme.colors.textSecondary
                     )
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
@@ -80,11 +81,11 @@ fun SendMoneyScreen(navController: NavController) {
                         modifier             = Modifier.fillMaxWidth(),
                         colors               = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor      = Blue400,
-                            unfocusedBorderColor    = NavyBorder,
-                            focusedContainerColor   = Navy700,
-                            unfocusedContainerColor = Navy700,
-                            focusedTextColor        = TextWhite,
-                            unfocusedTextColor      = TextWhite,
+                            unfocusedBorderColor    = PundarTheme.colors.borderPrimary,
+                            focusedContainerColor   = PundarTheme.colors.surfaceSecondary,
+                            unfocusedContainerColor = PundarTheme.colors.surfaceSecondary,
+                            focusedTextColor        = PundarTheme.colors.textPrimary,
+                            unfocusedTextColor      = PundarTheme.colors.textPrimary,
                             cursorColor             = Blue400
                         ),
                         shape = RoundedCornerShape(12.dp)
@@ -156,12 +157,12 @@ fun SendMoneyScreen(navController: NavController) {
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Blue500)
-                ) { Text("Confirm", color = White, fontWeight = FontWeight.SemiBold) }
+                    colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.brandPrimary)
+                ) { Text("Confirm", color = PundarTheme.colors.surfacePrimary, fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
                 TextButton(onClick = { showPinDialog = false; isSending = false; mpinInput = "" }) {
-                    Text("Cancel", color = TextMuted)
+                    Text("Cancel", color = PundarTheme.colors.textMuted)
                 }
             }
         )
@@ -171,7 +172,7 @@ fun SendMoneyScreen(navController: NavController) {
         topBar = {
             PundarDetailTopBar(title = "Send Money", onBack = { navController.navigateUp() })
         },
-        containerColor = Navy900,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
             Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 PundarPrimaryButton(
@@ -221,19 +222,19 @@ fun SendMoneyScreen(navController: NavController) {
                         AppState.getDisplayBalance(),
                         style      = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color      = White
+                        color      = PundarTheme.colors.surfacePrimary
                     )
                 }
             }
 
             // Recipient field with QR scan shortcut
             Text("Recipient", style = MaterialTheme.typography.labelMedium,
-                color = TextSoft, fontWeight = FontWeight.Medium)
+                color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Medium)
             OutlinedTextField(
                 value         = recipientPhone,
                 onValueChange = { recipientPhone = it },
-                placeholder   = { Text("Mobile number (e.g. 09171234567)", color = TextDim) },
-                leadingIcon   = { Icon(Icons.Filled.Person, null, tint = TextMuted) },
+                placeholder   = { Text("Mobile number (e.g. 09171234567)", color = PundarTheme.colors.textDim) },
+                leadingIcon   = { Icon(Icons.Filled.Person, null, tint = PundarTheme.colors.textMuted) },
                 trailingIcon  = {
                     // QR scan shortcut
                     IconButton(onClick = { navController.navigate(Routes.SCAN) }) {
@@ -244,11 +245,11 @@ fun SendMoneyScreen(navController: NavController) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 colors          = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor      = Blue400,
-                    unfocusedBorderColor    = NavyBorder,
-                    focusedContainerColor   = Navy700,
-                    unfocusedContainerColor = Navy700,
-                    focusedTextColor        = TextWhite,
-                    unfocusedTextColor      = TextWhite,
+                    unfocusedBorderColor    = PundarTheme.colors.borderPrimary,
+                    focusedContainerColor   = PundarTheme.colors.surfaceSecondary,
+                    unfocusedContainerColor = PundarTheme.colors.surfaceSecondary,
+                    focusedTextColor        = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor      = PundarTheme.colors.textPrimary,
                     cursorColor             = Blue400
                 ),
                 shape      = RoundedCornerShape(14.dp),
@@ -257,26 +258,26 @@ fun SendMoneyScreen(navController: NavController) {
 
             // Amount field
             Text("Amount", style = MaterialTheme.typography.labelMedium,
-                color = TextSoft, fontWeight = FontWeight.Medium)
+                color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Medium)
             OutlinedTextField(
                 value         = amount,
                 onValueChange = {
                     if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d{0,2}$"))) amount = it
                 },
-                placeholder   = { Text("₱ 0.00", color = TextDim) },
+                placeholder   = { Text("₱ 0.00", color = PundarTheme.colors.textDim) },
                 leadingIcon   = {
-                    Text("₱", color = TextSoft, fontWeight = FontWeight.Bold,
+                    Text("₱", color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(start = 12.dp))
                 },
                 modifier        = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 colors          = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor      = Blue400,
-                    unfocusedBorderColor    = NavyBorder,
-                    focusedContainerColor   = Navy700,
-                    unfocusedContainerColor = Navy700,
-                    focusedTextColor        = TextWhite,
-                    unfocusedTextColor      = TextWhite,
+                    unfocusedBorderColor    = PundarTheme.colors.borderPrimary,
+                    focusedContainerColor   = PundarTheme.colors.surfaceSecondary,
+                    unfocusedContainerColor = PundarTheme.colors.surfaceSecondary,
+                    focusedTextColor        = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor      = PundarTheme.colors.textPrimary,
                     cursorColor             = Blue400
                 ),
                 shape      = RoundedCornerShape(14.dp),
@@ -291,15 +292,15 @@ fun SendMoneyScreen(navController: NavController) {
                         onClick  = { amount = preset },
                         label    = { Text("₱$preset", fontSize = 11.sp) },
                         colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Blue500.copy(0.20f),
-                            selectedLabelColor     = Blue300,
-                            containerColor         = Navy700,
-                            labelColor             = TextMuted
+                            selectedContainerColor = PundarTheme.colors.brandPrimary.copy(0.20f),
+                            selectedLabelColor     = PundarTheme.colors.brandLight,
+                            containerColor         = PundarTheme.colors.surfaceSecondary,
+                            labelColor             = PundarTheme.colors.textMuted
                         ),
                         border = FilterChipDefaults.filterChipBorder(
                             enabled         = true,
                             selected        = amount == preset,
-                            borderColor     = NavyBorder,
+                            borderColor     = PundarTheme.colors.borderPrimary,
                             selectedBorderColor = Blue400.copy(0.5f)
                         )
                     )
@@ -308,19 +309,19 @@ fun SendMoneyScreen(navController: NavController) {
 
             // Message field
             Text("Note (Optional)", style = MaterialTheme.typography.labelMedium,
-                color = TextSoft, fontWeight = FontWeight.Medium)
+                color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Medium)
             OutlinedTextField(
                 value         = message,
                 onValueChange = { if (it.length <= 50) message = it },
-                placeholder   = { Text("What's this for?", color = TextDim) },
+                placeholder   = { Text("What's this for?", color = PundarTheme.colors.textDim) },
                 modifier      = Modifier.fillMaxWidth(),
                 colors        = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor      = Blue400,
-                    unfocusedBorderColor    = NavyBorder,
-                    focusedContainerColor   = Navy700,
-                    unfocusedContainerColor = Navy700,
-                    focusedTextColor        = TextWhite,
-                    unfocusedTextColor      = TextWhite,
+                    unfocusedBorderColor    = PundarTheme.colors.borderPrimary,
+                    focusedContainerColor   = PundarTheme.colors.surfaceSecondary,
+                    unfocusedContainerColor = PundarTheme.colors.surfaceSecondary,
+                    focusedTextColor        = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor      = PundarTheme.colors.textPrimary,
                     cursorColor             = Blue400
                 ),
                 shape     = RoundedCornerShape(14.dp),
@@ -334,7 +335,7 @@ fun SendMoneyScreen(navController: NavController) {
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
                         .background(RedBg)
-                        .border(1.dp, Red500.copy(0.30f), RoundedCornerShape(10.dp))
+                        .border(1.dp, PundarTheme.colors.accentRed.copy(0.30f), RoundedCornerShape(10.dp))
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -349,7 +350,7 @@ fun SendMoneyScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Blue500.copy(0.08f))
+                    .background(PundarTheme.colors.brandPrimary.copy(0.08f))
                     .border(1.dp, Blue400.copy(0.20f), RoundedCornerShape(12.dp))
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -359,7 +360,7 @@ fun SendMoneyScreen(navController: NavController) {
                 Text(
                     "Tap the QR icon to scan recipient's code.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Blue300
+                    color = PundarTheme.colors.brandLight
                 )
             }
         }

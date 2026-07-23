@@ -42,6 +42,8 @@ import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,23 +82,23 @@ fun UserSettingsScreen(navController: NavController) {
     if (showPhotoSheet) {
         ModalBottomSheet(
             onDismissRequest = { showPhotoSheet = false },
-            containerColor   = Navy800,
+            containerColor   = PundarTheme.colors.surfacePrimary,
             shape            = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text("Change Profile Photo",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold, color = TextWhite,
+                    fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary,
                     modifier = Modifier.padding(bottom = 16.dp))
                 PhotoOption(Icons.Filled.PhotoLibrary, "Choose from Gallery", Blue400) {
                     showPhotoSheet = false; galleryLauncher.launch("image/*")
                 }
                 Spacer(Modifier.height(8.dp))
-                PhotoOption(Icons.Filled.CameraAlt, "Take a Photo", Green400) {
+                PhotoOption(Icons.Filled.CameraAlt, "Take a Photo", PundarTheme.colors.accentGreen) {
                     showPhotoSheet = false; cameraLauncher.launch(null)
                 }
                 Spacer(Modifier.height(8.dp))
-                PhotoOption(Icons.Filled.Delete, "Remove Photo", Red500) {
+                PhotoOption(Icons.Filled.Delete, "Remove Photo", PundarTheme.colors.accentRed) {
                     showPhotoSheet = false
                     profileUri = null
                     Toast.makeText(context, "Profile photo removed.", Toast.LENGTH_SHORT).show()
@@ -109,9 +111,9 @@ fun UserSettingsScreen(navController: NavController) {
     if (showCurrencyDialog) {
         AlertDialog(
             onDismissRequest = { showCurrencyDialog = false },
-            containerColor = Navy800,
+            containerColor = PundarTheme.colors.surfacePrimary,
             title = {
-                Text("Select Currency", color = TextWhite, fontWeight = FontWeight.Bold)
+                Text("Select Currency", color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.Bold)
             },
             text = {
                 LazyColumn(
@@ -123,7 +125,7 @@ fun UserSettingsScreen(navController: NavController) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (AppState.preferredCurrency.value == currency.code) Blue500.copy(0.2f) else Navy700)
+                                .background(if (AppState.preferredCurrency.value == currency.code) PundarTheme.colors.brandPrimary.copy(0.2f) else PundarTheme.colors.surfaceSecondary)
                                 .clickable {
                                     AppState.setCurrency(currency.code)
                                     showCurrencyDialog = false
@@ -134,8 +136,8 @@ fun UserSettingsScreen(navController: NavController) {
                             Text(currency.flag, fontSize = 24.sp)
                             Spacer(Modifier.width(16.dp))
                             Column {
-                                Text(currency.name, color = TextWhite, fontWeight = FontWeight.SemiBold)
-                                Text("${currency.code} - ${currency.symbol}", color = TextMuted, fontSize = 12.sp)
+                                Text(currency.name, color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
+                                Text("${currency.code} - ${currency.symbol}", color = PundarTheme.colors.textMuted, fontSize = 12.sp)
                             }
                         }
                     }
@@ -151,7 +153,7 @@ fun UserSettingsScreen(navController: NavController) {
 
     Scaffold(
         topBar         = { PundarDetailTopBar(title = "Settings", onBack = { navController.navigateUp() }) },
-        containerColor = Navy900
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Column(
             modifier = Modifier
@@ -163,7 +165,7 @@ fun UserSettingsScreen(navController: NavController) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color(0xFF0E2260), Navy900)))
+                    .background(Brush.verticalGradient(listOf(Color(0xFF0E2260), PundarTheme.colors.bgPrimary)))
                     .padding(vertical = 28.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -175,7 +177,7 @@ fun UserSettingsScreen(navController: NavController) {
                                 contentDescription = "Profile",
                                 contentScale       = ContentScale.Crop,
                                 modifier           = Modifier.size(90.dp).clip(CircleShape)
-                                    .border(3.dp, Brush.linearGradient(listOf(Blue500, Blue600)), CircleShape)
+                                    .border(3.dp, Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary)), CircleShape)
                             )
                         } else {
                             PundarAvatar(
@@ -188,19 +190,19 @@ fun UserSettingsScreen(navController: NavController) {
                         }
                         Box(
                             modifier = Modifier.size(28.dp).clip(CircleShape)
-                                .background(Blue500).border(2.dp, Navy900, CircleShape)
+                                .background(PundarTheme.colors.brandPrimary).border(2.dp, PundarTheme.colors.bgPrimary, CircleShape)
                                 .clickable { showPhotoSheet = true },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Filled.CameraAlt, "Change photo",
-                                tint = White, modifier = Modifier.size(14.dp))
+                                tint = PundarTheme.colors.surfacePrimary, modifier = Modifier.size(14.dp))
                         }
                     }
                     Spacer(Modifier.height(14.dp))
                     Text(userName, style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold, color = TextWhite)
+                        fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                     Spacer(Modifier.height(3.dp))
-                    Text(userPhone, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    Text(userPhone, style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textMuted)
                 }
             }
 
@@ -223,15 +225,15 @@ fun UserSettingsScreen(navController: NavController) {
             // ── Security ───────────────────────────────────────────
             SectionHeader("Security")
             SettingsGroup {
-                SettingsRow(Icons.Filled.Lock,        "Change MPIN",       Orange500) {
+                SettingsRow(Icons.Filled.Lock,        "Change MPIN",       PundarTheme.colors.accentOrange) {
                     navController.navigate(Routes.CHANGE_MPIN)
                 }
                 RowDivider()
-                SettingsRow(Icons.Filled.Password,    "Change Password",   Orange500) {}
+                SettingsRow(Icons.Filled.Password,    "Change Password",   PundarTheme.colors.accentOrange) {}
                 RowDivider()
-                SettingsRow(Icons.Filled.Fingerprint, "Biometrics",        Orange500, sub = "Coming soon") {}
+                SettingsRow(Icons.Filled.Fingerprint, "Biometrics",        PundarTheme.colors.accentOrange, sub = "Coming soon") {}
                 RowDivider()
-                SettingsRow(Icons.Filled.Devices,     "Device Management", Orange500) {}
+                SettingsRow(Icons.Filled.Devices,     "Device Management", PundarTheme.colors.accentOrange) {}
             }
 
             Spacer(Modifier.height(16.dp))
@@ -248,9 +250,30 @@ fun UserSettingsScreen(navController: NavController) {
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Privacy ────────────────────────────────────────────
-            SectionHeader("Privacy")
+            // ── Privacy & Appearance ──────────────────────────────────────────────
+            SectionHeader("Privacy & Appearance")
             SettingsGroup {
+                // Theme Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconBox(if (AppState.themeMode.value == "LIGHT") Icons.Filled.LightMode else Icons.Filled.DarkMode, Blue400)
+                    Spacer(Modifier.width(14.dp))
+                    Text("Light Mode", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium, color = PundarTheme.colors.textPrimary, modifier = Modifier.weight(1f))
+                    Switch(
+                        checked         = AppState.themeMode.value == "LIGHT",
+                        onCheckedChange = { isLight -> AppState.setThemeMode(if (isLight) "LIGHT" else "DARK") },
+                        colors          = SwitchDefaults.colors(
+                            checkedTrackColor   = PundarTheme.colors.brandPrimary,
+                            uncheckedTrackColor = PundarTheme.colors.surfaceTertiary,
+                            checkedThumbColor   = PundarTheme.colors.surfacePrimary,
+                            uncheckedThumbColor = PundarTheme.colors.textMuted
+                        )
+                    )
+                }
+                RowDivider()
                 // Hide Balance — wired directly to AppState
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
@@ -259,15 +282,15 @@ fun UserSettingsScreen(navController: NavController) {
                     IconBox(Icons.Filled.VisibilityOff, Blue400)
                     Spacer(Modifier.width(14.dp))
                     Text("Hide Balance", style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium, color = TextWhite, modifier = Modifier.weight(1f))
+                        fontWeight = FontWeight.Medium, color = PundarTheme.colors.textPrimary, modifier = Modifier.weight(1f))
                     Switch(
                         checked         = AppState.isBalanceHidden.value,
                         onCheckedChange = { AppState.toggleBalanceVisibility() },
                         colors          = SwitchDefaults.colors(
-                            checkedTrackColor   = Blue500,
-                            uncheckedTrackColor = Navy600,
-                            checkedThumbColor   = White,
-                            uncheckedThumbColor = TextMuted
+                            checkedTrackColor   = PundarTheme.colors.brandPrimary,
+                            uncheckedTrackColor = PundarTheme.colors.surfaceTertiary,
+                            checkedThumbColor   = PundarTheme.colors.surfacePrimary,
+                            uncheckedThumbColor = PundarTheme.colors.textMuted
                         )
                     )
                 }
@@ -290,7 +313,7 @@ fun UserSettingsScreen(navController: NavController) {
             // ── Linked Cards ───────────────────────────────────────
             SectionHeader("Linked Cards")
             SettingsGroup {
-                SettingsRow(Icons.Filled.CreditCard, "Manage Cards", Gold500) {
+                SettingsRow(Icons.Filled.CreditCard, "Manage Cards", PundarTheme.colors.accentGold) {
                     navController.navigate(Routes.LINK_CARD)
                 }
             }
@@ -300,15 +323,15 @@ fun UserSettingsScreen(navController: NavController) {
             // ── About ──────────────────────────────────────────────
             SectionHeader("About")
             SettingsGroup {
-                SettingsRow(Icons.Filled.Description, "Terms and Conditions", TextMuted) {}
+                SettingsRow(Icons.Filled.Description, "Terms and Conditions", PundarTheme.colors.textMuted) {}
                 RowDivider()
-                SettingsRow(Icons.Filled.PrivacyTip,  "Privacy Policy",       TextMuted) {}
+                SettingsRow(Icons.Filled.PrivacyTip,  "Privacy Policy",       PundarTheme.colors.textMuted) {}
                 RowDivider()
-                SettingsRow(Icons.Filled.Help,        "Help Center",          TextMuted) {}
+                SettingsRow(Icons.Filled.Help,        "Help Center",          PundarTheme.colors.textMuted) {}
                 RowDivider()
-                SettingsRow(Icons.Filled.Support,     "Contact Support",      TextMuted) {}
+                SettingsRow(Icons.Filled.Support,     "Contact Support",      PundarTheme.colors.textMuted) {}
                 RowDivider()
-                SettingsRow(Icons.Filled.Info,        "App Version",          TextMuted,
+                SettingsRow(Icons.Filled.Info,        "App Version",          PundarTheme.colors.textMuted,
                     sub = "1.0.0 (Beta)") {}
             }
 
@@ -321,7 +344,7 @@ fun UserSettingsScreen(navController: NavController) {
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(RedBg)
-                        .border(1.dp, Red500.copy(0.28f), RoundedCornerShape(16.dp))
+                        .border(1.dp, PundarTheme.colors.accentRed.copy(0.28f), RoundedCornerShape(16.dp))
                         .clickable {
                             scope.launch {
                                 AuthRepository.logout()
@@ -352,7 +375,7 @@ fun UserSettingsScreen(navController: NavController) {
 
 @Composable
 private fun SectionHeader(title: String) {
-    Text(title, style = MaterialTheme.typography.labelMedium, color = TextMuted,
+    Text(title, style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted,
         fontWeight = FontWeight.SemiBold,
         modifier   = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
 }
@@ -364,8 +387,8 @@ private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
-            .border(1.dp, Glass10, RoundedCornerShape(16.dp)),
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
+            .border(1.dp, PundarTheme.colors.glassSubtle, RoundedCornerShape(16.dp)),
         content = content
     )
 }
@@ -395,11 +418,11 @@ private fun SettingsRow(
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium, color = TextWhite)
+                fontWeight = FontWeight.Medium, color = PundarTheme.colors.textPrimary)
             if (!sub.isNullOrBlank())
-                Text(sub, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textMuted)
         }
-        Icon(Icons.Filled.ChevronRight, null, tint = TextDim, modifier = Modifier.size(18.dp))
+        Icon(Icons.Filled.ChevronRight, null, tint = PundarTheme.colors.textDim, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -413,13 +436,13 @@ private fun ToggleRow(icon: ImageVector, label: String, accent: Color, default: 
         IconBox(icon, accent)
         Spacer(Modifier.width(14.dp))
         Text(label, style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium, color = TextWhite, modifier = Modifier.weight(1f))
+            fontWeight = FontWeight.Medium, color = PundarTheme.colors.textPrimary, modifier = Modifier.weight(1f))
         Switch(
             checked         = checked,
             onCheckedChange = { checked = it },
             colors          = SwitchDefaults.colors(
-                checkedTrackColor   = Blue500, uncheckedTrackColor = Navy600,
-                checkedThumbColor   = White,   uncheckedThumbColor = TextMuted
+                checkedTrackColor   = PundarTheme.colors.brandPrimary, uncheckedTrackColor = PundarTheme.colors.surfaceTertiary,
+                checkedThumbColor   = PundarTheme.colors.surfacePrimary,   uncheckedThumbColor = PundarTheme.colors.textMuted
             )
         )
     }
@@ -429,7 +452,7 @@ private fun ToggleRow(icon: ImageVector, label: String, accent: Color, default: 
 private fun RowDivider() {
     HorizontalDivider(
         modifier  = Modifier.padding(horizontal = 16.dp),
-        color     = NavyBorder.copy(0.5f),
+        color     = PundarTheme.colors.borderPrimary.copy(0.5f),
         thickness = 0.5.dp
     )
 }
@@ -447,6 +470,6 @@ private fun PhotoOption(icon: ImageVector, label: String, accent: Color, onClick
         }
         Spacer(Modifier.width(14.dp))
         Text(label, style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium, color = TextWhite)
+            fontWeight = FontWeight.Medium, color = PundarTheme.colors.textPrimary)
     }
 }

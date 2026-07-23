@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 // ── Standard surface card ─────────────────────────────────────────
 @Composable
@@ -31,15 +32,15 @@ fun PundarCard(
     content:      @Composable ColumnScope.() -> Unit
 ) {
     val borderBrush = if (accentColor != null)
-        Brush.linearGradient(listOf(accentColor.copy(0.40f), Glass10))
+        Brush.linearGradient(listOf(accentColor.copy(0.40f), PundarTheme.colors.glassSubtle))
     else
-        Brush.linearGradient(listOf(Glass15, Glass10))
+        Brush.linearGradient(listOf(PundarTheme.colors.glassMedium, PundarTheme.colors.glassSubtle))
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(cornerRadius))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
             .border(1.dp, borderBrush, RoundedCornerShape(cornerRadius))
     ) {
         // Accent top-edge line
@@ -66,17 +67,17 @@ fun PundarCard(
 @Composable
 fun PundarAccentCard(
     modifier:    Modifier = Modifier,
-    accentColor: Color    = Gold500,
+    accentColor: Color    = PundarTheme.colors.accentGold,
     content:     @Composable ColumnScope.() -> Unit
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
             .border(
                 1.dp,
-                Brush.linearGradient(listOf(accentColor.copy(0.5f), Glass10)),
+                Brush.linearGradient(listOf(accentColor.copy(0.5f), PundarTheme.colors.glassSubtle)),
                 RoundedCornerShape(20.dp)
             )
     ) {
@@ -103,8 +104,8 @@ fun GlassCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(cornerRadius))
-            .background(Brush.linearGradient(listOf(Glass15, Glass10)))
-            .border(1.dp, Glass20, RoundedCornerShape(cornerRadius))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.glassMedium, PundarTheme.colors.glassSubtle)))
+            .border(1.dp, PundarTheme.colors.glassStrong, RoundedCornerShape(cornerRadius))
     ) {
         Column(modifier = Modifier.padding(20.dp), content = content)
     }
@@ -138,8 +139,8 @@ fun PundarPrimaryButton(
             .graphicsLayer(scaleX = scale, scaleY = scale)
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (canClick) Brush.linearGradient(listOf(Blue500, Blue600))
-                else Brush.linearGradient(listOf(Navy600, Navy600))
+                if (canClick) Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary))
+                else Brush.linearGradient(listOf(PundarTheme.colors.surfaceTertiary, PundarTheme.colors.surfaceTertiary))
             )
     ) {
         Button(
@@ -152,9 +153,9 @@ fun PundarPrimaryButton(
             interactionSource = src
         ) {
             if (isLoading) {
-                CircularProgressIndicator(Modifier.size(20.dp), color = White, strokeWidth = 2.dp)
+                CircularProgressIndicator(Modifier.size(20.dp), color = PundarTheme.colors.surfacePrimary, strokeWidth = 2.dp)
             } else {
-                Text(text, fontWeight = FontWeight.SemiBold, color = if (canClick) White else TextDim)
+                Text(text, fontWeight = FontWeight.SemiBold, color = if (canClick) PundarTheme.colors.surfacePrimary else PundarTheme.colors.textDim)
             }
         }
     }
@@ -176,8 +177,8 @@ fun PundarSecondaryButton(
         onClick           = onClick,
         modifier          = modifier.fillMaxWidth().height(54.dp).graphicsLayer(scaleX = scale, scaleY = scale),
         shape             = RoundedCornerShape(16.dp),
-        border            = BorderStroke(1.dp, Brush.linearGradient(listOf(Blue400.copy(0.7f), Blue300.copy(0.4f)))),
-        colors            = ButtonDefaults.outlinedButtonColors(contentColor = Blue300),
+        border            = BorderStroke(1.dp, Brush.linearGradient(listOf(Blue400.copy(0.7f), PundarTheme.colors.brandLight.copy(0.4f)))),
+        colors            = ButtonDefaults.outlinedButtonColors(contentColor = PundarTheme.colors.brandLight),
         interactionSource = src
     ) {
         Text(text, fontWeight = FontWeight.SemiBold)
@@ -206,8 +207,8 @@ fun PundarGoldButton(
             .graphicsLayer(scaleX = scale, scaleY = scale)
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (canClick) Brush.linearGradient(listOf(Gold500, GoldWarm))
-                else Brush.linearGradient(listOf(Navy600, Navy600))
+                if (canClick) Brush.linearGradient(listOf(PundarTheme.colors.accentGold, GoldWarm))
+                else Brush.linearGradient(listOf(PundarTheme.colors.surfaceTertiary, PundarTheme.colors.surfaceTertiary))
             )
     ) {
         Button(
@@ -220,9 +221,9 @@ fun PundarGoldButton(
             interactionSource = src
         ) {
             if (isLoading)
-                CircularProgressIndicator(Modifier.size(20.dp), color = Navy950, strokeWidth = 2.dp)
+                CircularProgressIndicator(Modifier.size(20.dp), color = PundarTheme.colors.bgSecondary, strokeWidth = 2.dp)
             else
-                Text(text, fontWeight = FontWeight.SemiBold, color = if (canClick) Navy950 else TextDim)
+                Text(text, fontWeight = FontWeight.SemiBold, color = if (canClick) PundarTheme.colors.bgSecondary else PundarTheme.colors.textDim)
         }
     }
 }
@@ -247,7 +248,7 @@ fun PundarOutlinedButton(
         enabled           = enabled,
         shape             = RoundedCornerShape(16.dp),
         border            = BorderStroke(1.dp, Blue400.copy(if (enabled) 0.5f else 0.2f)),
-        colors            = ButtonDefaults.outlinedButtonColors(contentColor = TextWhite),
+        colors            = ButtonDefaults.outlinedButtonColors(contentColor = PundarTheme.colors.textPrimary),
         interactionSource = src
     ) {
         if (icon != null) { Icon(icon, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)) }
@@ -281,8 +282,8 @@ fun PundarSmallButton(
     text:           String,
     onClick:        () -> Unit,
     modifier:       Modifier = Modifier,
-    containerColor: Color    = Navy600,
-    contentColor:   Color    = Blue300
+    containerColor: Color    = PundarTheme.colors.surfaceTertiary,
+    contentColor:   Color    = PundarTheme.colors.brandLight
 ) {
     val src     = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()

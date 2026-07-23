@@ -22,6 +22,8 @@ import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
 
+import com.example.pundarapp.ui.theme.PundarTheme
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FundingScreen(navController: NavController) {
@@ -36,7 +38,7 @@ fun FundingScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Column(
             modifier = Modifier
@@ -48,7 +50,7 @@ fun FundingScreen(navController: NavController) {
             Icon(
                 Icons.Filled.AccountBalanceWallet,
                 contentDescription = null,
-                tint = PundarBlue,
+                tint = PundarTheme.colors.brandPrimary,
                 modifier = Modifier.size(64.dp)
             )
             Spacer(Modifier.height(16.dp))
@@ -56,12 +58,12 @@ fun FundingScreen(navController: NavController) {
                 "Custodial Bridge Funding",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = PundarTextPrimary
+                color = PundarTheme.colors.textPrimary
             )
             Text(
                 "Temporary bridge for PHP to XLM/USDC conversion.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = PundarTextSecondary,
+                color = PundarTheme.colors.textSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             
@@ -74,8 +76,8 @@ fun FundingScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PundarBlue,
-                    focusedLabelColor = PundarBlue
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -86,7 +88,7 @@ fun FundingScreen(navController: NavController) {
             Text(
                 "Estimated: ${String.format("%.2f", conversion)} XLM",
                 style = MaterialTheme.typography.bodySmall,
-                color = PundarBlue
+                color = PundarTheme.colors.brandPrimary
             )
             
             Spacer(Modifier.weight(1f))

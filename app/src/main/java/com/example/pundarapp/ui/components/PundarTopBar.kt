@@ -21,8 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pundarapp.ui.screens.home.NotificationData
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
-private val TopBarBg = Color(0xF2090F1F)
+private val TopBarBgDark = Color(0xF2090F1F)   // original dark header
+private val TopBarBgLight = Color(0xFFFAFBFF)  // crisp white-blue for light mode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,14 +36,19 @@ fun PundarMainTopBar(
     onNotificationClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
+    val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
+    val topBarBorderColor = if (PundarTheme.colors.isLight)
+        Color(0xFFE2E8F0) // Subtle gray border in light mode
+    else
+        PundarTheme.colors.glassMedium
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(TopBarBg)
+            .background(topBarBg)
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
-                    listOf(Color.Transparent, Glass15),
+                    listOf(Color.Transparent, topBarBorderColor),
                     startY = 0f, endY = Float.POSITIVE_INFINITY
                 ),
                 shape = RectangleShape
@@ -54,12 +61,12 @@ fun PundarMainTopBar(
                         text = "Hey, ${userName.split(" ").first()} 👋",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = TextWhite
+                        color = PundarTheme.colors.textPrimary
                     )
                     Text(
                         text = "Every transaction counts.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted,
+                        color = PundarTheme.colors.textMuted,
                         letterSpacing = 0.2.sp
                     )
                 }
@@ -78,8 +85,8 @@ fun PundarMainTopBar(
                     modifier = Modifier
                         .height(28.dp)
                         .clip(RoundedCornerShape(50.dp))
-                        .background(Gold500.copy(0.12f))
-                        .border(1.dp, Gold500.copy(0.30f), RoundedCornerShape(50.dp))
+                        .background(PundarTheme.colors.accentGold.copy(0.12f))
+                        .border(1.dp, PundarTheme.colors.accentGold.copy(0.30f), RoundedCornerShape(50.dp))
                         .padding(horizontal = 10.dp)
                 ) {
                     Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
@@ -95,20 +102,20 @@ fun PundarMainTopBar(
                 }
                 IconButton(onClick = onNotificationClick) {
                     if (NotificationData.hasUnread()) {
-                        BadgedBox(badge = { Badge(containerColor = Red500) }) {
-                            Icon(Icons.Filled.Notifications, "Alerts", tint = TextSoft)
+                        BadgedBox(badge = { Badge(containerColor = PundarTheme.colors.accentRed) }) {
+                            Icon(Icons.Filled.Notifications, "Alerts", tint = PundarTheme.colors.textSecondary)
                         }
                     } else {
-                        Icon(Icons.Filled.Notifications, "Alerts", tint = TextSoft)
+                        Icon(Icons.Filled.Notifications, "Alerts", tint = PundarTheme.colors.textSecondary)
                     }
                 }
                 IconButton(onClick = onSettingsClick) {
-                    Icon(Icons.Filled.Settings, "Settings", tint = TextSoft)
+                    Icon(Icons.Filled.Settings, "Settings", tint = PundarTheme.colors.textSecondary)
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
-                titleContentColor = TextWhite
+                titleContentColor = PundarTheme.colors.textPrimary
             )
         )
     }
@@ -125,20 +132,22 @@ fun PundarDetailTopBar(
     showStar: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
+    val topBarBorderColor = if (PundarTheme.colors.isLight) Color(0xFFE2E8F0) else PundarTheme.colors.glassMedium
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(TopBarBg)
+            .background(topBarBg)
             .border(
                 1.dp,
-                Brush.verticalGradient(listOf(Color.Transparent, Glass15), startY = 0f, endY = Float.POSITIVE_INFINITY),
+                Brush.verticalGradient(listOf(Color.Transparent, topBarBorderColor), startY = 0f, endY = Float.POSITIVE_INFINITY),
                 RectangleShape
             )
     ) {
         TopAppBar(
             title = {
                 Text(title, style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold, color = TextWhite)
+                    fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
             },
             navigationIcon = {
                 IconButton(onClick = onBack) {
@@ -147,23 +156,23 @@ fun PundarDetailTopBar(
                         modifier = Modifier
                             .size(34.dp)
                             .clip(CircleShape)
-                            .background(Navy700)
-                            .border(1.dp, NavyBorder, CircleShape)
+                            .background(PundarTheme.colors.surfaceSecondary)
+                            .border(1.dp, PundarTheme.colors.borderPrimary, CircleShape)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back",
-                            tint = TextWhite, modifier = Modifier.size(17.dp))
+                            tint = PundarTheme.colors.textPrimary, modifier = Modifier.size(17.dp))
                     }
                 }
             },
             actions = {
                 actions()
-                if (showHelp)          IconButton(onClick = {}) { Icon(Icons.Filled.Help,         "Help",  tint = TextSoft) }
-                if (showMoreOptions)   IconButton(onClick = {}) { Icon(Icons.Filled.MoreVert,      "More",  tint = TextSoft) }
-                if (showNotifications) IconButton(onClick = {}) { Icon(Icons.Filled.Notifications, "Notif", tint = TextSoft) }
-                if (showStar)          IconButton(onClick = {}) { Icon(Icons.Filled.Star,           "Fav",   tint = TextSoft) }
+                if (showHelp)          IconButton(onClick = {}) { Icon(Icons.Filled.Help,         "Help",  tint = PundarTheme.colors.textSecondary) }
+                if (showMoreOptions)   IconButton(onClick = {}) { Icon(Icons.Filled.MoreVert,      "More",  tint = PundarTheme.colors.textSecondary) }
+                if (showNotifications) IconButton(onClick = {}) { Icon(Icons.Filled.Notifications, "Notif", tint = PundarTheme.colors.textSecondary) }
+                if (showStar)          IconButton(onClick = {}) { Icon(Icons.Filled.Star,           "Fav",   tint = PundarTheme.colors.textSecondary) }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent, titleContentColor = TextWhite)
+                containerColor = Color.Transparent, titleContentColor = PundarTheme.colors.textPrimary)
         )
     }
 }
@@ -177,19 +186,21 @@ fun PundarCircleTopBar(
     userInitials: String = "JD",
     profileImageUrl: String? = null
 ) {
+    val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
+    val topBarBorderColor = if (PundarTheme.colors.isLight) Color(0xFFE2E8F0) else PundarTheme.colors.glassMedium
     Box(
-        modifier = Modifier.fillMaxWidth().background(TopBarBg)
-            .border(1.dp, Brush.verticalGradient(listOf(Color.Transparent, Glass15),
+        modifier = Modifier.fillMaxWidth().background(topBarBg)
+            .border(1.dp, Brush.verticalGradient(listOf(Color.Transparent, topBarBorderColor),
                 startY = 0f, endY = Float.POSITIVE_INFINITY), RectangleShape)
     ) {
         TopAppBar(
             title = {
                 Text("PUNDAR", fontWeight = FontWeight.Black, fontSize = 18.sp,
-                    color = TextWhite, letterSpacing = 2.sp)
+                    color = PundarTheme.colors.textPrimary, letterSpacing = 2.sp)
             },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextWhite)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = PundarTheme.colors.textPrimary)
                 }
             },
             actions = {
@@ -198,14 +209,14 @@ fun PundarCircleTopBar(
                 if (showNotifications) {
                     IconButton(onClick = onNotificationClick) {
                         if (NotificationData.hasUnread())
-                            BadgedBox(badge = { Badge(containerColor = Red500) }) {
-                                Icon(Icons.Filled.Notifications, "Notifications", tint = TextSoft)
+                            BadgedBox(badge = { Badge(containerColor = PundarTheme.colors.accentRed) }) {
+                                Icon(Icons.Filled.Notifications, "Notifications", tint = PundarTheme.colors.textSecondary)
                             }
-                        else Icon(Icons.Filled.Notifications, "Notifications", tint = TextSoft)
+                        else Icon(Icons.Filled.Notifications, "Notifications", tint = PundarTheme.colors.textSecondary)
                     }
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = TextWhite)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = PundarTheme.colors.textPrimary)
         )
     }
 }
@@ -219,9 +230,11 @@ fun PundarGrowTopBar(
     onNotificationClick: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
+    val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
+    val topBarBorderColor = if (PundarTheme.colors.isLight) Color(0xFFE2E8F0) else PundarTheme.colors.glassMedium
     Box(
-        modifier = Modifier.fillMaxWidth().background(TopBarBg)
-            .border(1.dp, Brush.verticalGradient(listOf(Color.Transparent, Glass15),
+        modifier = Modifier.fillMaxWidth().background(topBarBg)
+            .border(1.dp, Brush.verticalGradient(listOf(Color.Transparent, topBarBorderColor),
                 startY = 0f, endY = Float.POSITIVE_INFINITY), RectangleShape)
     ) {
         TopAppBar(
@@ -231,14 +244,14 @@ fun PundarGrowTopBar(
                         showRing = true, initialsFontSize = 12.sp)
                     Spacer(Modifier.width(10.dp))
                     Text("PUNDAR", fontWeight = FontWeight.Black, fontSize = 18.sp,
-                        color = TextWhite, letterSpacing = 2.sp)
+                        color = PundarTheme.colors.textPrimary, letterSpacing = 2.sp)
                 }
             },
             actions = {
                 Box(
                     modifier = Modifier.height(28.dp).clip(RoundedCornerShape(50.dp))
-                        .background(Gold500.copy(0.12f))
-                        .border(1.dp, Gold500.copy(0.30f), RoundedCornerShape(50.dp))
+                        .background(PundarTheme.colors.accentGold.copy(0.12f))
+                        .border(1.dp, PundarTheme.colors.accentGold.copy(0.30f), RoundedCornerShape(50.dp))
                         .padding(horizontal = 10.dp)
                 ) {
                     Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
@@ -250,13 +263,13 @@ fun PundarGrowTopBar(
                 }
                 IconButton(onClick = onNotificationClick) {
                     if (NotificationData.hasUnread())
-                        BadgedBox(badge = { Badge(containerColor = Red500) }) {
-                            Icon(Icons.Filled.Notifications, "Notifications", tint = TextSoft)
+                        BadgedBox(badge = { Badge(containerColor = PundarTheme.colors.accentRed) }) {
+                            Icon(Icons.Filled.Notifications, "Notifications", tint = PundarTheme.colors.textSecondary)
                         }
-                    else Icon(Icons.Filled.Notifications, "Notifications", tint = TextSoft)
+                    else Icon(Icons.Filled.Notifications, "Notifications", tint = PundarTheme.colors.textSecondary)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = TextWhite)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = PundarTheme.colors.textPrimary)
         )
     }
 }

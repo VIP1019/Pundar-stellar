@@ -27,6 +27,8 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.ContributionStatus
 import com.example.pundarapp.ui.theme.*
 
+import com.example.pundarapp.ui.theme.PundarTheme
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CircleDetailScreen(circleId: String, navController: NavController) {
@@ -87,7 +89,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                             contributeError = "Insufficient balance!"
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = PundarGold, contentColor = PundarTextPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.accentGold, contentColor = PundarTheme.colors.textPrimary),
                     shape = RoundedCornerShape(12.dp)
                 ) { Text("Confirm", fontWeight = FontWeight.Bold) }
             },
@@ -111,15 +113,15 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                     Text("Members: ${circle.memberCount} / ${circle.maxMembers}", style = MaterialTheme.typography.bodyMedium)
                     Text("Target Date: ${circle.targetDate}", style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(8.dp))
-                    Text("Invite link: pundar.app/circle/${circle.id}", style = MaterialTheme.typography.bodySmall, color = PundarBlue)
+                    Text("Invite link: pundar.app/circle/${circle.id}", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.brandPrimary)
                 }
             },
             confirmButton = {
                 Button(
                     onClick = { showShareDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = PundarBlue),
+                    colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.brandPrimary),
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Copy Link", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold) }
+                ) { Text("Copy Link", color = PundarTheme.colors.surfacePrimary, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { showShareDialog = false }) { Text("Close") }
@@ -134,7 +136,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                 userInitials = com.example.pundarapp.ui.data.SampleData.currentUser.initials
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -150,17 +152,17 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             StatusBadge(
                                 text = if (circle.isActive) "Active" else "Completed",
-                                color = if (circle.isActive) PundarBlue else PundarSuccess
+                                color = if (circle.isActive) PundarTheme.colors.brandPrimary else PundarSuccess
                             )
                             Spacer(Modifier.width(8.dp))
-                            Surface(shape = RoundedCornerShape(8.dp), color = PundarSurfaceVariant) {
+                            Surface(shape = RoundedCornerShape(8.dp), color = PundarTheme.colors.surfaceTertiary) {
                                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.Group, null, tint = PundarTextSecondary, modifier = Modifier.size(14.dp))
+                                    Icon(Icons.Filled.Group, null, tint = PundarTheme.colors.textSecondary, modifier = Modifier.size(14.dp))
                                     Spacer(Modifier.width(4.dp))
                                     Text("${circle.memberCount} / ${circle.maxMembers} Members",
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold, color = PundarTextSecondary)
+                                        fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textSecondary)
                                 }
                             }
                             if (isFull) {
@@ -175,7 +177,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                             } else {
                                 Spacer(Modifier.width(8.dp))
                                 Text("$remainingSlots slots left",
-                                    style = MaterialTheme.typography.labelSmall, color = PundarBlue)
+                                    style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.brandPrimary)
                             }
                         }
                     }
@@ -186,30 +188,30 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(circle.name, style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold, color = PundarTextPrimary)
+                                fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                             Spacer(Modifier.height(4.dp))
                             Text("Target: ${circle.targetDate}",
-                                style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                                style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Total Saved", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                            Text("Total Saved", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                             Text("₱ ${String.format("%,.0f", circle.savedAmount)}",
                                 style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold, color = PundarBlue)
+                                fontWeight = FontWeight.Bold, color = PundarTheme.colors.brandPrimary)
                             Text("of ₱ ${String.format("%,.0f", circle.targetAmount)}",
-                                style = MaterialTheme.typography.labelSmall, color = PundarTextSecondary)
+                                style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
                         }
                     }
 
                     Spacer(Modifier.height(24.dp))
                     val progress = (circle.savedAmount / circle.targetAmount).toFloat().coerceIn(0f, 1f)
-                    PundarProgressBar(progress = progress, color = PundarBlue)
+                    PundarProgressBar(progress = progress, color = PundarTheme.colors.brandPrimary)
                     Spacer(Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${(progress * 100).toInt()}% Completed",
-                            style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
+                            style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                         Text("₱ ${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} remaining",
-                            style = MaterialTheme.typography.labelMedium, color = PundarTextSecondary)
+                            style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                     }
 
                     Spacer(Modifier.height(24.dp))
@@ -220,7 +222,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                                 onClick = { showContributeDialog = true },
                                 modifier = Modifier.weight(1f).height(48.dp),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PundarGold, contentColor = PundarTextPrimary)
+                                colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.accentGold, contentColor = PundarTheme.colors.textPrimary)
                             ) {
                                 Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
@@ -231,7 +233,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                             onClick = { showShareDialog = true },
                             modifier = Modifier.weight(1f).height(48.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarBlue)
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTheme.colors.brandPrimary)
                         ) {
                             Icon(Icons.Filled.Share, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -246,7 +248,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
             if (isOwner && AppState.pendingJoinRequests.isNotEmpty()) {
                 item {
                     Text("Pending Join Requests", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold, color = PundarTextPrimary)
+                        fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                 }
                 items(AppState.pendingJoinRequests.toList()) { request ->
                     PundarCard {
@@ -256,7 +258,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(request.userName, fontWeight = FontWeight.SemiBold)
-                                Text("Wants to join", style = MaterialTheme.typography.bodySmall, color = PundarTextSecondary)
+                                Text("Wants to join", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                             }
                             if (isFull) {
                                 Text("Circle Full", color = MaterialTheme.colorScheme.error,
@@ -284,10 +286,10 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                 Row(modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Member Contributions", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold, color = PundarTextPrimary)
+                        fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                     TextButton(onClick = { 
                         Toast.makeText(context, "No recent history found.", Toast.LENGTH_SHORT).show()
-                    }) { Text("View History", color = PundarBlue) }
+                    }) { Text("View History", color = PundarTheme.colors.brandPrimary) }
                 }
             }
 
@@ -302,7 +304,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                                 sharePercent = member.sharePercent,
                                 status = member.status,
                                 isYou = member.isYou,
-                                avatarColor = if (member.isYou) PundarBlue else androidx.compose.ui.graphics.Color(member.avatarColor),
+                                avatarColor = if (member.isYou) PundarTheme.colors.brandPrimary else androidx.compose.ui.graphics.Color(member.avatarColor),
                                 showNudge = member.status != ContributionStatus.PAID && !member.isYou,
                                 isHighlighted = member.status != ContributionStatus.PAID && !member.isYou
                             )
@@ -321,29 +323,29 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
             item {
                 PundarCard {
                     Text("Circle Rules", style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold, color = PundarTextPrimary)
+                        fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                     Spacer(Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.Top) {
-                        Icon(Icons.Filled.CalendarToday, null, tint = PundarBlue,
+                        Icon(Icons.Filled.CalendarToday, null, tint = PundarTheme.colors.brandPrimary,
                             modifier = Modifier.size(20.dp).padding(top = 2.dp))
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text("Monthly Due Date", style = MaterialTheme.typography.labelMedium,
-                                color = PundarTextPrimary, fontWeight = FontWeight.SemiBold)
+                                color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
                             Text("${circle.monthlyDueDay}th of every month",
-                                style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                                style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                         }
                     }
                     Spacer(Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.Top) {
-                        Icon(Icons.Filled.Payments, null, tint = PundarBlue,
+                        Icon(Icons.Filled.Payments, null, tint = PundarTheme.colors.brandPrimary,
                             modifier = Modifier.size(20.dp).padding(top = 2.dp))
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text("Contribution Amount", style = MaterialTheme.typography.labelMedium,
-                                color = PundarTextPrimary, fontWeight = FontWeight.SemiBold)
+                                color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
                             Text("₱ ${String.format("%,.0f", circle.contributionPerMonth)} / member / month",
-                                style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                                style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                         }
                     }
                 }

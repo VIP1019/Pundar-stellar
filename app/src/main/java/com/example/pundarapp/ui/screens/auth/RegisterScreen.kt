@@ -37,6 +37,7 @@ import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 
 private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
@@ -63,26 +64,26 @@ fun RegisterScreen(navController: NavController) {
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor      = Blue400,
-        unfocusedBorderColor    = NavyBorder,
+        unfocusedBorderColor    = PundarTheme.colors.borderPrimary,
         focusedLabelColor       = Blue400,
-        unfocusedLabelColor     = TextMuted,
-        focusedTextColor        = TextWhite,
-        unfocusedTextColor      = TextWhite,
+        unfocusedLabelColor     = PundarTheme.colors.textMuted,
+        focusedTextColor        = PundarTheme.colors.textPrimary,
+        unfocusedTextColor      = PundarTheme.colors.textPrimary,
         cursorColor             = Blue400,
-        focusedContainerColor   = Navy700,
-        unfocusedContainerColor = Navy700
+        focusedContainerColor   = PundarTheme.colors.surfaceSecondary,
+        unfocusedContainerColor = PundarTheme.colors.surfaceSecondary
     )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF08122A), Navy900, Navy950)))
+            .background(Brush.verticalGradient(listOf(Color(0xFF08122A), PundarTheme.colors.bgPrimary, PundarTheme.colors.bgSecondary)))
     ) {
         // Ambient orb
         Box(
             Modifier.size(300.dp).align(Alignment.TopCenter)
                 .offset(y = (-60).dp).blur(120.dp)
-                .background(Blue500.copy(0.09f), CircleShape)
+                .background(PundarTheme.colors.brandPrimary.copy(0.09f), CircleShape)
         )
 
         Column(
@@ -102,22 +103,22 @@ fun RegisterScreen(navController: NavController) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.size(68.dp).clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(Blue500, Blue600)))
+                        .background(Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary)))
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(60.dp).clip(CircleShape).background(Navy800)
+                        modifier = Modifier.size(60.dp).clip(CircleShape).background(PundarTheme.colors.surfacePrimary)
                     ) {
                         Text("P", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Blue400)
                     }
                 }
                 Spacer(Modifier.height(20.dp))
                 Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 24.sp,
-                    color = TextWhite, letterSpacing = (-0.3).sp)
+                    color = PundarTheme.colors.textPrimary, letterSpacing = (-0.3).sp)
                 Spacer(Modifier.height(5.dp))
                 Text("Join PUNDAR — build together, grow together.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextMuted, textAlign = TextAlign.Center)
+                    color = PundarTheme.colors.textMuted, textAlign = TextAlign.Center)
             }
 
             Spacer(Modifier.height(32.dp))
@@ -128,19 +129,19 @@ fun RegisterScreen(navController: NavController) {
                     .graphicsLayer(alpha = formAlpha.value, translationY = formSlide.value)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Brush.linearGradient(listOf(Navy800, Navy700)))
-                    .border(1.dp, Brush.linearGradient(listOf(Glass15, Glass10)), RoundedCornerShape(20.dp))
+                    .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
+                    .border(1.dp, Brush.linearGradient(listOf(PundarTheme.colors.glassMedium, PundarTheme.colors.glassSubtle)), RoundedCornerShape(20.dp))
             ) {
                 Column(modifier = Modifier.padding(22.dp)) {
 
                     // Full Name
                     Text("Full Name", style = MaterialTheme.typography.labelMedium,
-                        color = TextSoft, fontWeight = FontWeight.Medium)
+                        color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value           = fullName,
                         onValueChange   = { fullName = it },
-                        placeholder     = { Text("Juan dela Cruz", color = TextDim) },
+                        placeholder     = { Text("Juan dela Cruz", color = PundarTheme.colors.textDim) },
                         modifier        = Modifier.fillMaxWidth(),
                         colors          = fieldColors,
                         shape           = RoundedCornerShape(14.dp),
@@ -151,12 +152,12 @@ fun RegisterScreen(navController: NavController) {
 
                     // Mobile
                     Text("Mobile Number", style = MaterialTheme.typography.labelMedium,
-                        color = TextSoft, fontWeight = FontWeight.Medium)
+                        color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value           = phone,
                         onValueChange   = { phone = it },
-                        placeholder     = { Text("09171234567", color = TextDim) },
+                        placeholder     = { Text("09171234567", color = PundarTheme.colors.textDim) },
                         modifier        = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         colors          = fieldColors,
@@ -168,12 +169,12 @@ fun RegisterScreen(navController: NavController) {
 
                     // MPIN
                     Text("Set 4-Digit MPIN", style = MaterialTheme.typography.labelMedium,
-                        color = TextSoft, fontWeight = FontWeight.Medium)
+                        color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value                = mpin,
                         onValueChange        = { mpin = it.take(4) },
-                        placeholder          = { Text("••••", color = TextDim) },
+                        placeholder          = { Text("••••", color = PundarTheme.colors.textDim) },
                         modifier             = Modifier.fillMaxWidth(),
                         visualTransformation = if (mpinVisible) VisualTransformation.None
                                                else PasswordVisualTransformation(),
@@ -181,7 +182,7 @@ fun RegisterScreen(navController: NavController) {
                         trailingIcon = {
                             IconButton(onClick = { mpinVisible = !mpinVisible }) {
                                 Icon(if (mpinVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    "Toggle", tint = TextMuted)
+                                    "Toggle", tint = PundarTheme.colors.textMuted)
                             }
                         },
                         colors     = fieldColors,
@@ -193,12 +194,12 @@ fun RegisterScreen(navController: NavController) {
 
                     // Confirm MPIN
                     Text("Confirm MPIN", style = MaterialTheme.typography.labelMedium,
-                        color = TextSoft, fontWeight = FontWeight.Medium)
+                        color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value                = confirmMpin,
                         onValueChange        = { confirmMpin = it.take(4) },
-                        placeholder          = { Text("••••", color = TextDim) },
+                        placeholder          = { Text("••••", color = PundarTheme.colors.textDim) },
                         modifier             = Modifier.fillMaxWidth(),
                         visualTransformation = if (confirmMpinVisible) VisualTransformation.None
                                                else PasswordVisualTransformation(),
@@ -206,7 +207,7 @@ fun RegisterScreen(navController: NavController) {
                         trailingIcon = {
                             IconButton(onClick = { confirmMpinVisible = !confirmMpinVisible }) {
                                 Icon(if (confirmMpinVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    "Toggle", tint = TextMuted)
+                                    "Toggle", tint = PundarTheme.colors.textMuted)
                             }
                         },
                         colors     = fieldColors,
@@ -221,7 +222,7 @@ fun RegisterScreen(navController: NavController) {
                             modifier = Modifier.fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(RedBg)
-                                .border(1.dp, Red500.copy(0.30f), RoundedCornerShape(10.dp))
+                                .border(1.dp, PundarTheme.colors.accentRed.copy(0.30f), RoundedCornerShape(10.dp))
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -277,10 +278,10 @@ fun RegisterScreen(navController: NavController) {
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Text("Already have an account? ", color = TextMuted,
+                Text("Already have an account? ", color = PundarTheme.colors.textMuted,
                     style = MaterialTheme.typography.bodyMedium)
                 Text("Sign In", style = MaterialTheme.typography.labelLarge,
-                    color = Blue300, fontWeight = FontWeight.SemiBold,
+                    color = PundarTheme.colors.brandLight, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clickable { navController.navigate(Routes.LOGIN) })
             }
 

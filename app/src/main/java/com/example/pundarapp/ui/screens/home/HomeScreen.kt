@@ -42,6 +42,7 @@ import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 
 private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
@@ -137,7 +138,7 @@ fun HomeScreen(navController: NavController) {
                     ) {
                         Text("Recent Activity",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold, color = TextWhite)
+                            fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
                         TextButton(onClick = {
                             Toast.makeText(context, "Coming soon!", Toast.LENGTH_SHORT).show()
                         }) {
@@ -158,7 +159,7 @@ fun HomeScreen(navController: NavController) {
 
                 item {
                     Text("Spend · Save · Grow · Together",
-                        style = MaterialTheme.typography.bodySmall, color = TextDim,
+                        style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textDim,
                         textAlign = TextAlign.Center, letterSpacing = 1.sp,
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
                 }
@@ -173,9 +174,9 @@ fun HomeScreen(navController: NavController) {
 private fun StatsRow(totalSaved: Double, score: Int) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         StatCard(Modifier.weight(1f), "Total Saved",
-            "₱${String.format("%,.0f", totalSaved)}", Icons.Filled.Savings, Green400, 0)
+            "₱${String.format("%,.0f", totalSaved)}", Icons.Filled.Savings, PundarTheme.colors.accentGreen, 0)
         StatCard(Modifier.weight(1f), "Credit Score",
-            score.toString(), Icons.Filled.Star, Gold500, 70)
+            score.toString(), Icons.Filled.Star, PundarTheme.colors.accentGold, 70)
     }
 }
 
@@ -194,8 +195,8 @@ private fun StatCard(
         modifier = modifier
             .graphicsLayer(scaleX = scale.value, scaleY = scale.value, alpha = alpha.value)
             .clip(RoundedCornerShape(18.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
-            .border(1.dp, Brush.linearGradient(listOf(accent.copy(0.30f), Glass10)), RoundedCornerShape(18.dp))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
+            .border(1.dp, Brush.linearGradient(listOf(accent.copy(0.30f), PundarTheme.colors.glassSubtle)), RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
         Column {
@@ -210,7 +211,7 @@ private fun StatCard(
                 Icon(icon, null, tint = accent, modifier = Modifier.size(17.dp))
             }
             Spacer(Modifier.height(10.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textMuted)
             Spacer(Modifier.height(2.dp))
             Text(value, style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold, color = accent)
@@ -222,7 +223,7 @@ private fun StatCard(
 @Composable
 private fun QuickActionsSection(navController: NavController) {
     Text("Quick Actions", style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold, color = TextWhite)
+        fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
     Spacer(Modifier.height(12.dp))
     Row(
         Modifier
@@ -232,9 +233,9 @@ private fun QuickActionsSection(navController: NavController) {
     ) {
         val items: List<Pair<Triple<ImageVector, String, Color>, () -> Unit>> = listOf(
             Triple(Icons.Filled.Send,         "Send",    Blue400)    to { navController.navigate(Routes.SEND_MONEY) },
-            Triple(Icons.Filled.QrCode2,      "Receive", Green400)   to { navController.navigate(Routes.RECEIVE_MONEY) },
-            Triple(Icons.Filled.PhoneAndroid, "Load",    Gold500)    to { navController.navigate(Routes.BUY_LOAD) },
-            Triple(Icons.Filled.Receipt,      "Split",   Orange500)  to { navController.navigate(Routes.PAY_NEW_BILL) },
+            Triple(Icons.Filled.QrCode2,      "Receive", PundarTheme.colors.accentGreen)   to { navController.navigate(Routes.RECEIVE_MONEY) },
+            Triple(Icons.Filled.PhoneAndroid, "Load",    PundarTheme.colors.accentGold)    to { navController.navigate(Routes.BUY_LOAD) },
+            Triple(Icons.Filled.Receipt,      "Split",   PundarTheme.colors.accentOrange)  to { navController.navigate(Routes.PAY_NEW_BILL) },
             Triple(Icons.Filled.CurrencyExchange, "Convert", Color(0xFF8B5CF6)) to { navController.navigate(Routes.XLM_CONVERTER) }
         )
         items.forEachIndexed { idx, (info, action) ->
@@ -273,7 +274,7 @@ private fun QuickTile(
         }
         Spacer(Modifier.height(7.dp))
         Text(title, fontWeight = FontWeight.Medium, fontSize = 11.sp,
-            color = TextSoft, textAlign = TextAlign.Center)
+            color = PundarTheme.colors.textSecondary, textAlign = TextAlign.Center)
     }
 }
 
@@ -282,10 +283,10 @@ private fun QuickTile(
 private fun ActivityRow(activity: HomeActivity, index: Int) {
     val accent = when (activity.module) {
         "Pay"    -> Blue400
-        "Circle" -> Gold500
-        "Grow"   -> Green400
-        "Wallet" -> Blue300
-        else     -> TextMuted
+        "Circle" -> PundarTheme.colors.accentGold
+        "Grow"   -> PundarTheme.colors.accentGreen
+        "Wallet" -> PundarTheme.colors.brandLight
+        else     -> PundarTheme.colors.textMuted
     }
     val icon = when (activity.module) {
         "Pay"    -> Icons.Filled.Receipt
@@ -305,8 +306,8 @@ private fun ActivityRow(activity: HomeActivity, index: Int) {
             .fillMaxWidth()
             .graphicsLayer(translationX = slideX.value, alpha = alpha.value)
             .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
-            .border(1.dp, Glass10, RoundedCornerShape(16.dp))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
+            .border(1.dp, PundarTheme.colors.glassSubtle, RoundedCornerShape(16.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -323,12 +324,12 @@ private fun ActivityRow(activity: HomeActivity, index: Int) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(activity.title, style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold, color = TextWhite)
-            Text(activity.subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
+            Text(activity.subtitle, style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textMuted)
         }
         Text(activity.amount, style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = if (activity.isPositive) Green400 else TextWhite)
+            color = if (activity.isPositive) PundarTheme.colors.accentGreen else PundarTheme.colors.textPrimary)
     }
 }
 
@@ -339,7 +340,7 @@ private fun ActivityShimmer() {
     val x   by inf.animateFloat(-700f, 700f,
         infiniteRepeatable(tween(1200, easing = LinearEasing)), label = "sx")
     val brush = Brush.linearGradient(
-        listOf(Navy800, Navy600, Navy800),
+        listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceTertiary, PundarTheme.colors.surfacePrimary),
         start = Offset(x, 0f), end = Offset(x + 280f, 0f)
     )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -357,7 +358,7 @@ private fun EmptyActivity() {
             Icon3DWallet(size = 52.dp)
             Spacer(Modifier.height(12.dp))
             Text("No recent activity yet.",
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textMuted,
                 textAlign = TextAlign.Center)
         }
     }

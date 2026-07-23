@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 // Enum only holds route/label/accent. Icons resolved separately to avoid
 // AutoMirrored extension property limitation in enum default values.
@@ -64,10 +65,15 @@ fun PundarBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(28.dp))
-                .background(Brush.linearGradient(listOf(Navy700, Navy800)))
+                .background(
+                    if (PundarTheme.colors.isLight)
+                        Brush.linearGradient(listOf(Color(0xFFFFFFFF), Color(0xFFF5F8FF)))
+                    else
+                        Brush.linearGradient(listOf(PundarTheme.colors.surfaceSecondary, PundarTheme.colors.surfacePrimary))
+                )
                 .border(
                     1.dp,
-                    Brush.linearGradient(listOf(Glass15, Glass10)),
+                    Brush.linearGradient(listOf(PundarTheme.colors.glassMedium, PundarTheme.colors.glassSubtle)),
                     RoundedCornerShape(28.dp)
                 )
                 .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -97,12 +103,12 @@ private fun RowScope.NavItem(
         label = "scale_${item.name}"
     )
     val iconTint by animateColorAsState(
-        targetValue   = if (selected) item.accent else TextMuted,
+        targetValue   = if (selected) item.accent else PundarTheme.colors.textMuted,
         animationSpec = tween(220),
         label         = "tint_${item.name}"
     )
     val labelColor by animateColorAsState(
-        targetValue   = if (selected) item.accent else TextDim,
+        targetValue   = if (selected) item.accent else PundarTheme.colors.textDim,
         animationSpec = tween(220),
         label         = "label_${item.name}"
     )
@@ -117,11 +123,11 @@ private fun RowScope.NavItem(
                 .clip(CircleShape)
                 .background(
                     if (selected)
-                        Brush.linearGradient(listOf(Blue500, Blue600))
+                        Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary))
                     else
-                        Brush.linearGradient(listOf(Navy600, Navy700))
+                        Brush.linearGradient(listOf(PundarTheme.colors.surfaceTertiary, PundarTheme.colors.surfaceSecondary))
                 )
-                .border(1.dp, if (selected) Blue300.copy(0.5f) else Glass15, CircleShape)
+                .border(1.dp, if (selected) PundarTheme.colors.brandLight.copy(0.5f) else PundarTheme.colors.glassMedium, CircleShape)
                 .clickable(
                     indication        = null,
                     interactionSource = remember { MutableInteractionSource() }
@@ -131,7 +137,7 @@ private fun RowScope.NavItem(
             Icon(
                 imageVector        = icon,
                 contentDescription = item.label,
-                tint               = if (selected) White else TextSoft,
+                tint               = if (selected) PundarTheme.colors.surfacePrimary else PundarTheme.colors.textSecondary,
                 modifier           = Modifier.size(24.dp)
             )
         }

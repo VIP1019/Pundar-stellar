@@ -34,6 +34,8 @@ import com.example.pundarapp.ui.components.PundarTextButton
 import com.example.pundarapp.ui.components.StatusBadge
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
+
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -125,7 +127,7 @@ fun BillQrScreen(billId: String, navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Column(
             modifier = Modifier
@@ -141,7 +143,7 @@ fun BillQrScreen(billId: String, navController: NavController) {
                 bill.name,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = PundarTextPrimary,
+                color = PundarTheme.colors.textPrimary,
                 textAlign = TextAlign.Center
             )
 
@@ -149,24 +151,24 @@ fun BillQrScreen(billId: String, navController: NavController) {
                 "₱${String.format("%,.2f", bill.yourShare)}",
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Black,
-                color = PundarBlue
+                color = PundarTheme.colors.brandPrimary
             )
 
             if (qrStatus == BillQrStatus.ACTIVE) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Timer, null, tint = PundarTextSecondary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.Timer, null, tint = PundarTheme.colors.textSecondary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "Expires in ${formatCountdown(remainingMs)}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (remainingMs < 60_000) PundarWarning else PundarTextSecondary
+                        color = if (remainingMs < 60_000) PundarWarning else PundarTheme.colors.textSecondary
                     )
                 }
             }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = PundarSurface),
+                colors = CardDefaults.cardColors(containerColor = PundarTheme.colors.surfacePrimary),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Column(
@@ -174,7 +176,7 @@ fun BillQrScreen(billId: String, navController: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     when {
-                        isGenerating -> CircularProgressIndicator(color = PundarBlue)
+                        isGenerating -> CircularProgressIndicator(color = PundarTheme.colors.brandPrimary)
                         qrStatus == BillQrStatus.PAID -> {
                             Icon(Icons.Filled.CheckCircle, null, tint = PundarSuccess, modifier = Modifier.size(80.dp))
                             Spacer(Modifier.height(8.dp))
@@ -183,7 +185,7 @@ fun BillQrScreen(billId: String, navController: NavController) {
                         qrStatus == BillQrStatus.EXPIRED -> {
                             Text(
                                 "This QR has expired.\nGenerate a new one to continue.",
-                                color = PundarTextSecondary,
+                                color = PundarTheme.colors.textSecondary,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -200,7 +202,7 @@ fun BillQrScreen(billId: String, navController: NavController) {
                     Text(
                         "Ref: ${payload?.transactionId ?: bill.id}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = PundarTextSecondary
+                        color = PundarTheme.colors.textSecondary
                     )
                 }
             }

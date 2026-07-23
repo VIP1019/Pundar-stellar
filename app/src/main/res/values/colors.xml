@@ -9,4 +9,6 @@
     <color name="white">#FFFFFFFF</color>
     <!-- Pundar icon background — deep navy (used by legacy launchers) -->
     <color name="ic_launcher_background">#FF060D1F</color>
+    <!-- Dark background for OS-level theme — prevents white flash on launch -->
+    <color name="dark_bg">#FF090F1F</color>
 </resources>

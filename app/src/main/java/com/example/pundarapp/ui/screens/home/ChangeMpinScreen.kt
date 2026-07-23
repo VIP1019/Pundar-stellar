@@ -22,6 +22,7 @@ import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,7 +52,7 @@ fun ChangeMpinScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Column(
             modifier = Modifier
@@ -63,7 +64,7 @@ fun ChangeMpinScreen(navController: NavController) {
             Text(
                 text = "Secure your account with a new 4-digit PIN.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = PundarTextSecondary
+                color = PundarTheme.colors.textSecondary
             )
 
             if (errorMessage != null) {
@@ -94,8 +95,8 @@ fun ChangeMpinScreen(navController: NavController) {
                 },
                 isError = errorMessage?.contains("current", ignoreCase = true) == true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PundarBlue,
-                    focusedLabelColor = PundarBlue
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -125,8 +126,8 @@ fun ChangeMpinScreen(navController: NavController) {
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PundarBlue,
-                    focusedLabelColor = PundarBlue
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -156,8 +157,8 @@ fun ChangeMpinScreen(navController: NavController) {
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PundarBlue,
-                    focusedLabelColor = PundarBlue
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             )

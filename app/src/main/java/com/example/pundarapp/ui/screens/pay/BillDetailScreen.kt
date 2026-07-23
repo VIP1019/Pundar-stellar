@@ -25,6 +25,7 @@ import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +44,7 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                 showMoreOptions = true
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -77,30 +78,30 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                             Text(
                                 text = bill.date,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = PundarTextSecondary
+                                color = PundarTheme.colors.textSecondary
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
                                 text = "Total",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = PundarTextSecondary
+                                color = PundarTheme.colors.textSecondary
                             )
                             Text(
                                 text = "${String.format("%,.2f", bill.totalAmount)} XLM",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = PundarTextPrimary
+                                color = PundarTheme.colors.textPrimary
                             )
                             Text(
                                 text = "(${AppState.formatFiat(bill.totalAmount)})",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = PundarTextSecondary
+                                color = PundarTheme.colors.textSecondary
                             )
                             Text(
                                 text = "Your share: ${String.format("%,.2f", bill.yourShare)} XLM",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = PundarBlue,
+                                color = PundarTheme.colors.brandPrimary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -114,7 +115,7 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                     text = "Members (${bill.memberCount})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = PundarTextPrimary
+                    color = PundarTheme.colors.textPrimary
                 )
             }
 
@@ -139,7 +140,7 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                     ) {
                                         Text(
                                             text = member.initials,
-                                            color = if (member.name == "You") PundarBlue else Color.White,
+                                            color = if (member.name == "You") PundarTheme.colors.brandPrimary else PundarTheme.colors.surfacePrimary,
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -155,7 +156,7 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                             Text(
                                                 text = member.username,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = PundarTextSecondary
+                                                color = PundarTheme.colors.textSecondary
                                             )
                                         }
                                     }
@@ -178,7 +179,7 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                         Text(
                             text = "${bill.memberCount} members split equally — ₱ ${String.format("%,.2f", bill.yourShare)} each",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = PundarTextSecondary
+                            color = PundarTheme.colors.textSecondary
                         )
                     }
                 }

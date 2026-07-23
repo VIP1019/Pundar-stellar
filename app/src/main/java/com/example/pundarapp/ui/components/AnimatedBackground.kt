@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 enum class BgAccent {
     Blue, Purple, Gold, Teal, Green, Red
@@ -24,12 +25,12 @@ fun AnimatedBackground(
 ) {
     val accentColor by animateColorAsState(
         targetValue = when (accent) {
-            BgAccent.Blue   -> Blue500
+            BgAccent.Blue   -> PundarTheme.colors.brandPrimary
             BgAccent.Purple -> Color(0xFF8B5CF6)
-            BgAccent.Gold   -> Gold500
+            BgAccent.Gold   -> PundarTheme.colors.accentGold
             BgAccent.Teal   -> Color(0xFF14B8A6)
             BgAccent.Green  -> Green500
-            BgAccent.Red    -> Red500
+            BgAccent.Red    -> PundarTheme.colors.accentRed
         },
         animationSpec = tween(1000),
         label = "accent"
@@ -46,10 +47,17 @@ fun AnimatedBackground(
         label = "move"
     )
 
+    val isLight = PundarTheme.colors.isLight
+    val bgTop = PundarTheme.colors.bgTertiary
+    val bgBottom = PundarTheme.colors.bgPrimary
+
+    val blobAlpha1 = if (isLight) 0.08f else 0.15f
+    val blobAlpha2 = if (isLight) 0.05f else 0.10f
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Navy950)
+            .background(bgTop)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width
@@ -58,14 +66,14 @@ fun AnimatedBackground(
             // Base gradient
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Navy950, Navy900)
+                    colors = listOf(bgTop, bgBottom)
                 )
             )
 
             // Animated blob
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(accentColor.copy(alpha = 0.15f), Color.Transparent),
+                    colors = listOf(accentColor.copy(alpha = blobAlpha1), Color.Transparent),
                     center = Offset(
                         x = width * (0.2f + 0.6f * animValue),
                         y = height * (0.1f + 0.2f * (1f - animValue))
@@ -76,7 +84,7 @@ fun AnimatedBackground(
             
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(accentColor.copy(alpha = 0.1f), Color.Transparent),
+                    colors = listOf(accentColor.copy(alpha = blobAlpha2), Color.Transparent),
                     center = Offset(
                         x = width * (0.8f - 0.5f * animValue),
                         y = height * (0.8f - 0.3f * animValue)

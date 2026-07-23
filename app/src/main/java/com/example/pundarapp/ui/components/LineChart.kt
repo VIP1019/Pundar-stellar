@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 @Composable
 fun PundarLineChart(
@@ -25,6 +26,7 @@ fun PundarLineChart(
 ) {
     if (dataPoints.size < 2) return
 
+    val dotInnerColor = PundarTheme.colors.surfacePrimary
     Canvas(modifier = modifier.fillMaxWidth().height(160.dp)) {
         val width = size.width
         val height = size.height
@@ -96,7 +98,7 @@ fun PundarLineChart(
             center = Offset(lastX, lastY)
         )
         drawCircle(
-            color = Color.White,
+            color = dotInnerColor,
             radius = 3f,
             center = Offset(lastX, lastY)
         )
@@ -110,6 +112,8 @@ fun PundarMiniChart(
     lineColor: Color = PundarChartLine
 ) {
     if (dataPoints.size < 2) return
+
+    val dotInnerColor = PundarTheme.colors.surfacePrimary
 
     Canvas(modifier = modifier.fillMaxWidth().height(40.dp)) {
         val width = size.width
@@ -149,8 +153,8 @@ fun PundarMiniChart(
 fun PundarDonutChart(
     percentage: Float,
     modifier: Modifier = Modifier,
-    color: Color = PundarBlue,
-    backgroundColor: Color = PundarSurfaceVariant,
+    color: Color = PundarTheme.colors.brandPrimary,
+    backgroundColor: Color = PundarTheme.colors.surfaceTertiary,
     strokeWidth: Float = 12f
 ) {
     Canvas(modifier = modifier.size(80.dp)) {

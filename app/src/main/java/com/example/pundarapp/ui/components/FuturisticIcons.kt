@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 /**
  * Core icon container — consistent rounded square with tinted bg + border.
@@ -82,12 +83,12 @@ fun FuturisticIconCircle(
 
 @Composable
 fun Icon3DStar(size: Dp = 16.dp, modifier: Modifier = Modifier) {
-    Icon(Icons.Filled.Star, "Score", tint = Gold500, modifier = modifier.size(size))
+    Icon(Icons.Filled.Star, "Score", tint = PundarTheme.colors.accentGold, modifier = modifier.size(size))
 }
 
 @Composable
 fun Icon3DBell(size: Dp = 40.dp, pulse: Boolean = false, modifier: Modifier = Modifier) {
-    FuturisticIcon(Icons.Filled.NotificationsActive, Gold500, size, (size.value * 0.5f).dp,
+    FuturisticIcon(Icons.Filled.NotificationsActive, PundarTheme.colors.accentGold, size, (size.value * 0.5f).dp,
         CircleShape, pulse, modifier)
 }
 
@@ -99,7 +100,7 @@ fun Icon3DLock(size: Dp = 44.dp, modifier: Modifier = Modifier) {
 
 @Composable
 fun Icon3DWarning(size: Dp = 20.dp, modifier: Modifier = Modifier) {
-    Icon(Icons.Filled.Warning, "Warning", tint = Red500, modifier = modifier.size(size))
+    Icon(Icons.Filled.Warning, "Warning", tint = PundarTheme.colors.accentRed, modifier = modifier.size(size))
 }
 
 @Composable
@@ -119,7 +120,7 @@ fun Icon3DCircleEmpty(size: Dp = 56.dp, modifier: Modifier = Modifier) {
     val inf      = rememberInfiniteTransition(label = "spin")
     val rotation by inf.animateFloat(0f, 360f,
         infiniteRepeatable(tween(4000, easing = LinearEasing)), label = "r")
-    FuturisticIcon(Icons.Filled.Refresh, Blue300, size, (size.value * 0.5f).dp,
+    FuturisticIcon(Icons.Filled.Refresh, PundarTheme.colors.brandLight, size, (size.value * 0.5f).dp,
         CircleShape, modifier = modifier.graphicsLayer(rotationZ = rotation))
 }
 
@@ -128,14 +129,14 @@ fun Icon3DTrending(size: Dp = 20.dp, positive: Boolean = true, modifier: Modifie
     Icon(
         if (positive) Icons.Filled.TrendingUp else Icons.Filled.KeyboardArrowDown,
         if (positive) "Up" else "Down",
-        tint     = if (positive) Green400 else Red500,
+        tint     = if (positive) PundarTheme.colors.accentGreen else PundarTheme.colors.accentRed,
         modifier = modifier.size(size)
     )
 }
 
 @Composable
 fun Icon3DRocket(size: Dp = 18.dp, modifier: Modifier = Modifier) {
-    Icon(Icons.Filled.Send, "Launch", tint = Gold500, modifier = modifier.size(size))
+    Icon(Icons.Filled.Send, "Launch", tint = PundarTheme.colors.accentGold, modifier = modifier.size(size))
 }
 
 @Composable
@@ -145,12 +146,12 @@ fun Icon3DClipboard(size: Dp = 18.dp, modifier: Modifier = Modifier) {
 
 @Composable
 fun Icon3DTarget(size: Dp = 18.dp, modifier: Modifier = Modifier) {
-    Icon(Icons.Filled.GpsFixed, "Target", tint = Electric400, modifier = modifier.size(size))
+    Icon(Icons.Filled.GpsFixed, "Target", tint = PundarTheme.colors.accentElectric, modifier = modifier.size(size))
 }
 
 @Composable
 fun Icon3DMoney(size: Dp = 18.dp, modifier: Modifier = Modifier) {
-    Icon(Icons.Filled.Savings, "Saved", tint = Green400, modifier = modifier.size(size))
+    Icon(Icons.Filled.Savings, "Saved", tint = PundarTheme.colors.accentGreen, modifier = modifier.size(size))
 }
 
 @Composable
@@ -160,15 +161,15 @@ fun Icon3DGroup(size: Dp = 18.dp, modifier: Modifier = Modifier) {
 
 @Composable
 fun Icon3DCalendar(size: Dp = 18.dp, modifier: Modifier = Modifier) {
-    Icon(Icons.Filled.DateRange, "Date", tint = Electric400, modifier = modifier.size(size))
+    Icon(Icons.Filled.DateRange, "Date", tint = PundarTheme.colors.accentElectric, modifier = modifier.size(size))
 }
 
 @Composable
 fun Icon3DCheckBadge(size: Dp = 18.dp, modifier: Modifier = Modifier) {
-    Icon(Icons.Filled.Verified, "Settled", tint = Green400, modifier = modifier.size(size))
+    Icon(Icons.Filled.Verified, "Settled", tint = PundarTheme.colors.accentGreen, modifier = modifier.size(size))
 }
 
 @Composable
 fun Icon3DClock(size: Dp = 18.dp, modifier: Modifier = Modifier) {
-    Icon(Icons.Filled.AccessTime, "Pending", tint = Orange500, modifier = modifier.size(size))
+    Icon(Icons.Filled.AccessTime, "Pending", tint = PundarTheme.colors.accentOrange, modifier = modifier.size(size))
 }

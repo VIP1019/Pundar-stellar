@@ -1,5 +1,7 @@
 package com.example.pundarapp.ui.utils
 
+import com.example.pundarapp.ui.theme.PundarTheme
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.runtime.*
@@ -9,16 +11,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.example.pundarapp.ui.theme.GlassShimmer
-import com.example.pundarapp.ui.theme.SpaceMedium
 
 // ── Shimmer Effect ───────────────────────────────────────────────
 fun Modifier.shimmerEffect(
-    shimmerColors: List<Color> = listOf(
-        SpaceMedium,
-        Color(0xFF2A3A55),
-        SpaceMedium
-    )
+    shimmerColors: List<Color>? = null
 ): Modifier = composed {
+    val colors = shimmerColors ?: listOf(
+        PundarTheme.colors.surfaceTertiary,
+        Color(0xFF2A3A55),
+        PundarTheme.colors.surfaceTertiary
+    )
     val transition = rememberInfiniteTransition(label = "shimmer")
     val translateAnim by transition.animateFloat(
         initialValue = -1000f,
@@ -32,7 +34,7 @@ fun Modifier.shimmerEffect(
 
     background(
         brush = Brush.linearGradient(
-            colors = shimmerColors,
+            colors = colors,
             start  = Offset(translateAnim - 200f, 0f),
             end    = Offset(translateAnim + 200f, 0f)
         )

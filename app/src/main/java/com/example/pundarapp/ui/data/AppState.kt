@@ -9,6 +9,65 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import android.util.Log
+import android.telephony.TelephonyManager
+import java.util.Locale
+
+/** Maps ISO 3166-1 alpha-2 country codes to their primary ISO 4217 currency codes */
+private val COUNTRY_CURRENCY_MAP = mapOf(
+    "PH" to "PHP", // Philippines
+    "US" to "USD", // United States
+    "GB" to "GBP", // United Kingdom
+    "EU" to "EUR", // European Union (fallback)
+    "DE" to "EUR", "FR" to "EUR", "IT" to "EUR", "ES" to "EUR", "NL" to "EUR",
+    "JP" to "JPY", // Japan
+    "KR" to "KRW", // South Korea
+    "SG" to "SGD", // Singapore
+    "AU" to "AUD", // Australia
+    "NZ" to "NZD", // New Zealand
+    "CA" to "CAD", // Canada
+    "CH" to "CHF", // Switzerland
+    "CN" to "CNY", // China
+    "HK" to "HKD", // Hong Kong
+    "IN" to "INR", // India
+    "MY" to "MYR", // Malaysia
+    "ID" to "IDR", // Indonesia
+    "VN" to "VND", // Vietnam
+    "TH" to "THB", // Thailand
+    "BD" to "BDT", // Bangladesh
+    "PK" to "PKR", // Pakistan
+    "SA" to "SAR", // Saudi Arabia
+    "AE" to "AED", // UAE
+    "BR" to "BRL", // Brazil
+    "MX" to "MXN", // Mexico
+    "ZA" to "ZAR", // South Africa
+    "NG" to "NGN", // Nigeria
+    "RU" to "RUB", // Russia
+    "SE" to "SEK", // Sweden
+    "NO" to "NOK", // Norway
+    "DK" to "DKK", // Denmark
+    "TW" to "TWD", // Taiwan
+)
+
+/** Detects the country code from network carrier → SIM → device locale (best to worst accuracy) */
+fun detectCountryFromNetwork(context: android.content.Context): String {
+    return try {
+        val tm = context.getSystemService(android.content.Context.TELEPHONY_SERVICE) as? TelephonyManager
+        // 1. Network country (changes when phone registers on a foreign carrier tower)
+        val networkCountry = tm?.networkCountryIso?.uppercase()?.takeIf { it.length == 2 }
+        if (networkCountry != null) return networkCountry
+        // 2. SIM country (doesn't change when roaming, but better than locale)
+        val simCountry = tm?.simCountryIso?.uppercase()?.takeIf { it.length == 2 }
+        if (simCountry != null) return simCountry
+        // 3. Fallback: device locale region
+        Locale.getDefault().country.uppercase().takeIf { it.length == 2 } ?: "US"
+    } catch (e: Exception) {
+        Log.w("AppState", "Country detection failed: ${e.message}")
+        Locale.getDefault().country.uppercase().takeIf { it.length == 2 } ?: "US"
+    }
+}
+
+/** Maps a country code to its primary currency code */
+fun countryToCurrency(country: String): String = COUNTRY_CURRENCY_MAP[country.uppercase()] ?: "USD"
 
 fun getCurrencySymbol(code: String): String {
     return when (code.uppercase()) {
@@ -670,17 +729,29 @@ object AppState {
         }
     }
 
-    // ── SETTINGS ───────────────────────────────────────────────────
+    // ── SETTINGS ─────────────────────────────────────────────────────────────
     val isBalanceHidden = mutableStateOf(false)
     val preferredCurrency = mutableStateOf("PHP")
     val currentExchangeRate = mutableDoubleStateOf(1.0)
+    val themeMode = mutableStateOf("DARK")
     
     private var prefs: android.content.SharedPreferences? = null
+
+    fun setThemeMode(mode: String) {
+        themeMode.value = mode
+        prefs?.edit()?.putString("theme_mode", mode)?.apply()
+    }
 
     fun initPreferences(context: android.content.Context) {
         prefs = context.getSharedPreferences("pundar_prefs", android.content.Context.MODE_PRIVATE)
         isBalanceHidden.value = prefs?.getBoolean("hide_balance", false) ?: false
-        preferredCurrency.value = prefs?.getString("preferred_currency", "PHP") ?: "PHP"
+        // Theme Mode
+        themeMode.value = prefs?.getString("theme_mode", "DARK") ?: "DARK"
+
+        // Detect currency from network carrier country on every init — no lock
+        val detectedCurrency = countryToCurrency(detectCountryFromNetwork(context))
+        preferredCurrency.value = detectedCurrency
+        prefs?.edit()?.putString("preferred_currency", detectedCurrency)?.apply()
         fetchExchangeRate()
 
         val phone = AuthRepository.getCurrentUserPhone()
@@ -696,6 +767,36 @@ object AppState {
         preferredCurrency.value = currencyCode.uppercase()
         prefs?.edit()?.putString("preferred_currency", preferredCurrency.value)?.apply()
         fetchExchangeRate()
+    }
+
+    /** Called from MainActivity.onResume — silently updates currency if network country changed */
+    fun updateCurrencyFromNetwork(context: android.content.Context) {
+        val newCurrency = countryToCurrency(detectCountryFromNetwork(context))
+        if (newCurrency != preferredCurrency.value) {
+            Log.d("AppState", "Country changed — currency updated: ${preferredCurrency.value} → $newCurrency")
+            preferredCurrency.value = newCurrency
+            prefs?.edit()?.putString("preferred_currency", newCurrency)?.apply()
+            fetchExchangeRate()
+        }
+    }
+
+    /** Called from MainActivity.onResume — uses GPS to determine exact country and update currency */
+    fun updateCurrencyFromGps(context: android.content.Context) {
+        scope.launch {
+            val countryCode = com.example.pundarapp.data.location.LocationCurrencyManager.getCountryCode(context)
+            if (countryCode != null) {
+                val newCurrency = countryToCurrency(countryCode)
+                if (newCurrency != preferredCurrency.value) {
+                    Log.d("AppState", "GPS: country=$countryCode → currency $newCurrency")
+                    preferredCurrency.value = newCurrency
+                    prefs?.edit()?.putString("preferred_currency", newCurrency)?.apply()
+                    fetchExchangeRate()
+                }
+            } else {
+                // GPS unavailable — fall back to network/SIM detection
+                updateCurrencyFromNetwork(context)
+            }
+        }
     }
     
     private fun fetchExchangeRate() {

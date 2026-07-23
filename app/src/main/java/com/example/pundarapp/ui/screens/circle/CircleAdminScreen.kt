@@ -28,6 +28,7 @@ import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,11 +61,11 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
     if (showStartDialog) {
         AlertDialog(
             onDismissRequest = { showStartDialog = false },
-            title = { Text("Start Savings Cycle?", fontWeight = FontWeight.Bold, color = TextWhite) },
+            title = { Text("Start Savings Cycle?", fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary) },
             text = {
                 Text(
                     "Starting the cycle will lock the group rules and begin tracking contributions. Members will be notified.",
-                    color = TextSoft
+                    color = PundarTheme.colors.textSecondary
                 )
             },
             confirmButton = {
@@ -75,14 +76,14 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                         showStartDialog = false
                         Toast.makeText(context, "Cycle started!", Toast.LENGTH_SHORT).show()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Navy950),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = PundarTheme.colors.bgSecondary),
                     shape = RoundedCornerShape(12.dp)
                 ) { Text("Start Cycle", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showStartDialog = false }) { Text("Cancel", color = TextMuted) }
+                TextButton(onClick = { showStartDialog = false }) { Text("Cancel", color = PundarTheme.colors.textMuted) }
             },
-            containerColor = Navy800
+            containerColor = PundarTheme.colors.surfacePrimary
         )
     }
 
@@ -90,11 +91,11 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
     if (showEndDialog) {
         AlertDialog(
             onDismissRequest = { showEndDialog = false },
-            title = { Text("End Savings Cycle?", fontWeight = FontWeight.Bold, color = TextWhite) },
+            title = { Text("End Savings Cycle?", fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary) },
             text = {
                 Text(
                     "Ending the cycle will mark this Paluwagan as completed. This cannot be undone.",
-                    color = TextSoft
+                    color = PundarTheme.colors.textSecondary
                 )
             },
             confirmButton = {
@@ -110,9 +111,9 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                 ) { Text("End Cycle", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showEndDialog = false }) { Text("Cancel", color = TextMuted) }
+                TextButton(onClick = { showEndDialog = false }) { Text("Cancel", color = PundarTheme.colors.textMuted) }
             },
-            containerColor = Navy800
+            containerColor = PundarTheme.colors.surfacePrimary
         )
     }
 
@@ -120,8 +121,8 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
     memberToRemove?.let { member ->
         AlertDialog(
             onDismissRequest = { memberToRemove = null },
-            title = { Text("Remove Member?", fontWeight = FontWeight.Bold, color = TextWhite) },
-            text = { Text("Remove ${member.name} from this Paluwagan group?", color = TextSoft) },
+            title = { Text("Remove Member?", fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary) },
+            text = { Text("Remove ${member.name} from this Paluwagan group?", color = PundarTheme.colors.textSecondary) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -142,9 +143,9 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                 ) { Text("Remove", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { memberToRemove = null }) { Text("Cancel", color = TextMuted) }
+                TextButton(onClick = { memberToRemove = null }) { Text("Cancel", color = PundarTheme.colors.textMuted) }
             },
-            containerColor = Navy800
+            containerColor = PundarTheme.colors.surfacePrimary
         )
     }
 
@@ -155,7 +156,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = Navy900
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -172,7 +173,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                         "Group Status",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = TextWhite
+                        color = PundarTheme.colors.textPrimary
                     )
                     Spacer(Modifier.height(12.dp))
                     Row(
@@ -181,7 +182,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text(circle.name, fontWeight = FontWeight.SemiBold, color = TextWhite)
+                            Text(circle.name, fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
                             Spacer(Modifier.height(6.dp))
                             CycleStatusBadge(circle.cycleStatus)
                         }
@@ -225,7 +226,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
             // ── Section 2: Group Rules ────────────────────────────
             item {
                 AdminCard {
-                    Text("Group Rules", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextWhite)
+                    Text("Group Rules", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = PundarTheme.colors.textPrimary)
                     Spacer(Modifier.height(14.dp))
 
                     AdminTextField(
@@ -244,7 +245,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                     Spacer(Modifier.height(10.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Enable Penalty", color = TextSoft, modifier = Modifier.weight(1f))
+                        Text("Enable Penalty", color = PundarTheme.colors.textSecondary, modifier = Modifier.weight(1f))
                         Switch(
                             checked = penaltyEnabled,
                             onCheckedChange = { penaltyEnabled = it },
@@ -280,7 +281,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Blue500)
+                        colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.brandPrimary)
                     ) {
                         Icon(Icons.Filled.Save, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
@@ -301,7 +302,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                             "Members (${circle.memberCount}/${circle.maxMembers})",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = TextWhite
+                            color = PundarTheme.colors.textPrimary
                         )
                         OutlinedButton(
                             onClick = { navController.navigate("circle/$circleId/invite-methods") },
@@ -322,7 +323,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                             onRemove = { memberToRemove = member }
                         )
                         HorizontalDivider(
-                            color = NavyBorder,
+                            color = PundarTheme.colors.borderPrimary,
                             modifier = Modifier.padding(vertical = 6.dp)
                         )
                     }
@@ -337,7 +338,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                             "Pending Join Requests",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = TextWhite
+                            color = PundarTheme.colors.textPrimary
                         )
                         Spacer(Modifier.height(12.dp))
                         AppState.pendingJoinRequests.toList().forEach { request ->
@@ -346,8 +347,8 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(request.userName, fontWeight = FontWeight.SemiBold, color = TextWhite)
-                                    Text("Wants to join", fontSize = 12.sp, color = TextMuted)
+                                    Text(request.userName, fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
+                                    Text("Wants to join", fontSize = 12.sp, color = PundarTheme.colors.textMuted)
                                 }
                                 TextButton(onClick = {
                                     scope.launch { AppState.approveJoinRequest(request.id) }
@@ -356,7 +357,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                                     scope.launch { AppState.rejectJoinRequest(request.id) }
                                 }) { Text("Reject", color = ErrorRed) }
                             }
-                            HorizontalDivider(color = NavyBorder, modifier = Modifier.padding(vertical = 4.dp))
+                            HorizontalDivider(color = PundarTheme.colors.borderPrimary, modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
                 }
@@ -369,7 +370,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                         "Contributions This Cycle",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = TextWhite
+                        color = PundarTheme.colors.textPrimary
                     )
                     Spacer(Modifier.height(12.dp))
                     circle.members.forEach { member ->
@@ -382,13 +383,13 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                                     .background(Color(member.avatarColor)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(member.initials, color = TextWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(member.initials, color = PundarTheme.colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.width(10.dp))
-                            Text(member.name, color = TextSoft, modifier = Modifier.weight(1f))
+                            Text(member.name, color = PundarTheme.colors.textSecondary, modifier = Modifier.weight(1f))
                             Text(
                                 "₱${String.format("%,.0f", member.amount)}",
-                                color = TextWhite,
+                                color = PundarTheme.colors.textPrimary,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(Modifier.width(8.dp))
@@ -409,8 +410,8 @@ private fun AdminCard(content: @Composable ColumnScope.() -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
-            .border(1.dp, NavyBorder, RoundedCornerShape(16.dp))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
+            .border(1.dp, PundarTheme.colors.borderPrimary, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Column(content = content)
@@ -428,17 +429,17 @@ private fun AdminTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = TextMuted) },
+        label = { Text(label, color = PundarTheme.colors.textMuted) },
         modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Blue400,
-            unfocusedBorderColor = NavyBorder,
-            focusedContainerColor = Navy700,
-            unfocusedContainerColor = Navy700,
-            focusedTextColor = TextWhite,
-            unfocusedTextColor = TextWhite,
+            unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+            focusedContainerColor = PundarTheme.colors.surfaceSecondary,
+            unfocusedContainerColor = PundarTheme.colors.surfaceSecondary,
+            focusedTextColor = PundarTheme.colors.textPrimary,
+            unfocusedTextColor = PundarTheme.colors.textPrimary,
             cursorColor = Blue400
         ),
         shape = RoundedCornerShape(12.dp)
@@ -449,9 +450,9 @@ private fun AdminTextField(
 @Composable
 private fun CycleStatusBadge(status: CycleStatus) {
     val (bg, textColor, label) = when (status) {
-        CycleStatus.NOT_STARTED -> Triple(TextMuted.copy(0.15f), TextMuted, "Not Started")
+        CycleStatus.NOT_STARTED -> Triple(PundarTheme.colors.textMuted.copy(0.15f), PundarTheme.colors.textMuted, "Not Started")
         CycleStatus.ACTIVE      -> Triple(NeonGreen.copy(0.15f), NeonGreen, "Active")
-        CycleStatus.PAUSED      -> Triple(Orange500.copy(0.15f), Orange500, "Paused")
+        CycleStatus.PAUSED      -> Triple(PundarTheme.colors.accentOrange.copy(0.15f), PundarTheme.colors.accentOrange, "Paused")
         CycleStatus.COMPLETED   -> Triple(Blue400.copy(0.15f), Blue400, "Completed")
     }
     Box(
@@ -472,17 +473,17 @@ private fun AdminMemberRow(member: CircleMember, onRemove: () -> Unit) {
             Modifier.size(34.dp).clip(CircleShape).background(Color(member.avatarColor)),
             contentAlignment = Alignment.Center
         ) {
-            Text(member.initials, color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(member.initials, color = PundarTheme.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(member.name, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(member.name, color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 if (member.isYou) {
                     Spacer(Modifier.width(6.dp))
                     Box(
                         Modifier.clip(RoundedCornerShape(4.dp))
-                            .background(Blue500.copy(0.2f))
+                            .background(PundarTheme.colors.brandPrimary.copy(0.2f))
                             .padding(horizontal = 5.dp, vertical = 2.dp)
                     ) { Text("YOU", color = Blue400, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold) }
                 }
@@ -507,7 +508,7 @@ private fun AdminMemberRow(member: CircleMember, onRemove: () -> Unit) {
 private fun ContributionChip(status: ContributionStatus) {
     val (bg, textColor, label) = when (status) {
         ContributionStatus.PAID    -> Triple(NeonGreen.copy(0.15f), NeonGreen, "Paid")
-        ContributionStatus.PENDING -> Triple(Orange500.copy(0.15f), Orange500, "Pending")
+        ContributionStatus.PENDING -> Triple(PundarTheme.colors.accentOrange.copy(0.15f), PundarTheme.colors.accentOrange, "Pending")
         ContributionStatus.OVERDUE -> Triple(ErrorRed.copy(0.15f), ErrorRed, "Overdue")
     }
     Box(

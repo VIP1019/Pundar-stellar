@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pundarapp.ui.components.Icon3DStar
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -93,7 +94,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
             .alpha(screenAlpha.value)
             .background(
                 Brush.radialGradient(
-                    listOf(Color(0xFF0C1A3D), Navy900, Navy950),
+                    listOf(Color(0xFF0C1A3D), PundarTheme.colors.bgPrimary, PundarTheme.colors.bgSecondary),
                     radius = 1800f
                 )
             )
@@ -103,20 +104,21 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
             Modifier.size(320.dp).align(Alignment.TopCenter)
                 .offset(y = ((-50).dp + orb1Y.dp))
                 .blur(120.dp)
-                .background(Blue500.copy(0.12f), CircleShape)
+                .background(PundarTheme.colors.brandPrimary.copy(0.12f), CircleShape)
         )
         Box(
             Modifier.size(200.dp).align(Alignment.BottomEnd)
                 .offset(x = 40.dp, y = 50.dp)
                 .blur(80.dp)
-                .background(Gold500.copy(0.08f), CircleShape)
+                .background(PundarTheme.colors.accentGold.copy(0.08f), CircleShape)
         )
 
         // Particle field
+        val particleColor = PundarTheme.colors.brandLight
         Canvas(Modifier.fillMaxSize()) {
             particles.forEach { p ->
                 drawCircle(
-                    color  = Blue300.copy(p.a),
+                    color  = particleColor.copy(p.a),
                     radius = p.r.dp.toPx(),
                     center = Offset(p.x * size.width, p.y * size.height)
                 )
@@ -132,13 +134,13 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                 // Pulse ring
                 Box(
                     Modifier.size(130.dp).scale(pulseRing).alpha(pulseAlpha)
-                        .clip(CircleShape).background(Blue500.copy(0.15f))
+                        .clip(CircleShape).background(PundarTheme.colors.brandPrimary.copy(0.15f))
                 )
                 // Static halo
                 Box(
                     Modifier.size(130.dp).scale(ringScale.value)
                         .clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(Blue600.copy(0.25f), Color.Transparent)))
+                        .background(Brush.radialGradient(listOf(PundarTheme.colors.brandSecondary.copy(0.25f), Color.Transparent)))
                 )
                 // Orbiting dot
                 Box(
@@ -147,7 +149,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                 ) {
                     Box(
                         Modifier.size(7.dp).align(Alignment.TopCenter).offset(y = 10.dp)
-                            .clip(CircleShape).background(Blue300)
+                            .clip(CircleShape).background(PundarTheme.colors.brandLight)
                     )
                 }
                 // Logo circle
@@ -157,11 +159,11 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                         .scale(logoScale.value).alpha(logoAlpha.value)
                         .size(108.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(Blue500, Blue600)))
+                        .background(Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary)))
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(100.dp).clip(CircleShape).background(Navy800)
+                        modifier = Modifier.size(100.dp).clip(CircleShape).background(PundarTheme.colors.surfacePrimary)
                     ) {
                         Text("P", fontSize = 46.sp, fontWeight = FontWeight.Black, color = Blue400)
                     }
@@ -176,7 +178,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                 fontWeight    = FontWeight.Black,
                 fontSize      = 36.sp,
                 letterSpacing = 7.sp,
-                color         = TextWhite,
+                color         = PundarTheme.colors.textPrimary,
                 modifier      = Modifier.alpha(textAlpha.value)
             )
             Spacer(Modifier.height(6.dp))
@@ -189,7 +191,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
             Text(
                 "Build Together. Grow Together.",
                 style         = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                color         = TextSoft,
+                color         = PundarTheme.colors.textSecondary,
                 fontWeight    = FontWeight.Normal,
                 textAlign     = TextAlign.Center,
                 letterSpacing = 0.8.sp,
@@ -203,7 +205,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                 modifier = Modifier
                     .alpha(badgeAlpha.value)
                     .clip(RoundedCornerShape(50.dp))
-                    .background(Blue500.copy(0.10f))
+                    .background(PundarTheme.colors.brandPrimary.copy(0.10f))
                     .border(1.dp, Blue400.copy(0.25f), RoundedCornerShape(50.dp))
                     .padding(horizontal = 18.dp, vertical = 9.dp)
             ) {

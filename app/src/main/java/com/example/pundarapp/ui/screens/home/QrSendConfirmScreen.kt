@@ -26,6 +26,8 @@ import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
+
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -179,7 +181,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                 }
             )
         },
-        containerColor = PundarBackground,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
             Column(Modifier.padding(16.dp)) {
                 PundarPrimaryButton(
@@ -214,7 +216,7 @@ fun QrSendConfirmScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = PundarSurface),
+                colors = CardDefaults.cardColors(containerColor = PundarTheme.colors.surfacePrimary),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Row(
@@ -231,19 +233,19 @@ fun QrSendConfirmScreen(navController: NavController) {
                                 else (parts.first().take(1) + parts.last().take(1)).uppercase()
                             },
                             fontWeight = FontWeight.Bold,
-                            color = PundarBlue
+                            color = PundarTheme.colors.brandPrimary
                         )
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text(recipientName, fontWeight = FontWeight.Bold, color = PundarTextPrimary)
-                        Text(payload.userId, color = PundarTextSecondary, style = MaterialTheme.typography.bodySmall)
+                        Text(recipientName, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
+                        Text(payload.userId, color = PundarTheme.colors.textSecondary, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
 
             if (payload.type == QrPayload.TYPE_BILL_PAYMENT) {
-                Text("Bill: ${payload.billRef ?: ""}", color = PundarTextSecondary)
+                Text("Bill: ${payload.billRef ?: ""}", color = PundarTheme.colors.textSecondary)
             }
 
             OutlinedTextField(
@@ -266,7 +268,7 @@ fun QrSendConfirmScreen(navController: NavController) {
 
             Text(
                 "Balance: ₱${String.format("%,.2f", AppState.walletBalance.value)}",
-                color = PundarTextSecondary,
+                color = PundarTheme.colors.textSecondary,
                 style = MaterialTheme.typography.bodySmall
             )
         }

@@ -37,6 +37,7 @@ import com.example.pundarapp.ui.components.PundarOutlinedButton
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.components.PundarTextButton
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +69,7 @@ fun ReceiveMoneyScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Column(
             modifier = Modifier
@@ -89,12 +90,12 @@ fun ReceiveMoneyScreen(navController: NavController) {
                 initialsFontSize = 24.sp
             )
 
-            Text(displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PundarTextPrimary)
-            Text(user?.phone ?: "", style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+            Text(displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
+            Text(user?.phone ?: "", style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = PundarSurface),
+                colors = CardDefaults.cardColors(containerColor = PundarTheme.colors.surfacePrimary),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Column(
@@ -112,14 +113,14 @@ fun ReceiveMoneyScreen(navController: NavController) {
                     Text(
                         "Scan to send money",
                         style = MaterialTheme.typography.bodySmall,
-                        color = PundarTextSecondary,
+                        color = PundarTheme.colors.textSecondary,
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "Account: ${user?.id ?: ""}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = PundarTextPrimary
+                        color = PundarTheme.colors.textPrimary
                     )
                 }
             }

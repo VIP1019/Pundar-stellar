@@ -35,10 +35,12 @@ import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.theme.*
+
+import com.example.pundarapp.ui.theme.PundarTheme
 import java.util.UUID
 
 enum class MobileNetwork(val displayName: String, val color: Color) {
-    UNKNOWN("Select Network", SpaceMedium),
+    UNKNOWN("Select Network", Color.Gray),
     GLOBE("Globe / TM", ElectricBlue),
     SMART("Smart / TNT", NeonGreen),
     DITO("DITO", ErrorRed)
@@ -77,7 +79,7 @@ fun BuyLoadScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
             Column(modifier = Modifier.padding(16.dp)) {
                 PundarPrimaryButton(
@@ -132,7 +134,7 @@ fun BuyLoadScreen(navController: NavController) {
         ) {
             // Balance Card
             PundarCard {
-                Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                 Spacer(Modifier.height(4.dp))
                 Text(
                     AppState.getDisplayBalance(),
@@ -162,8 +164,8 @@ fun BuyLoadScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = selectedNetwork.color.takeIf { it != SpaceMedium } ?: ElectricBlue,
-                        focusedLabelColor = selectedNetwork.color.takeIf { it != SpaceMedium } ?: ElectricBlue
+                        focusedBorderColor = selectedNetwork.color.takeIf { it != PundarTheme.colors.surfaceTertiary } ?: ElectricBlue,
+                        focusedLabelColor = selectedNetwork.color.takeIf { it != PundarTheme.colors.surfaceTertiary } ?: ElectricBlue
                     ),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true
@@ -190,7 +192,7 @@ fun BuyLoadScreen(navController: NavController) {
 
             // Amount Selection
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Select Amount", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text("Select Amount", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -203,7 +205,7 @@ fun BuyLoadScreen(navController: NavController) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) ElectricBlue.copy(alpha = 0.2f) else SpaceMedium)
+                                .background(if (isSelected) ElectricBlue.copy(alpha = 0.2f) else PundarTheme.colors.surfaceTertiary)
                                 .border(1.dp, if (isSelected) ElectricBlue else SpaceBorder, RoundedCornerShape(12.dp))
                                 .clickable { amount = preset.toString() }
                                 .padding(vertical = 16.dp),
@@ -213,13 +215,13 @@ fun BuyLoadScreen(navController: NavController) {
                                 "₱$preset",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) ElectricBlue else TextPrimary
+                                color = if (isSelected) ElectricBlue else PundarTheme.colors.textPrimary
                             )
                         }
                     }
                 }
 
-                Text("Or enter other amount", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                Text("Or enter other amount", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                 
                 OutlinedTextField(
                     value = amount,

@@ -1,5 +1,7 @@
 package com.example.pundarapp.ui.screens.home
 
+import com.example.pundarapp.ui.theme.PundarTheme
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -10,7 +12,6 @@ import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.PinInputComponent
 import com.example.pundarapp.ui.components.PundarDetailTopBar
-import com.example.pundarapp.ui.theme.PundarBackground
 import kotlinx.coroutines.launch
 
 @Composable
@@ -28,7 +29,7 @@ fun PinVerificationScreen(
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Box(
             modifier = Modifier

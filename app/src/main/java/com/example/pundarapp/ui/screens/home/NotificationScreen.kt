@@ -25,6 +25,7 @@ import com.example.pundarapp.ui.components.PundarCard
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -53,13 +54,14 @@ private fun iconForKind(kind: String) = when (kind.uppercase()) {
     else -> Icons.Filled.Notifications
 }
 
+@Composable
 private fun colorForKind(kind: String) = when (kind.uppercase()) {
     "SAVINGS" -> NeonGreen
     "GOAL" -> PremiumGoldWarm
     "INVESTMENT" -> ElectricBlue
     "BILL" -> WarningAmber
     "SECURITY" -> ErrorRed
-    else -> PundarBlue
+    else -> PundarTheme.colors.brandPrimary
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,7 +91,7 @@ fun NotificationScreen(navController: NavController) {
                 }
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -126,7 +128,7 @@ fun NotificationScreen(navController: NavController) {
                             Text(
                                 text = "No notifications yet.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = PundarTextSecondary
+                                color = PundarTheme.colors.textSecondary
                             )
                         }
                     }
@@ -176,13 +178,13 @@ private fun NotificationRow(
                     text = notification.title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = if (!notification.isRead) FontWeight.ExtraBold else FontWeight.SemiBold,
-                    color = PundarTextPrimary
+                    color = PundarTheme.colors.textPrimary
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = notification.message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = PundarTextSecondary
+                    color = PundarTheme.colors.textSecondary
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -196,7 +198,7 @@ private fun NotificationRow(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(PundarBlue)
+                        .background(PundarTheme.colors.brandPrimary)
                         .align(Alignment.CenterVertically)
                 )
             }

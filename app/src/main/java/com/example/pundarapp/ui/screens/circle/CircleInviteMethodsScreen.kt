@@ -40,6 +40,7 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.CircleMember
 import com.example.pundarapp.ui.data.ContributionStatus
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +59,7 @@ fun CircleInviteMethodsScreen(circleId: String, navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = Navy900
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Column(
             Modifier
@@ -68,7 +69,7 @@ fun CircleInviteMethodsScreen(circleId: String, navController: NavController) {
             // ── Tab Row ───────────────────────────────────────────
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Navy800,
+                containerColor = PundarTheme.colors.surfacePrimary,
                 contentColor = NeonGreen
             ) {
                 tabs.forEachIndexed { index, title ->
@@ -80,7 +81,7 @@ fun CircleInviteMethodsScreen(circleId: String, navController: NavController) {
                                 title,
                                 fontSize = 12.sp,
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTab == index) NeonGreen else TextMuted
+                                color = if (selectedTab == index) NeonGreen else PundarTheme.colors.textMuted
                             )
                         }
                     )
@@ -122,11 +123,11 @@ private fun QrCodeTab(circleId: String, circleName: String) {
             "Share this QR Code",
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
-            color = TextWhite
+            color = PundarTheme.colors.textPrimary
         )
         Text(
             "Anyone who scans this code can request to join $circleName.",
-            color = TextMuted,
+            color = PundarTheme.colors.textMuted,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodySmall
         )
@@ -136,7 +137,7 @@ private fun QrCodeTab(circleId: String, circleName: String) {
             Modifier
                 .size(240.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(TextWhite)
+                .background(PundarTheme.colors.textPrimary)
                 .border(3.dp, NeonGreen.copy(0.5f), RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center
         ) {
@@ -149,8 +150,8 @@ private fun QrCodeTab(circleId: String, circleName: String) {
                 )
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.QrCode2, null, tint = Navy800, modifier = Modifier.size(64.dp))
-                    Text("Generating...", color = Navy800, fontSize = 12.sp)
+                    Icon(Icons.Filled.QrCode2, null, tint = PundarTheme.colors.surfacePrimary, modifier = Modifier.size(64.dp))
+                    Text("Generating...", color = PundarTheme.colors.surfacePrimary, fontSize = 12.sp)
                 }
             }
         }
@@ -160,11 +161,11 @@ private fun QrCodeTab(circleId: String, circleName: String) {
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(Navy700)
-                .border(1.dp, NavyBorder, RoundedCornerShape(10.dp))
+                .background(PundarTheme.colors.surfaceSecondary)
+                .border(1.dp, PundarTheme.colors.borderPrimary, RoundedCornerShape(10.dp))
                 .padding(12.dp)
         ) {
-            Text(inviteLink, color = Blue300, fontSize = 12.sp, textAlign = TextAlign.Center,
+            Text(inviteLink, color = PundarTheme.colors.brandLight, fontSize = 12.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth())
         }
 
@@ -173,8 +174,8 @@ private fun QrCodeTab(circleId: String, circleName: String) {
                 onClick = { Toast.makeText(context, "QR Code saved!", Toast.LENGTH_SHORT).show() },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSoft),
-                border = androidx.compose.foundation.BorderStroke(1.dp, NavyBorder)
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTheme.colors.textSecondary),
+                border = androidx.compose.foundation.BorderStroke(1.dp, PundarTheme.colors.borderPrimary)
             ) {
                 Icon(Icons.Filled.Download, null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
@@ -184,7 +185,7 @@ private fun QrCodeTab(circleId: String, circleName: String) {
                 onClick = { Toast.makeText(context, "Sharing QR...", Toast.LENGTH_SHORT).show() },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Navy950)
+                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = PundarTheme.colors.bgSecondary)
             ) {
                 Icon(Icons.Filled.Share, null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
@@ -210,29 +211,29 @@ private fun ShareLinkTab(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Invite via Link", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextWhite)
+        Text("Invite via Link", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = PundarTheme.colors.textPrimary)
         Text(
             "Share this link and anyone can request to join the group.",
-            color = TextMuted,
+            color = PundarTheme.colors.textMuted,
             style = MaterialTheme.typography.bodySmall
         )
 
         // Circle info card
         Box(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                .background(Navy800).border(1.dp, NavyBorder, RoundedCornerShape(14.dp))
+                .background(PundarTheme.colors.surfacePrimary).border(1.dp, PundarTheme.colors.borderPrimary, RoundedCornerShape(14.dp))
                 .padding(16.dp)
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Groups, null, tint = NeonGreen, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(circleName, fontWeight = FontWeight.SemiBold, color = TextWhite)
+                    Text(circleName, fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
                     "$memberCount / $maxMembers members",
-                    color = TextMuted,
+                    color = PundarTheme.colors.textMuted,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -241,13 +242,13 @@ private fun ShareLinkTab(
         // Link card
         Box(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                .background(Navy700).border(1.dp, Blue400.copy(0.3f), RoundedCornerShape(12.dp))
+                .background(PundarTheme.colors.surfaceSecondary).border(1.dp, Blue400.copy(0.3f), RoundedCornerShape(12.dp))
                 .padding(14.dp)
         ) {
             Column {
-                Text("Invite Link", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text("Invite Link", color = PundarTheme.colors.textMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(4.dp))
-                Text(inviteLink, color = Blue300, fontSize = 13.sp)
+                Text(inviteLink, color = PundarTheme.colors.brandLight, fontSize = 13.sp)
             }
         }
 
@@ -260,7 +261,7 @@ private fun ShareLinkTab(
                 },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Blue300),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PundarTheme.colors.brandLight),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Blue400.copy(0.5f))
             ) {
                 Icon(Icons.Filled.ContentCopy, null, modifier = Modifier.size(16.dp))
@@ -277,7 +278,7 @@ private fun ShareLinkTab(
                 },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Navy950)
+                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = PundarTheme.colors.bgSecondary)
             ) {
                 Icon(Icons.Filled.Share, null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
@@ -302,8 +303,8 @@ private fun UsernameTab(circleId: String) {
         Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text("Invite by Username", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextWhite)
-        Text("Search for a PUNDAR user and send them an invite.", color = TextMuted,
+        Text("Invite by Username", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = PundarTheme.colors.textPrimary)
+        Text("Search for a PUNDAR user and send them an invite.", color = PundarTheme.colors.textMuted,
             style = MaterialTheme.typography.bodySmall)
 
         // Search bar
@@ -312,15 +313,15 @@ private fun UsernameTab(circleId: String) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Search username or name", color = TextDim) },
-                leadingIcon = { Icon(Icons.Filled.Search, null, tint = TextMuted) },
+                placeholder = { Text("Search username or name", color = PundarTheme.colors.textDim) },
+                leadingIcon = { Icon(Icons.Filled.Search, null, tint = PundarTheme.colors.textMuted) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Blue400, unfocusedBorderColor = NavyBorder,
-                    focusedContainerColor = Navy700, unfocusedContainerColor = Navy700,
-                    focusedTextColor = TextWhite, unfocusedTextColor = TextWhite,
+                    focusedBorderColor = Blue400, unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+                    focusedContainerColor = PundarTheme.colors.surfaceSecondary, unfocusedContainerColor = PundarTheme.colors.surfaceSecondary,
+                    focusedTextColor = PundarTheme.colors.textPrimary, unfocusedTextColor = PundarTheme.colors.textPrimary,
                     cursorColor = Blue400
                 )
             )
@@ -343,17 +344,17 @@ private fun UsernameTab(circleId: String) {
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Blue500)
+                colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.brandPrimary)
             ) {
                 if (isSearching) CircularProgressIndicator(
-                    color = TextWhite, modifier = Modifier.size(16.dp), strokeWidth = 2.dp
+                    color = PundarTheme.colors.textPrimary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp
                 ) else Text("Search", fontWeight = FontWeight.SemiBold)
             }
         }
 
         if (results.isEmpty() && !isSearching && query.isNotBlank()) {
             Box(Modifier.fillMaxWidth().padding(top = 24.dp), contentAlignment = Alignment.Center) {
-                Text("No users found for \"$query\".", color = TextMuted, textAlign = TextAlign.Center)
+                Text("No users found for \"$query\".", color = PundarTheme.colors.textMuted, textAlign = TextAlign.Center)
             }
         }
 
@@ -362,16 +363,16 @@ private fun UsernameTab(circleId: String) {
                 val user = results[i]
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                        .background(Navy800).border(1.dp, NavyBorder, RoundedCornerShape(12.dp))
+                        .background(PundarTheme.colors.surfacePrimary).border(1.dp, PundarTheme.colors.borderPrimary, RoundedCornerShape(12.dp))
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        Modifier.size(38.dp).clip(CircleShape).background(Blue500),
+                        Modifier.size(38.dp).clip(CircleShape).background(PundarTheme.colors.brandPrimary),
                         contentAlignment = Alignment.Center
-                    ) { Text(user.initials, color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                    ) { Text(user.initials, color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                     Spacer(Modifier.width(12.dp))
-                    Text(user.name, color = TextWhite, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text(user.name, color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     val isSending = sendingTo == user.userId
                     Button(
                         onClick = {
@@ -394,10 +395,10 @@ private fun UsernameTab(circleId: String) {
                         enabled = !isSending,
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Navy950)
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = PundarTheme.colors.bgSecondary)
                     ) {
                         if (isSending) CircularProgressIndicator(
-                            color = Navy950, modifier = Modifier.size(14.dp), strokeWidth = 2.dp
+                            color = PundarTheme.colors.bgSecondary, modifier = Modifier.size(14.dp), strokeWidth = 2.dp
                         ) else Text("Invite", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
@@ -421,10 +422,10 @@ private fun PhoneTab(circleId: String) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Invite by Phone Number", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextWhite)
+        Text("Invite by Phone Number", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = PundarTheme.colors.textPrimary)
         Text(
             "An invite link will be sent via SMS to the phone number you enter.",
-            color = TextMuted, style = MaterialTheme.typography.bodySmall
+            color = PundarTheme.colors.textMuted, style = MaterialTheme.typography.bodySmall
         )
 
         OutlinedTextField(
@@ -435,20 +436,20 @@ private fun PhoneTab(circleId: String) {
                     phoneError = if (it.length == 11) null else null
                 }
             },
-            label = { Text("Phone Number", color = TextMuted) },
-            placeholder = { Text("09XXXXXXXXX", color = TextDim) },
-            leadingIcon = { Icon(Icons.Filled.Phone, null, tint = TextMuted) },
+            label = { Text("Phone Number", color = PundarTheme.colors.textMuted) },
+            placeholder = { Text("09XXXXXXXXX", color = PundarTheme.colors.textDim) },
+            leadingIcon = { Icon(Icons.Filled.Phone, null, tint = PundarTheme.colors.textMuted) },
             isError = phoneError != null,
-            supportingText = phoneError?.let { { Text(it, color = Orange500) } },
+            supportingText = phoneError?.let { { Text(it, color = PundarTheme.colors.accentOrange) } },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Blue400, unfocusedBorderColor = NavyBorder,
-                focusedContainerColor = Navy700, unfocusedContainerColor = Navy700,
-                focusedTextColor = TextWhite, unfocusedTextColor = TextWhite,
-                cursorColor = Blue400, errorBorderColor = Orange500
+                focusedBorderColor = Blue400, unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+                focusedContainerColor = PundarTheme.colors.surfaceSecondary, unfocusedContainerColor = PundarTheme.colors.surfaceSecondary,
+                focusedTextColor = PundarTheme.colors.textPrimary, unfocusedTextColor = PundarTheme.colors.textPrimary,
+                cursorColor = Blue400, errorBorderColor = PundarTheme.colors.accentOrange
             )
         )
 
@@ -464,7 +465,7 @@ private fun PhoneTab(circleId: String) {
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Navy950)
+            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = PundarTheme.colors.bgSecondary)
         ) {
             Icon(Icons.Filled.Send, null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
@@ -474,18 +475,18 @@ private fun PhoneTab(circleId: String) {
         // Info note
         Box(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                .background(Blue500.copy(0.08f)).border(1.dp, Blue400.copy(0.2f), RoundedCornerShape(12.dp))
+                .background(PundarTheme.colors.brandPrimary.copy(0.08f)).border(1.dp, Blue400.copy(0.2f), RoundedCornerShape(12.dp))
                 .padding(12.dp)
         ) {
             Row(verticalAlignment = Alignment.Top) {
-                Icon(Icons.Filled.Info, null, tint = Blue300, modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.Info, null, tint = PundarTheme.colors.brandLight, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text("How it works", color = Blue300, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text("How it works", color = PundarTheme.colors.brandLight, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(2.dp))
                     Text(
                         "The recipient will receive a text message with your invite link ($inviteLink). They can tap it to open PUNDAR and join your group.",
-                        color = TextMuted, fontSize = 11.sp
+                        color = PundarTheme.colors.textMuted, fontSize = 11.sp
                     )
                 }
             }

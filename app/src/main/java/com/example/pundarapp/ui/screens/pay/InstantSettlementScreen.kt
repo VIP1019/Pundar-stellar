@@ -33,6 +33,8 @@ import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.theme.*
+
+import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.*
@@ -78,7 +80,7 @@ fun InstantSettlementScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -99,13 +101,13 @@ fun InstantSettlementScreen(navController: NavController) {
                         text = "Select bills to settle instantly",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = PundarTextPrimary
+                        color = PundarTheme.colors.textPrimary
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Payment will be processed immediately from your wallet balance",
                         style = MaterialTheme.typography.bodySmall,
-                        color = PundarTextSecondary
+                        color = PundarTheme.colors.textSecondary
                     )
                 }
                 
@@ -130,13 +132,13 @@ fun InstantSettlementScreen(navController: NavController) {
                                     text = "No pending bills!",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = PundarTextPrimary
+                                    color = PundarTheme.colors.textPrimary
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     text = "All your bills are settled.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = PundarTextSecondary
+                                    color = PundarTheme.colors.textSecondary
                                 )
                             }
                         }
@@ -281,12 +283,12 @@ private fun WalletBalanceCard(balance: Double) {
             .shadow(16.dp, RoundedCornerShape(20.dp),
                 ambientColor = ElectricBlue.copy(0.2f), spotColor = ElectricBlue.copy(0.2f))
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
     ) {
         // Shimmer effect
         Box(Modifier.matchParentSize().background(
             Brush.linearGradient(
-                listOf(Color.Transparent, Color.White.copy(0.05f), Color.Transparent),
+                listOf(Color.Transparent, PundarTheme.colors.surfacePrimary.copy(0.05f), Color.Transparent),
                 start = Offset(sweepX, 0f), end = Offset(sweepX + 200f, 300f)
             )
         ))
@@ -350,13 +352,13 @@ private fun SelectableBillCard(
                     text = bill.name,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = PundarTextPrimary
+                    color = PundarTheme.colors.textPrimary
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = "${bill.memberCount} members · ${bill.date}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = PundarTextSecondary
+                    color = PundarTheme.colors.textSecondary
                 )
             }
             Spacer(Modifier.width(8.dp))
@@ -364,7 +366,7 @@ private fun SelectableBillCard(
                 text = "₱${String.format("%,.2f", bill.yourShare)}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = if (isSelected) PremiumGoldWarm else PundarTextPrimary
+                color = if (isSelected) PremiumGoldWarm else PundarTheme.colors.textPrimary
             )
         }
     }
@@ -382,7 +384,7 @@ private fun SettlementBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .shadow(16.dp)
-            .background(PundarSurface)
+            .background(PundarTheme.colors.surfacePrimary)
             .padding(16.dp)
     ) {
         Column {
@@ -395,13 +397,13 @@ private fun SettlementBottomBar(
                     Text(
                         text = "Total Settlement",
                         style = MaterialTheme.typography.bodySmall,
-                        color = PundarTextSecondary
+                        color = PundarTheme.colors.textSecondary
                     )
                     Text(
                         text = "₱${String.format("%,.2f", totalAmount)}",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = PundarTextPrimary
+                        color = PundarTheme.colors.textPrimary
                     )
                     if (roundUpAmount > 0.0) {
                         Text(
@@ -454,12 +456,12 @@ private fun SettlementConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = PundarSurface,
+        containerColor = PundarTheme.colors.surfacePrimary,
         title = {
             Text(
                 text = "Confirm Settlement",
                 fontWeight = FontWeight.Bold,
-                color = PundarTextPrimary
+                color = PundarTheme.colors.textPrimary
             )
         },
         text = {
@@ -467,7 +469,7 @@ private fun SettlementConfirmDialog(
                 Text(
                     text = "You are about to settle $billCount ${if (billCount == 1) "bill" else "bills"}.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = PundarTextPrimary
+                    color = PundarTheme.colors.textPrimary
                 )
                 Spacer(Modifier.height(16.dp))
                 
@@ -476,11 +478,11 @@ private fun SettlementConfirmDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Total Amount:", color = PundarTextSecondary)
+                    Text("Total Amount:", color = PundarTheme.colors.textSecondary)
                     Text(
                         "₱${String.format("%,.2f", totalAmount)}",
                         fontWeight = FontWeight.Bold,
-                        color = PundarTextPrimary
+                        color = PundarTheme.colors.textPrimary
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -488,11 +490,11 @@ private fun SettlementConfirmDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Current Balance:", color = PundarTextSecondary)
+                    Text("Current Balance:", color = PundarTheme.colors.textSecondary)
                     Text(
                         "₱${String.format("%,.2f", walletBalance)}",
                         fontWeight = FontWeight.Bold,
-                        color = PundarTextPrimary
+                        color = PundarTheme.colors.textPrimary
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -500,7 +502,7 @@ private fun SettlementConfirmDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Grow Round-up:", color = PundarTextSecondary)
+                    Text("Grow Round-up:", color = PundarTheme.colors.textSecondary)
                     Text(
                         "₱${String.format("%,.2f", roundUpAmount)}",
                         fontWeight = FontWeight.Bold,
@@ -512,7 +514,7 @@ private fun SettlementConfirmDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("New Balance:", color = PundarTextSecondary)
+                    Text("New Balance:", color = PundarTheme.colors.textSecondary)
                     Text(
                         "₱${String.format("%,.2f", walletBalance - totalAmount - roundUpAmount)}",
                         fontWeight = FontWeight.Bold,
@@ -544,7 +546,7 @@ private fun SettlementConfirmDialog(
                 onClick = onConfirm,
                 enabled = hasSufficientBalance,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PundarBlue,
+                    containerColor = PundarTheme.colors.brandPrimary,
                     disabledContainerColor = PundarBorder
                 )
             ) {
@@ -553,7 +555,7 @@ private fun SettlementConfirmDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = PundarTextSecondary)
+                Text("Cancel", color = PundarTheme.colors.textSecondary)
             }
         }
     )
@@ -563,19 +565,19 @@ private fun SettlementConfirmDialog(
 private fun ProcessingDialog(stage: String) {
     AlertDialog(
         onDismissRequest = { },
-        containerColor = PundarSurface,
+        containerColor = PundarTheme.colors.surfacePrimary,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color = PundarBlue,
+                    color = PundarTheme.colors.brandPrimary,
                     strokeWidth = 3.dp
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = "Processing...",
                     fontWeight = FontWeight.Bold,
-                    color = PundarTextPrimary
+                    color = PundarTheme.colors.textPrimary
                 )
             }
         },
@@ -583,7 +585,7 @@ private fun ProcessingDialog(stage: String) {
             Text(
                 text = stage,
                 style = MaterialTheme.typography.bodyMedium,
-                color = PundarTextSecondary
+                color = PundarTheme.colors.textSecondary
             )
         },
         confirmButton = { }
@@ -607,7 +609,7 @@ private fun SuccessDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = PundarSurface,
+        containerColor = PundarTheme.colors.surfacePrimary,
         title = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -637,7 +639,7 @@ private fun SuccessDialog(
                 Text(
                     text = "Settlement Successful!",
                     fontWeight = FontWeight.Bold,
-                    color = PundarTextPrimary,
+                    color = PundarTheme.colors.textPrimary,
                     textAlign = TextAlign.Center
                 )
             }
@@ -650,7 +652,7 @@ private fun SuccessDialog(
                 Text(
                     text = "Your bills have been settled successfully.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = PundarTextSecondary,
+                    color = PundarTheme.colors.textSecondary,
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(20.dp))
@@ -659,7 +661,7 @@ private fun SuccessDialog(
                 Box(
                     Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(PundarBackground)
+                        .background(PundarTheme.colors.bgPrimary)
                         .border(1.dp, PundarBorder, RoundedCornerShape(12.dp))
                         .padding(16.dp)
                 ) {
@@ -668,7 +670,7 @@ private fun SuccessDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Amount Paid:", color = PundarTextSecondary, style = MaterialTheme.typography.bodySmall)
+                            Text("Amount Paid:", color = PundarTheme.colors.textSecondary, style = MaterialTheme.typography.bodySmall)
                             Text(
                                 "₱${String.format("%,.2f", totalAmount)}",
                                 fontWeight = FontWeight.Bold,
@@ -680,11 +682,11 @@ private fun SuccessDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Reference:", color = PundarTextSecondary, style = MaterialTheme.typography.bodySmall)
+                            Text("Reference:", color = PundarTheme.colors.textSecondary, style = MaterialTheme.typography.bodySmall)
                             Text(
                                 transactionRef,
                                 fontWeight = FontWeight.Bold,
-                                color = PundarTextPrimary,
+                                color = PundarTheme.colors.textPrimary,
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -692,7 +694,7 @@ private fun SuccessDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Grow Round-up:", color = PundarTextSecondary, style = MaterialTheme.typography.bodySmall)
+                            Text("Grow Round-up:", color = PundarTheme.colors.textSecondary, style = MaterialTheme.typography.bodySmall)
                             Text(
                                 "₱${String.format("%,.2f", roundUpAmount)}",
                                 fontWeight = FontWeight.Bold,
@@ -723,7 +725,7 @@ private fun SuccessDialog(
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = PundarBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.brandPrimary)
             ) {
                 Text("Done")
             }

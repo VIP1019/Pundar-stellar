@@ -23,6 +23,7 @@ import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,11 +39,11 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                 showStar = true
             )
         },
-        containerColor = PundarBackground,
+        containerColor = PundarTheme.colors.bgPrimary,
         bottomBar = {
             Row(
                 modifier = Modifier
-                    .background(PundarSurface)
+                    .background(PundarTheme.colors.surfacePrimary)
                     .padding(16.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -78,9 +79,9 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(PundarSurface)
+                            .background(PundarTheme.colors.surfacePrimary)
                     ) {
-                        Text(holding.ticker.take(2), style = MaterialTheme.typography.titleMedium, color = PundarBlue)
+                        Text(holding.ticker.take(2), style = MaterialTheme.typography.titleMedium, color = PundarTheme.colors.brandPrimary)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
@@ -92,7 +93,7 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                         Text(
                             text = holding.sector,
                             style = MaterialTheme.typography.bodySmall,
-                            color = PundarTextSecondary
+                            color = PundarTheme.colors.textSecondary
                         )
                     }
                 }
@@ -104,12 +105,12 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                     text = "₱ ${String.format("%,.2f", holding.currentPrice)}",
                     style = MaterialTheme.typography.displayLarge,
                     fontWeight = FontWeight.ExtraBold,
-                    color = PundarTextPrimary
+                    color = PundarTheme.colors.textPrimary
                 )
                 Spacer(Modifier.height(8.dp))
                 StatusBadge(
                     text = "📈 +₱ ${String.format("%,.2f", holding.priceChange)} (+${holding.priceChangePercent}%) Today",
-                    color = PundarBlue
+                    color = PundarTheme.colors.brandPrimary
                 )
             }
 
@@ -119,14 +120,14 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = PundarSurfaceVariant,
+                    color = PundarTheme.colors.surfaceTertiary,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(modifier = Modifier.padding(4.dp)) {
                         listOf("1D", "1W", "1M", "1Y").forEach { range ->
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (selectedTimeRange == range) PundarSurface else Color.Transparent,
+                                color = if (selectedTimeRange == range) PundarTheme.colors.surfacePrimary else Color.Transparent,
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable { selectedTimeRange = range }
@@ -135,7 +136,7 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                                     text = range,
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = if (selectedTimeRange == range) FontWeight.Bold else FontWeight.SemiBold,
-                                    color = if (selectedTimeRange == range) PundarBlue else PundarTextSecondary,
+                                    color = if (selectedTimeRange == range) PundarTheme.colors.brandPrimary else PundarTheme.colors.textSecondary,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
@@ -161,9 +162,9 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                             modifier = Modifier
                                 .size(24.dp)
                                 .clip(CircleShape)
-                                .background(PundarBlue)
+                                .background(PundarTheme.colors.brandPrimary)
                         ) {
-                            Icon(Icons.Filled.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Filled.Star, contentDescription = null, tint = PundarTheme.colors.surfacePrimary, modifier = Modifier.size(14.dp))
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(
@@ -180,7 +181,7 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Total Value", style = MaterialTheme.typography.labelSmall, color = PundarTextSecondary)
+                            Text("Total Value", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
                             Text(
                                 text = "₱ ${String.format("%,.2f", holding.value)}",
                                 style = MaterialTheme.typography.titleLarge,
@@ -188,12 +189,12 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Total Return", style = MaterialTheme.typography.labelSmall, color = PundarTextSecondary)
+                            Text("Total Return", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
                             Text(
                                 text = "📈 ₱ ${String.format("%,.2f", holding.value * holding.returnPercent / 100)} (+${holding.returnPercent}%)",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = PundarBlue
+                                color = PundarTheme.colors.brandPrimary
                             )
                         }
                     }
@@ -205,19 +206,19 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Shares Owned", style = MaterialTheme.typography.labelSmall, color = PundarTextSecondary)
+                            Text("Shares Owned", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
                             Text(
                                 text = "${String.format("%,.2f", holding.shares.toDouble())}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = PundarTextPrimary
+                                color = PundarTheme.colors.textPrimary
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Average Cost", style = MaterialTheme.typography.labelSmall, color = PundarTextSecondary)
+                            Text("Average Cost", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
                             Text(
                                 text = "₱ ${String.format("%,.2f", holding.averageCost)}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = PundarTextPrimary
+                                color = PundarTheme.colors.textPrimary
                             )
                         }
                     }
@@ -230,7 +231,7 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                     text = "Key Stats",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = PundarTextPrimary
+                    color = PundarTheme.colors.textPrimary
                 )
             }
             
@@ -270,7 +271,7 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                     text = "About ${holding.companyName}",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = PundarTextPrimary
+                    color = PundarTheme.colors.textPrimary
                 )
             }
             
@@ -278,7 +279,7 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                 Text(
                     text = holding.description,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = PundarTextSecondary,
+                    color = PundarTheme.colors.textSecondary,
                     lineHeight = 22.sp
                 )
                 
@@ -291,14 +292,14 @@ fun StockDetailScreen(ticker: String, navController: NavController) {
                     Text(
                         text = "Read more",
                         style = MaterialTheme.typography.labelLarge,
-                        color = PundarBlue,
+                        color = PundarTheme.colors.brandPrimary,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.width(4.dp))
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForwardIos,
                         contentDescription = null,
-                        tint = PundarBlue,
+                        tint = PundarTheme.colors.brandPrimary,
                         modifier = Modifier.size(12.dp)
                     )
                 }
@@ -314,20 +315,20 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = PundarSurfaceVariant
+        color = PundarTheme.colors.surfaceTertiary
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = PundarTextSecondary
+                color = PundarTheme.colors.textSecondary
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = PundarTextPrimary
+                color = PundarTheme.colors.textPrimary
             )
         }
     }

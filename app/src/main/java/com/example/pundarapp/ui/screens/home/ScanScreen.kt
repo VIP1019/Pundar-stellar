@@ -38,6 +38,7 @@ import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -150,7 +151,7 @@ fun ScanScreen(navController: NavController) {
                 onBack = { navController.navigateUp() }
             )
         },
-        containerColor = PundarBackground
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
         Column(
             modifier = Modifier
@@ -215,7 +216,7 @@ fun ScanScreen(navController: NavController) {
                             modifier = Modifier.fillMaxSize(),
                             color = Color.Transparent,
                             shape = RoundedCornerShape(24.dp),
-                            border = androidx.compose.foundation.BorderStroke(2.dp, PundarBlue)
+                            border = androidx.compose.foundation.BorderStroke(2.dp, PundarTheme.colors.brandPrimary)
                         ) {}
                     }
                 }
@@ -229,13 +230,13 @@ fun ScanScreen(navController: NavController) {
                             Icons.Default.QrCodeScanner,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            tint = PundarTextSecondary
+                            tint = PundarTheme.colors.textSecondary
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
                             "Camera permission is required to scan QR codes.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = PundarTextSecondary,
+                            color = PundarTheme.colors.textSecondary,
                             textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(16.dp))
@@ -258,12 +259,12 @@ fun ScanScreen(navController: NavController) {
                 ) {
                     when {
                         isProcessing -> {
-                            CircularProgressIndicator(color = PundarBlue, modifier = Modifier.size(32.dp))
+                            CircularProgressIndicator(color = PundarTheme.colors.brandPrimary, modifier = Modifier.size(32.dp))
                             Spacer(Modifier.height(12.dp))
                             Text(
                                 if (scanMode == "gallery") "Processing image..." else "Validating QR...",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = PundarTextSecondary
+                                color = PundarTheme.colors.textSecondary
                             )
                         }
                         scanError != null -> {
@@ -289,19 +290,19 @@ fun ScanScreen(navController: NavController) {
                                 handleRawQr(raw)
                             }
                             Text("QR detected", style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold, color = PundarTextPrimary)
+                                fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                             Spacer(Modifier.height(8.dp))
                             Text("Opening payment confirmation...",
-                                style = MaterialTheme.typography.bodyMedium, color = PundarTextSecondary)
+                                style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                         }
                         else -> {
                             Text("Scan or Upload QR", style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold, color = PundarTextPrimary)
+                                fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                             Spacer(Modifier.height(8.dp))
                             Text(
                                 "Supports Receive Money, Bill Payment, and Merchant QR codes.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = PundarTextSecondary,
+                                color = PundarTheme.colors.textSecondary,
                                 textAlign = TextAlign.Center
                             )
                             Spacer(Modifier.height(20.dp))

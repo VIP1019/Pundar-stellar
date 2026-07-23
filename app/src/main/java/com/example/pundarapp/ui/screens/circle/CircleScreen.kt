@@ -34,6 +34,8 @@ import com.example.pundarapp.ui.data.Circle
 import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
+
+import com.example.pundarapp.ui.theme.PundarTheme
 import com.example.pundarapp.data.remote.AuthRepository
 
 private val EaseOutBack   = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
@@ -89,7 +91,7 @@ fun CircleScreen(navController: NavController) {
                     "My Paluwagan Groups",
                     fontWeight    = FontWeight.Bold,
                     fontSize      = 15.sp,
-                    color         = TextPrimary,
+                    color         = PundarTheme.colors.textPrimary,
                     letterSpacing = 0.2.sp
                 )
             }
@@ -128,16 +130,21 @@ private fun CircleFab(onClick: () -> Unit) {
         ExtendedFloatingActionButton(
             onClick        = onClick,
             containerColor = Color.Transparent,
-            contentColor   = SpaceBlack,
+            contentColor   = PundarTheme.colors.textPrimary,
             shape          = RoundedCornerShape(18.dp),
             modifier       = Modifier
                 .clip(RoundedCornerShape(18.dp))
-                .background(Brush.horizontalGradient(listOf(NeonGreenDim, NeonGreen)))
+                .background(Brush.horizontalGradient(listOf(PundarTheme.colors.surfacePrimary.copy(0.7f), PundarTheme.colors.surfaceSecondary.copy(0.7f))))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(listOf(NeonGreen.copy(0.8f), NeonGreen.copy(0.2f))),
+                    shape = RoundedCornerShape(18.dp)
+                )
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "New Circle")
+            Icon(Icons.Filled.AddCircleOutline, contentDescription = "New Circle", tint = NeonGreen)
             Spacer(Modifier.width(8.dp))
             Text("Create Paluwagan", fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.labelLarge)
+                style = MaterialTheme.typography.labelLarge, color = PundarTheme.colors.textPrimary)
         }
     }
 }
@@ -156,7 +163,7 @@ private fun CircleHeroHeader() {
             "PUNDAR Circle",
             fontWeight    = FontWeight.Black,
             fontSize      = 32.sp,
-            color         = TextOnDark,
+            color         = PundarTheme.colors.textPrimary,
             letterSpacing = (-0.5).sp
         )
         Spacer(Modifier.height(4.dp))
@@ -166,7 +173,7 @@ private fun CircleHeroHeader() {
             Text(
                 "Paluwagan · Safe Savings Group · Soroban Escrow",
                 style         = MaterialTheme.typography.bodyMedium,
-                color         = TextSecondary,
+                color         = PundarTheme.colors.textSecondary,
                 letterSpacing = 0.3.sp
             )
         }
@@ -210,7 +217,7 @@ private fun InvitationBanner(circleName: String, onClick: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text("Pending Invitation", fontWeight = FontWeight.Bold,
                     color = PremiumGoldWarm, fontSize = 14.sp)
-                Text(circleName, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Text(circleName, style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
             }
             Icon(Icons.Filled.ChevronRight, null, tint = PremiumGoldWarm, modifier = Modifier.size(20.dp))
         }
@@ -265,7 +272,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
             )
             .clip(RoundedCornerShape(24.dp))
             .background(
-                Brush.linearGradient(listOf(Navy800, Navy700))
+                Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary))
             )
             .border(
                 1.dp,
@@ -278,7 +285,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
         Box(
             Modifier.matchParentSize().background(
                 Brush.linearGradient(
-                    listOf(Color.Transparent, Color.White.copy(0.045f), Color.Transparent),
+                    listOf(Color.Transparent, PundarTheme.colors.surfacePrimary.copy(0.045f), Color.Transparent),
                     start = Offset(sweepX, 0f), end = Offset(sweepX + 260f, 320f)
                 )
             )
@@ -314,11 +321,11 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                         )
                     }
                     Spacer(Modifier.width(10.dp))
-                    Icon(Icons.Filled.Group, null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Filled.Group, null, tint = PundarTheme.colors.textSecondary, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(3.dp))
                     Text("${circle.memberCount} / ${circle.maxMembers}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary, fontWeight = FontWeight.SemiBold)
+                        color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.SemiBold)
                     if (circle.isFull) {
                         Spacer(Modifier.width(6.dp))
                         Text("Full", fontSize = 9.sp, color = ErrorRed, fontWeight = FontWeight.Bold)
@@ -335,7 +342,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                         AppState.formatFiat(circle.targetAmount),
                         fontWeight = FontWeight.Medium,
                         fontSize   = 10.sp,
-                        color      = TextSecondary
+                        color      = PundarTheme.colors.textSecondary
                     )
                 }
             }
@@ -343,7 +350,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
             Spacer(Modifier.height(14.dp))
 
             // ── Circle name ───────────────────────────────────────
-            Text(circle.name, fontWeight = FontWeight.Black, fontSize = 20.sp, color = TextOnDark)
+            Text(circle.name, fontWeight = FontWeight.Black, fontSize = 20.sp, color = PundarTheme.colors.textPrimary)
 
             Spacer(Modifier.height(16.dp))
 
@@ -351,7 +358,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
             Box(
                 Modifier.fillMaxWidth().height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(SpaceMedium)
+                    .background(PundarTheme.colors.surfaceTertiary)
             ) {
                 Box(
                     Modifier.fillMaxHeight()
@@ -369,13 +376,13 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                 Text(
                     "${(animProg * 100).toInt()}% Completed",
                     style      = MaterialTheme.typography.labelSmall,
-                    color      = TextSecondary,
+                    color      = PundarTheme.colors.textSecondary,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     "₱${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} left",
                     style      = MaterialTheme.typography.labelSmall,
-                    color      = TextSecondary,
+                    color      = PundarTheme.colors.textSecondary,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -395,7 +402,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Text("Total Saved", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                    Text("Total Saved", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                     Text(
                         "₱${String.format("%,.0f", circle.savedAmount)}",
                         fontWeight = FontWeight.ExtraBold,
@@ -414,20 +421,20 @@ private fun CircleEmptyState() {
     Box(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(Navy800, Navy700)))
-            .border(1.dp, NavyBorder, RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
+            .border(1.dp, PundarTheme.colors.borderPrimary, RoundedCornerShape(20.dp))
             .padding(36.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("🌀", fontSize = 36.sp)
             Spacer(Modifier.height(10.dp))
-            Text("No Paluwagan groups yet.", fontWeight = FontWeight.SemiBold, color = TextSecondary)
+            Text("No Paluwagan groups yet.", fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textSecondary)
             Spacer(Modifier.height(4.dp))
             Text(
                 "Tap \"Create Paluwagan\" to start your savings circle.",
                 style     = MaterialTheme.typography.bodySmall,
-                color     = TextTertiary,
+                color     = PundarTheme.colors.textMuted,
                 textAlign = TextAlign.Center
             )
         }

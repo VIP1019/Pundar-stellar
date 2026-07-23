@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 // ── Custom easing curves ──────────────────────────────────────────
 private val ExpoOut  = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
@@ -41,15 +42,21 @@ private val FrontGrad = listOf(
     Color(0xFF0D2880),   // royal blue
     Color(0xFF071545)    // midnight
 )
-private val FrontGradAlt = listOf(
-    Color(0xFF061840),
-    Color(0xFF0E2260),
-    Color(0xFF1A3A8F)
+private val FrontGradLight = listOf(
+    Color(0xFFE0E7FF),
+    Color(0xFFEEF2FF),
+    Color(0xFFF5F8FF)
 )
+
 private val BackGrad = listOf(
     Color(0xFF0C0824),
     Color(0xFF180F48),
     Color(0xFF0A0618)
+)
+private val BackGradLight = listOf(
+    Color(0xFFF3F4F6),
+    Color(0xFFFFFFFF),
+    Color(0xFFE5E7EB)
 )
 
 @Composable
@@ -109,8 +116,8 @@ fun FlippableWalletCard(
                     .shadow(
                         elevation    = (20 + glowPulse * 16).dp,
                         shape        = RoundedCornerShape(28.dp),
-                        ambientColor = Blue500.copy(glowPulse * 0.5f),
-                        spotColor    = Blue600.copy(glowPulse * 0.5f)
+                        ambientColor = PundarTheme.colors.brandPrimary.copy(glowPulse * 0.5f),
+                        spotColor    = PundarTheme.colors.brandSecondary.copy(glowPulse * 0.5f)
                     )
                     .clickable { isFlipped = !isFlipped }
             ) {
@@ -142,7 +149,7 @@ fun FlippableWalletCard(
             Text(
                 if (isFlipped) "Tap to view balance" else "Tap card to flip",
                 style    = MaterialTheme.typography.labelSmall,
-                color    = TextDim,
+                color    = PundarTheme.colors.textDim,
                 fontSize = 11.sp,
                 letterSpacing = 0.5.sp
             )
@@ -163,7 +170,7 @@ fun FlippableWalletCard(
             WalletAction(
                 icon    = Icons.Filled.AddCircleOutline,
                 label   = "Cash In",
-                accent  = Green400,
+                accent  = PundarTheme.colors.accentGreen,
                 modifier = Modifier.weight(1f),
                 onClick = onCashIn
             )
@@ -177,7 +184,7 @@ fun FlippableWalletCard(
             WalletAction(
                 icon    = Icons.Filled.QrCodeScanner,
                 label   = "Receive",
-                accent  = Gold500,
+                accent  = PundarTheme.colors.accentGold,
                 modifier = Modifier.weight(1f),
                 onClick = onReceive
             )
@@ -236,15 +243,16 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
     val orbX by inf.animateFloat(-8f, 8f,
         infiniteRepeatable(tween(4000, easing = SineIO), RepeatMode.Reverse), label = "ox")
 
+    val isLight = PundarTheme.colors.isLight
     Box(
         Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(28.dp))
-            .background(Brush.linearGradient(FrontGrad, start = Offset(0f, 0f), end = Offset(800f, 600f)))
+            .background(Brush.linearGradient(if (isLight) FrontGradLight else FrontGrad, start = Offset(0f, 0f), end = Offset(800f, 600f)))
             .border(
                 1.dp,
                 Brush.linearGradient(
-                    listOf(Blue300.copy(0.55f), Color.Transparent, Blue500.copy(0.15f)),
+                    listOf(PundarTheme.colors.brandLight.copy(if(isLight) 0.8f else 0.55f), Color.Transparent, PundarTheme.colors.brandPrimary.copy(0.15f)),
                     start = Offset(0f, 0f), end = Offset(800f, 600f)
                 ),
                 RoundedCornerShape(28.dp)
@@ -267,7 +275,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                 .offset(x = (-30).dp, y = 40.dp)
                 .background(
                     Brush.radialGradient(
-                        listOf(Gold500.copy(0.14f), Color.Transparent)
+                        listOf(PundarTheme.colors.accentGold.copy(0.14f), Color.Transparent)
                     )
                 )
         )
@@ -277,7 +285,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                 .offset(x = orbX.dp, y = orbY.dp)
                 .background(
                     Brush.radialGradient(
-                        listOf(Blue300.copy(glowPulse * 0.08f), Color.Transparent)
+                        listOf(PundarTheme.colors.brandLight.copy(glowPulse * 0.08f), Color.Transparent)
                     )
                 )
         )
@@ -286,7 +294,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
         Box(
             Modifier.matchParentSize().background(
                 Brush.linearGradient(
-                    listOf(Color.Transparent, White.copy(0.055f), Color.Transparent),
+                    listOf(Color.Transparent, PundarTheme.colors.surfacePrimary.copy(0.055f), Color.Transparent),
                     start = Offset(shimmerX, 0f), end = Offset(shimmerX + 300f, 400f)
                 )
             )
@@ -318,7 +326,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                         "PUNDAR",
                         fontSize      = 18.sp,
                         fontWeight    = FontWeight.Black,
-                        color         = White,
+                        color         = PundarTheme.colors.textPrimary,
                         letterSpacing = 3.sp
                     )
                     Text(
@@ -344,10 +352,10 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                         Modifier.clip(RoundedCornerShape(8.dp))
                             .background(
                                 Brush.linearGradient(
-                                    listOf(Blue500.copy(0.35f), Blue600.copy(0.2f))
+                                    listOf(PundarTheme.colors.brandPrimary.copy(0.35f), PundarTheme.colors.brandSecondary.copy(0.2f))
                                 )
                             )
-                            .border(1.dp, Blue300.copy(0.35f), RoundedCornerShape(8.dp))
+                            .border(1.dp, PundarTheme.colors.brandLight.copy(0.35f), RoundedCornerShape(8.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(AppState.preferredCurrency.value, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Blue200)
@@ -388,7 +396,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                     AppState.getDisplayBalance(),
                     fontSize      = 34.sp,
                     fontWeight    = FontWeight.Black,
-                    color         = White,
+                    color         = PundarTheme.colors.textPrimary,
                     letterSpacing = (-0.8).sp
                 )
                 Spacer(Modifier.height(2.dp))
@@ -396,7 +404,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                     AppState.getFiatDisplayBalance(),
                     fontSize      = 14.sp,
                     fontWeight    = FontWeight.Medium,
-                    color         = Green400,
+                    color         = PundarTheme.colors.accentGreen,
                     letterSpacing = 0.5.sp
                 )
             }
@@ -412,13 +420,13 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         Modifier.size(6.dp).clip(CircleShape)
-                            .background(Green400)
+                            .background(PundarTheme.colors.accentGreen)
                     )
                     Spacer(Modifier.width(5.dp))
                     Text(
                         "Verified Account",
                         fontSize  = 9.sp,
-                        color     = Green400.copy(0.85f),
+                        color     = PundarTheme.colors.accentGreen.copy(0.85f),
                         letterSpacing = 0.5.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -428,7 +436,7 @@ private fun WalletFront(shimmerX: Float, glowPulse: Float) {
                     repeat(4) { i ->
                         Box(
                             Modifier.size(4.dp).clip(CircleShape)
-                                .background(Blue300.copy(0.2f + i * 0.12f))
+                                .background(PundarTheme.colors.brandLight.copy(0.2f + i * 0.12f))
                         )
                     }
                 }
@@ -449,12 +457,13 @@ private fun WalletBack(shimmerX: Float) {
     val orbY by inf.animateFloat(-10f, 10f,
         infiniteRepeatable(tween(3400, easing = SineIO), RepeatMode.Reverse), label = "by")
 
+    val isLight = PundarTheme.colors.isLight
     Box(
         Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(28.dp))
             .background(
-                Brush.linearGradient(BackGrad, start = Offset(0f, 0f), end = Offset(600f, 500f))
+                Brush.linearGradient(if (isLight) BackGradLight else BackGrad, start = Offset(0f, 0f), end = Offset(600f, 500f))
             )
             .border(
                 1.dp,
@@ -479,16 +488,15 @@ private fun WalletBack(shimmerX: Float) {
                 .offset(x = (-20).dp, y = 30.dp)
                 .background(
                     Brush.radialGradient(
-                        listOf(Gold500.copy(0.12f), Color.Transparent)
+                        listOf(PundarTheme.colors.accentGold.copy(0.12f), Color.Transparent)
                     )
                 )
         )
 
-        // Shimmer
         Box(
             Modifier.matchParentSize().background(
                 Brush.linearGradient(
-                    listOf(Color.Transparent, White.copy(0.045f), Color.Transparent),
+                    listOf(Color.Transparent, PundarTheme.colors.surfacePrimary.copy(0.045f), Color.Transparent),
                     start = Offset(shimmerX, 0f), end = Offset(shimmerX + 250f, 350f)
                 )
             )
@@ -537,9 +545,9 @@ private fun WalletBack(shimmerX: Float) {
                     .size(width = 42.dp, height = 30.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(
-                        Brush.linearGradient(listOf(Gold500, Gold400, GoldWarm))
+                        Brush.linearGradient(listOf(PundarTheme.colors.accentGold, Gold400, GoldWarm))
                     )
-                    .border(1.dp, White.copy(0.20f), RoundedCornerShape(6.dp))
+                    .border(1.dp, PundarTheme.colors.surfacePrimary.copy(0.20f), RoundedCornerShape(6.dp))
             ) {
                 // Chip lines
                 Column(
@@ -547,19 +555,18 @@ private fun WalletBack(shimmerX: Float) {
                     verticalArrangement = Arrangement.SpaceEvenly
                 ) {
                     repeat(3) {
-                        Box(Modifier.fillMaxWidth().height(1.dp).background(White.copy(0.25f)))
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(PundarTheme.colors.surfacePrimary.copy(0.25f)))
                     }
                 }
             }
 
             Spacer(Modifier.height(12.dp))
 
-            // Card number
             Text(
                 "•••• •••• •••• $last4",
                 fontSize      = 16.sp,
                 fontWeight    = FontWeight.Bold,
-                color         = White,
+                color         = PundarTheme.colors.textPrimary,
                 letterSpacing = 2.5.sp
             )
 
@@ -575,7 +582,7 @@ private fun WalletBack(shimmerX: Float) {
                     Text(
                         "CARDHOLDER",
                         fontSize      = 8.sp,
-                        color         = TextDim,
+                        color         = PundarTheme.colors.textDim,
                         letterSpacing = 1.2.sp
                     )
                     Spacer(Modifier.height(2.dp))
@@ -583,7 +590,7 @@ private fun WalletBack(shimmerX: Float) {
                         userName.uppercase(),
                         fontSize      = 11.sp,
                         fontWeight    = FontWeight.SemiBold,
-                        color         = TextSoft,
+                        color         = PundarTheme.colors.textSecondary,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -593,13 +600,13 @@ private fun WalletBack(shimmerX: Float) {
                     Box(
                         Modifier.size(32.dp).offset(x = (-8).dp)
                             .clip(CircleShape)
-                            .background(Blue500.copy(0.75f))
-                            .border(1.dp, Blue300.copy(0.4f), CircleShape)
+                            .background(PundarTheme.colors.brandPrimary.copy(0.75f))
+                            .border(1.dp, PundarTheme.colors.brandLight.copy(0.4f), CircleShape)
                     )
                     Box(
                         Modifier.size(32.dp).offset(x = 8.dp)
                             .clip(CircleShape)
-                            .background(Gold500.copy(0.65f))
+                            .background(PundarTheme.colors.accentGold.copy(0.65f))
                             .border(1.dp, Gold300.copy(0.4f), CircleShape)
                     )
                     // Initials overlay at center intersection
@@ -607,7 +614,7 @@ private fun WalletBack(shimmerX: Float) {
                         initials,
                         fontSize   = 9.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color      = White,
+                        color      = PundarTheme.colors.surfacePrimary,
                         textAlign  = TextAlign.Center
                     )
                 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.pundarapp.ui.theme.*
+import com.example.pundarapp.ui.theme.PundarTheme
 
 @Composable
 fun PundarAvatar(
@@ -28,7 +29,7 @@ fun PundarAvatar(
     imageUrl:         String?    = null,
     showRing:         Boolean    = false,
     initialsFontSize: TextUnit   = 14.sp,
-    innerBackground:  Color      = Navy800
+    innerBackground:  Color      = PundarTheme.colors.surfacePrimary
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -36,7 +37,7 @@ fun PundarAvatar(
             .size(size)
             .then(
                 if (showRing) Modifier.background(
-                    Brush.linearGradient(listOf(Blue500, Blue600)),
+                    Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary)),
                     CircleShape
                 ) else Modifier
             )
@@ -59,7 +60,7 @@ fun PundarAvatar(
             } else {
                 Text(
                     text       = initials,
-                    color      = Blue300,
+                    color      = PundarTheme.colors.brandLight,
                     fontWeight = FontWeight.Bold,
                     fontSize   = initialsFontSize
                 )
