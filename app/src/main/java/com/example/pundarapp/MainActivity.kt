@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.example.pundarapp.data.remote.AuthRepository.initPrefs(this)
         AppState.initPreferences(this)
         enableEdgeToEdge()
         setContent {

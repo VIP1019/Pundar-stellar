@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -323,16 +324,30 @@ fun UserSettingsScreen(navController: NavController) {
             // ── About ──────────────────────────────────────────────
             SectionHeader("About")
             SettingsGroup {
-                SettingsRow(Icons.Filled.Description, "Terms and Conditions", PundarTheme.colors.textMuted) {}
+                SettingsRow(Icons.Filled.Description, "Terms and Conditions", PundarTheme.colors.textMuted) {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/terms"))
+                    context.startActivity(intent)
+                }
                 RowDivider()
-                SettingsRow(Icons.Filled.PrivacyTip,  "Privacy Policy",       PundarTheme.colors.textMuted) {}
+                SettingsRow(Icons.Filled.PrivacyTip,  "Privacy Policy",       PundarTheme.colors.textMuted) {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/privacy"))
+                    context.startActivity(intent)
+                }
                 RowDivider()
-                SettingsRow(Icons.Filled.Help,        "Help Center",          PundarTheme.colors.textMuted) {}
+                SettingsRow(Icons.AutoMirrored.Filled.Help,        "Help Center",          PundarTheme.colors.textMuted) {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/help"))
+                    context.startActivity(intent)
+                }
                 RowDivider()
-                SettingsRow(Icons.Filled.Support,     "Contact Support",      PundarTheme.colors.textMuted) {}
+                SettingsRow(Icons.Filled.Support,     "Contact Support",      PundarTheme.colors.textMuted) {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/support"))
+                    context.startActivity(intent)
+                }
                 RowDivider()
                 SettingsRow(Icons.Filled.Info,        "App Version",          PundarTheme.colors.textMuted,
-                    sub = "1.0.0 (Beta)") {}
+                    sub = "1.0.0 (Beta)") {
+                    android.widget.Toast.makeText(context, "Pundar App Version 1.0.0 (Beta)", android.widget.Toast.LENGTH_SHORT).show()
+                }
             }
 
             Spacer(Modifier.height(20.dp))

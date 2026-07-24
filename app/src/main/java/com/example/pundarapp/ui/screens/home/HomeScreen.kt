@@ -94,6 +94,7 @@ fun HomeScreen(navController: NavController) {
                 userInitials        = initials,
                 profileImageUrl     = session?.profileImageUrl,
                 pundarScore         = user.pundarScore,
+                onScoreClick        = { navController.navigate(Routes.SCORE) },
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
             )

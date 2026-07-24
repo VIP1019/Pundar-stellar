@@ -2,6 +2,7 @@ package com.example.pundarapp.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -19,10 +20,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pundarapp.R
 import com.example.pundarapp.ui.components.Icon3DStar
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.theme.PundarTheme
@@ -36,7 +39,7 @@ private val EaseOutExpo_  = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 @Composable
 fun SplashScreen(onSplashFinished: () -> Unit) {
-    val logoScale    = remember { Animatable(0f) }
+    val logoScale    = remember { Animatable(0.4f) }
     val logoAlpha    = remember { Animatable(0f) }
     val ringScale    = remember { Animatable(0f) }
     val textAlpha    = remember { Animatable(0f) }
@@ -152,22 +155,15 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
                             .clip(CircleShape).background(PundarTheme.colors.brandLight)
                     )
                 }
-                // Logo circle
-                Box(
-                    contentAlignment = Alignment.Center,
+                // Logo image
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "PUNDAR Logo",
                     modifier = Modifier
-                        .scale(logoScale.value).alpha(logoAlpha.value)
-                        .size(108.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary)))
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(100.dp).clip(CircleShape).background(PundarTheme.colors.surfacePrimary)
-                    ) {
-                        Text("P", fontSize = 46.sp, fontWeight = FontWeight.Black, color = Blue400)
-                    }
-                }
+                        .scale(logoScale.value)
+                        .alpha(logoAlpha.value)
+                        .size(116.dp)
+                )
             }
 
             Spacer(Modifier.height(30.dp))

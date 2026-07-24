@@ -1,6 +1,7 @@
 package com.example.pundarapp.ui.screens.auth
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +37,8 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.theme.PundarTheme
+import androidx.compose.ui.res.painterResource
+import com.example.pundarapp.R
 import kotlinx.coroutines.launch
 
 private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
@@ -89,20 +92,11 @@ fun LoginScreen(navController: NavController) {
                 modifier            = Modifier.alpha(headerAlpha.value),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary)))
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(64.dp).clip(CircleShape).background(PundarTheme.colors.surfacePrimary)
-                    ) {
-                        Text("P", fontSize = 30.sp, fontWeight = FontWeight.Black, color = Blue400)
-                    }
-                }
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "PUNDAR Logo",
+                    modifier = Modifier.size(90.dp)
+                )
                 Spacer(Modifier.height(22.dp))
                 Text("Welcome Back",
                     fontWeight = FontWeight.Bold, fontSize = 26.sp,

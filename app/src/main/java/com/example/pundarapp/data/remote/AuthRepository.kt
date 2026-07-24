@@ -14,6 +14,39 @@ object AuthRepository {
 
     /** Observable session — screens recompose when this changes. */
     val currentUserState = mutableStateOf<UserData?>(null)
+    
+    private var prefs: android.content.SharedPreferences? = null
+
+    fun initPrefs(context: android.content.Context) {
+        prefs = context.getSharedPreferences("auth_prefs", android.content.Context.MODE_PRIVATE)
+        val id = prefs?.getString("user_id", null)
+        val name = prefs?.getString("user_name", null)
+        val phone = prefs?.getString("user_phone", null)
+        val pk = prefs?.getString("user_pk", null)
+        val pi = prefs?.getString("user_pi", null)
+        
+        if (id != null && name != null && phone != null) {
+            currentUserState.value = UserData(
+                id = id,
+                name = name,
+                phone = phone,
+                stellarPublicKey = pk,
+                profileImageUrl = pi
+            )
+        }
+    }
+    
+    private fun saveSession(user: UserData) {
+        prefs?.edit()?.apply {
+            putString("user_id", user.id)
+            putString("user_name", user.name)
+            putString("user_phone", user.phone)
+            putString("user_pk", user.stellarPublicKey)
+            putString("user_pi", user.profileImageUrl)
+            apply()
+        }
+    }
+
 
     data class UserData(
         val id: String,
@@ -69,13 +102,15 @@ object AuthRepository {
             Log.d(TAG, "registerWithPhone: success")
 
             // Auto-login: set session & load balance
-            currentUserState.value = UserData(
+            val user = UserData(
                 id = cleanPhone,
                 name = fullName.trim(),
                 phone = cleanPhone,
                 stellarPublicKey = publicKey,
                 walletBalance = 0.0
             )
+            currentUserState.value = user
+            saveSession(user)
             AppState.loadUserBalance(cleanPhone, 0.0)
 
             Result.success(true)
@@ -115,7 +150,7 @@ object AuthRepository {
                 ?: doc.getDouble("walletBalance")
                 ?: 0.0
 
-            currentUserState.value = UserData(
+            val user = UserData(
                 id = cleanPhone,
                 name = name,
                 phone = cleanPhone,
@@ -123,6 +158,8 @@ object AuthRepository {
                 profileImageUrl = profileImage,
                 walletBalance = balance
             )
+            currentUserState.value = user
+            saveSession(user)
             AppState.loadUserBalance(cleanPhone, balance)
             Log.d(TAG, "loginWithPhone: success (balance=$balance)")
 
@@ -243,6 +280,7 @@ object AuthRepository {
     fun logout() {
         currentUserState.value = null
         AppState.clearSession()
+        prefs?.edit()?.clear()?.apply()
     }
 
     suspend fun updateProfileImageUrl(imageUrl: String): Result<Boolean> {

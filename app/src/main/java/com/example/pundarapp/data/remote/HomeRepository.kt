@@ -9,36 +9,88 @@ object HomeRepository {
 
     suspend fun getRecentActivities(userId: String): Result<List<HomeActivity>> {
         return try {
-            val snapshot = db.collection("home_activities")
+            val transactions = mutableListOf<Pair<Long, HomeActivity>>()
+
+            val userTxns = db.collection("transactions").whereEqualTo("user_id", userId).get().await()
+            val sentTxns = db.collection("transactions").whereEqualTo("sender_id", userId).get().await()
+            val recvTxns = db.collection("transactions").whereEqualTo("recipient_id", userId).get().await()
+
+            val allDocs = userTxns.documents + sentTxns.documents + recvTxns.documents
+            val uniqueDocs = allDocs.distinctBy { it.id }
+
+            for (doc in uniqueDocs) {
+                val amount = doc.getDouble("amount") ?: 0.0
+                val ts = doc.getLong("timestamp") ?: 0L
+                val type = doc.getString("type") ?: ""
+                val senderId = doc.getString("sender_id")
+                val recipientId = doc.getString("recipient_id")
+
+                val title: String
+                val subtitle: String
+                val amountStr: String
+                val isPositive: Boolean
+                val module: String
+
+                when {
+                    type == "INSTANT_SETTLEMENT" -> {
+                        val numBills = (doc.get("bill_ids") as? List<*>)?.size ?: 1
+                        title = "Bills Settled"
+                        subtitle = "Paid $numBills bill(s)"
+                        amountStr = "-₱ ${String.format("%,.2f", amount)}"
+                        isPositive = false
+                        module = "Pay"
+                    }
+                    senderId == userId -> {
+                        val isQr = type == "BILL_QR_PAYMENT" || type == "QR_TRANSFER"
+                        title = if (isQr) "QR Payment" else "Transfer Sent"
+                        subtitle = "To user"
+                        amountStr = "-₱ ${String.format("%,.2f", amount)}"
+                        isPositive = false
+                        module = "Wallet"
+                    }
+                    recipientId == userId -> {
+                        val isQr = type == "BILL_QR_PAYMENT" || type == "QR_TRANSFER"
+                        title = if (isQr) "Received QR" else "Transfer Received"
+                        subtitle = "From user"
+                        amountStr = "+₱ ${String.format("%,.2f", amount)}"
+                        isPositive = true
+                        module = "Wallet"
+                    }
+                    else -> {
+                        title = "Transaction"
+                        subtitle = "Processed"
+                        amountStr = "₱ ${String.format("%,.2f", amount)}"
+                        isPositive = true
+                        module = "Wallet"
+                    }
+                }
+
+                transactions.add(
+                    Pair(ts, HomeActivity("receipt", title, subtitle, amountStr, isPositive, module))
+                )
+            }
+
+            val oldActivities = db.collection("home_activities")
                 .whereEqualTo("user_id", userId)
                 .get()
                 .await()
-                
-            val activities = snapshot.documents.mapNotNull { doc ->
-                val icon = doc.getString("icon") ?: return@mapNotNull null
-                val title = doc.getString("title") ?: return@mapNotNull null
-                val subtitle = doc.getString("subtitle") ?: return@mapNotNull null
-                val amount = doc.getString("amount") ?: return@mapNotNull null
+
+            for (doc in oldActivities.documents) {
+                val icon = doc.getString("icon") ?: continue
+                val title = doc.getString("title") ?: continue
+                val subtitle = doc.getString("subtitle") ?: continue
+                val amount = doc.getString("amount") ?: continue
                 val isPositive = doc.getBoolean("is_positive") ?: false
-                val module = doc.getString("module") ?: return@mapNotNull null
-                val createdAt = doc.getString("created_at") ?: ""
-                
-                Pair(
-                    createdAt,
-                    HomeActivity(
-                        icon = icon,
-                        title = title,
-                        subtitle = subtitle,
-                        amount = amount,
-                        isPositive = isPositive,
-                        module = module
-                    )
+                val module = doc.getString("module") ?: continue
+                val createdAt = doc.getString("created_at") ?: "0"
+                val ts = createdAt.toLongOrNull() ?: 0L
+
+                transactions.add(
+                    Pair(ts, HomeActivity(icon, title, subtitle, amount, isPositive, module))
                 )
             }
-            
-            // Sort by descending created_at
-            val sortedActivities = activities.sortedByDescending { it.first }.map { it.second }
-            
+
+            val sortedActivities = transactions.sortedByDescending { it.first }.map { it.second }.take(20)
             Result.success(sortedActivities)
         } catch (e: Exception) {
             e.printStackTrace()

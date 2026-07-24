@@ -2,6 +2,7 @@ package com.example.pundarapp.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +34,7 @@ fun PundarMainTopBar(
     userInitials: String = "JD",
     profileImageUrl: String? = null,
     pundarScore: Int = 850,
+    onScoreClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
@@ -87,6 +89,7 @@ fun PundarMainTopBar(
                         .clip(RoundedCornerShape(50.dp))
                         .background(PundarTheme.colors.accentGold.copy(0.12f))
                         .border(1.dp, PundarTheme.colors.accentGold.copy(0.30f), RoundedCornerShape(50.dp))
+                        .clickable { onScoreClick() }
                         .padding(horizontal = 10.dp)
                 ) {
                     Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {

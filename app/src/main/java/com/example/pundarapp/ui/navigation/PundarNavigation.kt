@@ -48,6 +48,7 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
+    const val SCORE = "score"
     const val PAY = "pay"
     const val PAY_NEW_BILL = "pay/new"
     const val BILL_DETAIL = "pay/bill/{billId}"
@@ -122,7 +123,8 @@ fun PundarNavigation() {
             composable(Routes.SPLASH) {
                 SplashScreen(
                     onSplashFinished = {
-                        navController.navigate(Routes.LOGIN) {
+                        val isLoggedIn = com.example.pundarapp.data.remote.AuthRepository.isUserLoggedIn()
+                        navController.navigate(if (isLoggedIn) Routes.HOME else Routes.LOGIN) {
                             popUpTo(Routes.SPLASH) { inclusive = true }
                         }
                     }
@@ -136,6 +138,9 @@ fun PundarNavigation() {
             }
             composable(Routes.HOME) {
                 HomeScreen(navController = navController)
+            }
+            composable(Routes.SCORE) {
+                com.example.pundarapp.ui.screens.home.ScoreScreen(navController = navController)
             }
             composable(Routes.SETTINGS) {
                 UserSettingsScreen(navController = navController)
