@@ -33,12 +33,13 @@ import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.theme.Gold400
 import com.example.pundarapp.ui.theme.Green400
 import com.example.pundarapp.ui.theme.PundarTheme
+import com.example.pundarapp.ui.data.AppState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScoreScreen(navController: NavController) {
     val user = com.example.pundarapp.ui.data.SampleData.currentUser
-    val score = user.pundarScore
+    val score = AppState.pundarScore.intValue
 
     val (levelText, levelColor) = when {
         score >= 800 -> "Excellent" to Green400

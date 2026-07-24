@@ -325,23 +325,35 @@ fun UserSettingsScreen(navController: NavController) {
             SectionHeader("About")
             SettingsGroup {
                 SettingsRow(Icons.Filled.Description, "Terms and Conditions", PundarTheme.colors.textMuted) {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/terms"))
-                    context.startActivity(intent)
+                    try {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/terms")))
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Link unavailable", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
                 RowDivider()
                 SettingsRow(Icons.Filled.PrivacyTip,  "Privacy Policy",       PundarTheme.colors.textMuted) {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/privacy"))
-                    context.startActivity(intent)
+                    try {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/privacy")))
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Link unavailable", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
                 RowDivider()
                 SettingsRow(Icons.AutoMirrored.Filled.Help,        "Help Center",          PundarTheme.colors.textMuted) {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/help"))
-                    context.startActivity(intent)
+                    try {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/help")))
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Link unavailable", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
                 RowDivider()
                 SettingsRow(Icons.Filled.Support,     "Contact Support",      PundarTheme.colors.textMuted) {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/support"))
-                    context.startActivity(intent)
+                    try {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://pundar.app/support")))
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Link unavailable", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
                 RowDivider()
                 SettingsRow(Icons.Filled.Info,        "App Version",          PundarTheme.colors.textMuted,

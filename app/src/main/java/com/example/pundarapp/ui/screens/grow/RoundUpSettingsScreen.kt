@@ -24,11 +24,13 @@ import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.theme.PundarTheme
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @Composable
 fun RoundUpSettingsScreen(navController: NavController) {
     val settings = AppState.roundUpSettings.value
-    
+    var customThreshold by remember { mutableStateOf(settings.threshold.toString()) }
     val allStocks = listOf("AC", "SMPH", "BDO", "JFC", "MER")
 
     Scaffold(
@@ -141,35 +143,27 @@ fun RoundUpSettingsScreen(navController: NavController) {
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf(50.0, 100.0, 200.0, 500.0).forEach { threshold ->
-                        val isSelected = settings.threshold == threshold
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) ElectricBlue else PundarTheme.colors.surfacePrimary)
-                                .border(
-                                    1.dp,
-                                    if (isSelected) ElectricBlue else PundarTheme.colors.borderPrimary,
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .clickable { AppState.setRoundUpThreshold(threshold) }
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "₱${threshold.toInt()}",
-                                color = if (isSelected) PundarTheme.colors.surfacePrimary else PundarTheme.colors.textPrimary,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 13.sp
-                            )
+                OutlinedTextField(
+                    value = customThreshold,
+                    onValueChange = { 
+                        customThreshold = it
+                        val t = it.toDoubleOrNull()
+                        if (t != null && t >= 1.0) {
+                            AppState.setRoundUpThreshold(t)
                         }
-                    }
-                }
+                    },
+                    label = { Text("Minimum auto-invest (₱1.0 or more)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PundarTheme.colors.brandPrimary,
+                        unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+                        focusedTextColor = PundarTheme.colors.textPrimary,
+                        unfocusedTextColor = PundarTheme.colors.textPrimary,
+                        cursorColor = PundarTheme.colors.brandPrimary,
+                        focusedLabelColor = PundarTheme.colors.brandPrimary
+                    )
+                )
             }
 
             // Target Stocks

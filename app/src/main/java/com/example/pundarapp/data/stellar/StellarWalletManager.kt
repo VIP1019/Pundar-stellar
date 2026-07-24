@@ -606,6 +606,153 @@ object StellarWalletManager {
     fun clearCharArray(array: CharArray) {
         array.fill('0')
     }
+    // ── MOCK RWA PROTOTYPE ───────────────────────────────────────────
+
+    suspend fun fundMockIssuerIfNecessary(): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val server = Server(HORIZON_URL)
+            try {
+                server.accounts().account(MockRwaIssuer.ISSUER_KEYPAIR.accountId)
+                Result.success(true)
+            } catch (e: Exception) {
+                // Not found, fund it
+                fundTestnetAccount(MockRwaIssuer.ISSUER_KEYPAIR.accountId)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getRwaBalance(publicKey: String): String = withContext(Dispatchers.IO) {
+        try {
+            val server = Server(HORIZON_URL)
+            val account = server.accounts().account(publicKey)
+            
+            val balance = account.balances.find { 
+                it.assetCode == MockRwaIssuer.ASSET_CODE && it.assetIssuer == MockRwaIssuer.ISSUER_KEYPAIR.accountId 
+            }
+            balance?.balance ?: "0.00"
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching RWA balance", e)
+            "0.00"
+        }
+    }
+
+    suspend fun buyMockRwa(
+        userPublicKey: String,
+        userEncryptedSeed: String,
+        userMpin: String,
+        amount: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        var decryptedSeed: CharArray? = null
+        try {
+            // 1. Ensure issuer is funded
+            fundMockIssuerIfNecessary()
+
+            decryptedSeed = decryptSecretSeed(userEncryptedSeed, userMpin)
+            val userKeyPair = KeyPair.fromSecretSeed(decryptedSeed)
+            val server = Server(HORIZON_URL)
+            val userAccount = server.accounts().account(userPublicKey)
+
+            // 2. Check if trustline exists
+            val hasTrustline = userAccount.balances.any {
+                it.assetCode == MockRwaIssuer.ASSET_CODE && it.assetIssuer == MockRwaIssuer.ISSUER_KEYPAIR.accountId
+            }
+
+            val transactionBuilder = TransactionBuilder(userAccount, Network.TESTNET)
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .setTimeout(180L)
+
+            var operationsAdded = 0
+            if (!hasTrustline) {
+                transactionBuilder.addOperation(
+                    ChangeTrustOperation.builder()
+                        .asset(ChangeTrustAsset(MockRwaIssuer.ASSET))
+                        .limit(BigDecimal("1000000000"))
+                        .build()
+                )
+                operationsAdded++
+            }
+            
+            if (operationsAdded > 0) {
+                val tx = transactionBuilder.build()
+                tx.sign(userKeyPair)
+                val response = server.submitTransaction(tx)
+                if (response.successful != true) {
+                    return@withContext Result.failure(Exception("Failed to establish trustline"))
+                }
+            }
+
+            // 3. Issuer sends asset to user
+            val issuerAccount = server.accounts().account(MockRwaIssuer.ISSUER_KEYPAIR.accountId)
+            val issuerTx = TransactionBuilder(issuerAccount, Network.TESTNET)
+                .addOperation(
+                    PaymentOperation.builder()
+                        .destination(userPublicKey)
+                        .asset(MockRwaIssuer.ASSET)
+                        .amount(BigDecimal(amount))
+                        .build()
+                )
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .setTimeout(180L)
+                .build()
+
+            issuerTx.sign(MockRwaIssuer.ISSUER_KEYPAIR)
+            val issuerResponse = server.submitTransaction(issuerTx)
+
+            if (issuerResponse.successful == true) {
+                Result.success(issuerResponse.hash)
+            } else {
+                Result.failure(Exception("Failed to buy asset"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "buyMockRwa failed", e)
+            Result.failure(e)
+        } finally {
+            decryptedSeed?.let { clearCharArray(it) }
+        }
+    }
+
+    suspend fun sellMockRwa(
+        userPublicKey: String,
+        userEncryptedSeed: String,
+        userMpin: String,
+        amount: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        var decryptedSeed: CharArray? = null
+        try {
+            decryptedSeed = decryptSecretSeed(userEncryptedSeed, userMpin)
+            val userKeyPair = KeyPair.fromSecretSeed(decryptedSeed)
+            val server = Server(HORIZON_URL)
+            val userAccount = server.accounts().account(userPublicKey)
+
+            val tx = TransactionBuilder(userAccount, Network.TESTNET)
+                .addOperation(
+                    PaymentOperation.builder()
+                        .destination(MockRwaIssuer.ISSUER_KEYPAIR.accountId)
+                        .asset(MockRwaIssuer.ASSET)
+                        .amount(BigDecimal(amount))
+                        .build()
+                )
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .setTimeout(180L)
+                .build()
+
+            tx.sign(userKeyPair)
+            val response = server.submitTransaction(tx)
+
+            if (response.successful == true) {
+                Result.success(response.hash)
+            } else {
+                Result.failure(Exception("Failed to sell asset"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "sellMockRwa failed", e)
+            Result.failure(e)
+        } finally {
+            decryptedSeed?.let { clearCharArray(it) }
+        }
+    }
 }
 
 data class CircleStateData(

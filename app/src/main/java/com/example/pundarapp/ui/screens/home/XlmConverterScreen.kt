@@ -185,12 +185,15 @@ fun XlmConverterScreen(navController: NavController) {
 
                     // Last updated indicator
                     if (lastUpdated > 0) {
-                        val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault())
+                        val sdf = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm:ss", java.util.Locale.getDefault())
                         Text(
-                            text = "Rates updated: ${sdf.format(Date(lastUpdated))}",
+                            text = "Rates updated: ${sdf.format(java.util.Date(lastUpdated))}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = PundarTextTertiary,
-                            modifier = Modifier.align(Alignment.End)
+                            color = PundarTheme.colors.textMuted,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
 
@@ -247,7 +250,9 @@ fun XlmConverterScreen(navController: NavController) {
                                         Text(
                                             text = currency.name,
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = PundarTheme.colors.textSecondary
+                                            color = PundarTheme.colors.textSecondary,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
                                         
                                         Spacer(Modifier.height(4.dp))
@@ -256,15 +261,19 @@ fun XlmConverterScreen(navController: NavController) {
                                             text = "${currency.symbol}${if (convertedValue > 0) String.format("%,.2f", convertedValue) else "0.00"}",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.ExtraBold,
-                                            color = PundarTheme.colors.textPrimary
+                                            color = PundarTheme.colors.textPrimary,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
                                         
                                         Spacer(Modifier.height(8.dp))
                                         
                                         Text(
                                             text = "1 XLM = ${currency.symbol}${if (rate > 0) String.format("%.4f", rate) else "0.0000"}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = PundarTextTertiary
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                            color = PundarTheme.colors.textMuted,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
                                     }
                                 }

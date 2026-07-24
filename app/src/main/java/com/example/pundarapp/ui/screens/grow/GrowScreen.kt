@@ -40,6 +40,7 @@ import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 
 import com.example.pundarapp.ui.theme.PundarTheme
+import kotlinx.coroutines.launch
 
 // ── Easing curves ────────────────────────────────────────────────
 private val EaseOutBack  = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
@@ -67,6 +68,25 @@ fun GrowScreen(navController: NavController) {
     var withdrawError      by remember { mutableStateOf("") }
     var isInvestFiatMode   by remember { mutableStateOf(false) }
     var isWithdrawFiatMode by remember { mutableStateOf(false) }
+
+    // ── RWA State ────────────────────────────────────────────────
+    val scope = rememberCoroutineScope()
+    val rwaBalanceDouble = AppState.rwaBalance.doubleValue
+    val rwaBalance = String.format(java.util.Locale.US, "%.2f", rwaBalanceDouble)
+    var isRwaLoading by remember { mutableStateOf(false) }
+    var showBuyRwaDialog by remember { mutableStateOf(false) }
+    var showSellRwaDialog by remember { mutableStateOf(false) }
+    var rwaAmount by remember { mutableStateOf("") }
+    var rwaPin by remember { mutableStateOf("") }
+    var rwaError by remember { mutableStateOf("") }
+    var isRwaProcessing by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(userSession) {
+        isRwaLoading = true
+        AppState.fetchRwaBalance()
+        isRwaLoading = false
+    }
 
     // ── Scaffold ─────────────────────────────────────────────────
     AnimatedBackground(accent = BgAccent.Gold) {
@@ -124,13 +144,13 @@ fun GrowScreen(navController: NavController) {
                     if (success) {
                         showWithdrawDialog = false; withdrawAmount = ""; withdrawError = ""
                     } else {
-                        withdrawError = "Insufficient portfolio value (${String.format("%,.2f", AppState.portfolio.value.totalValue)} XLM)"
+                        withdrawError = "Insufficient portfolio value (${String.format(java.util.Locale.US, "%,.2f", AppState.portfolio.value.totalValue + rwaBalanceDouble)} XLM)"
                     }
                 }
             }
         ) {
             androidx.compose.material3.Text(
-                "Portfolio: ${String.format("%,.2f", AppState.portfolio.value.totalValue)} XLM",
+                "Portfolio: ${String.format(java.util.Locale.US, "%,.2f", AppState.portfolio.value.totalValue + rwaBalanceDouble)} XLM",
                 style = MaterialTheme.typography.labelMedium,
                 color = NeonGreen
             )
@@ -142,6 +162,192 @@ fun GrowScreen(navController: NavController) {
                 onToggleMode  = { isWithdrawFiatMode = !isWithdrawFiatMode },
                 errorMessage  = withdrawError
             )
+        }
+    }
+
+    // ── RWA Buy Dialog ───────────────────────────────────────────
+    if (showBuyRwaDialog) {
+        GrowAlertDialog(
+            title        = "Buy PUNDAR S&P 500 (P_SP500)",
+            confirmLabel = if (isRwaProcessing) "Processing..." else "Confirm Buy",
+            onDismiss    = { if (!isRwaProcessing) { showBuyRwaDialog = false; rwaAmount = ""; rwaPin = ""; rwaError = "" } },
+            onConfirm    = {
+                if (isRwaProcessing) return@GrowAlertDialog
+                val amt = rwaAmount.toDoubleOrNull()
+                if (amt == null || amt <= 0.0) {
+                    rwaError = "Enter a valid amount"
+                    return@GrowAlertDialog
+                }
+                if (AppState.walletBalance.value < amt) {
+                    rwaError = "Insufficient balance (${String.format("%,.2f", AppState.walletBalance.value)} XLM)"
+                    return@GrowAlertDialog
+                }
+                if (rwaPin.length < 4) {
+                    rwaError = "Enter your 4-digit PIN"
+                    return@GrowAlertDialog
+                }
+                isRwaProcessing = true
+                rwaError = ""
+                scope.launch {
+                    val pk = AuthRepository.getCurrentUserStellarPublicKey()
+                    val seed = AuthRepository.getCurrentUserEncryptedSeed()
+                    if (pk != null && seed != null) {
+                        val result = com.example.pundarapp.data.stellar.StellarWalletManager.buyMockRwa(pk, seed, rwaPin, rwaAmount)
+                        if (result.isSuccess) {
+                            val amountDouble = rwaAmount.toDoubleOrNull() ?: 0.0
+                            AppState.updateWalletBalance(AppState.walletBalance.value - amountDouble)
+                            AppState.addHomeActivity(
+                                com.example.pundarapp.ui.data.HomeActivity(
+                                    icon = "trending_up",
+                                    title = "S&P 500 Bought",
+                                    subtitle = "PUNDAR Grow",
+                                    amount = "-${String.format("%,.2f", amountDouble)} XLM",
+                                    isPositive = false,
+                                    module = "Grow"
+                                )
+                            )
+                            AppState.fetchRwaBalance()
+                            showBuyRwaDialog = false
+                            rwaAmount = ""; rwaPin = ""
+                            android.widget.Toast.makeText(context, "Purchase successful!", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            rwaError = result.exceptionOrNull()?.message ?: "Transaction failed"
+                        }
+                    }
+                    isRwaProcessing = false
+                }
+            }
+        ) {
+            Text("Invest in tokenized S&P 500 on the Stellar Testnet.", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = rwaAmount,
+                onValueChange = { rwaAmount = it; rwaError = "" },
+                label = { Text("Amount") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary,
+                    unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+                    focusedTextColor = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor = PundarTheme.colors.textPrimary,
+                    cursorColor = PundarTheme.colors.brandPrimary
+                )
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = rwaPin,
+                onValueChange = { if (it.length <= 4) { rwaPin = it; rwaError = "" } },
+                label = { Text("4-Digit PIN") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary,
+                    unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+                    focusedTextColor = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor = PundarTheme.colors.textPrimary,
+                    cursorColor = PundarTheme.colors.brandPrimary
+                )
+            )
+            if (rwaError.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(rwaError, color = PundarTheme.colors.accentRed, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+
+    // ── RWA Sell Dialog ───────────────────────────────────────────
+    if (showSellRwaDialog) {
+        GrowAlertDialog(
+            title        = "Sell PUNDAR S&P 500 (P_SP500)",
+            confirmLabel = if (isRwaProcessing) "Processing..." else "Confirm Sell",
+            onDismiss    = { if (!isRwaProcessing) { showSellRwaDialog = false; rwaAmount = ""; rwaPin = ""; rwaError = "" } },
+            onConfirm    = {
+                if (isRwaProcessing) return@GrowAlertDialog
+                val amt = rwaAmount.toDoubleOrNull()
+                if (amt == null || amt <= 0.0) {
+                    rwaError = "Enter a valid amount"
+                    return@GrowAlertDialog
+                }
+                if (AppState.rwaBalance.doubleValue < amt) {
+                    rwaError = "Insufficient P_SP500 balance"
+                    return@GrowAlertDialog
+                }
+                if (rwaPin.length < 4) {
+                    rwaError = "Enter your 4-digit PIN"
+                    return@GrowAlertDialog
+                }
+                isRwaProcessing = true
+                rwaError = ""
+                scope.launch {
+                    val pk = AuthRepository.getCurrentUserStellarPublicKey()
+                    val seed = AuthRepository.getCurrentUserEncryptedSeed()
+                    if (pk != null && seed != null) {
+                        val result = com.example.pundarapp.data.stellar.StellarWalletManager.sellMockRwa(pk, seed, rwaPin, rwaAmount)
+                        if (result.isSuccess) {
+                            val amountDouble = rwaAmount.toDoubleOrNull() ?: 0.0
+                            AppState.updateWalletBalance(AppState.walletBalance.value + amountDouble)
+                            AppState.addHomeActivity(
+                                com.example.pundarapp.ui.data.HomeActivity(
+                                    icon = "trending_down",
+                                    title = "S&P 500 Sold",
+                                    subtitle = "PUNDAR Grow",
+                                    amount = "+${String.format("%,.2f", amountDouble)} XLM",
+                                    isPositive = true,
+                                    module = "Grow"
+                                )
+                            )
+                            AppState.fetchRwaBalance()
+                            showSellRwaDialog = false
+                            rwaAmount = ""; rwaPin = ""
+                            android.widget.Toast.makeText(context, "Sale successful!", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            rwaError = result.exceptionOrNull()?.message ?: "Transaction failed"
+                        }
+                    }
+                    isRwaProcessing = false
+                }
+            }
+        ) {
+            Text("Current Balance: $rwaBalance P_SP500", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.brandPrimary)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = rwaAmount,
+                onValueChange = { rwaAmount = it; rwaError = "" },
+                label = { Text("Amount to Sell") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary,
+                    unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+                    focusedTextColor = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor = PundarTheme.colors.textPrimary,
+                    cursorColor = PundarTheme.colors.brandPrimary
+                )
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = rwaPin,
+                onValueChange = { if (it.length <= 4) { rwaPin = it; rwaError = "" } },
+                label = { Text("4-Digit PIN") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary,
+                    unfocusedBorderColor = PundarTheme.colors.borderPrimary,
+                    focusedTextColor = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor = PundarTheme.colors.textPrimary,
+                    cursorColor = PundarTheme.colors.brandPrimary
+                )
+            )
+            if (rwaError.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(rwaError, color = PundarTheme.colors.accentRed, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 
@@ -186,7 +392,7 @@ fun GrowScreen(navController: NavController) {
             PundarGrowTopBar(
                 userInitials       = userInitials,
                 profileImageUrl    = userSession?.profileImageUrl,
-                pundarScore        = SampleData.currentUser.pundarScore,
+                pundarScore        = AppState.pundarScore.intValue,
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) }
             )
         }
@@ -209,9 +415,19 @@ fun GrowScreen(navController: NavController) {
             // 1 ── Portfolio Hero Card
             item {
                 PortfolioHeroCard(
-                    portfolio  = portfolio,
+                    portfolio  = portfolio.copy(totalValue = portfolio.totalValue + rwaBalanceDouble),
                     onInvest   = { showInvestDialog   = true },
                     onWithdraw = { showWithdrawDialog = true }
+                )
+            }
+
+            // 1.25 ── Real-World Asset (Sandbox) Card
+            item {
+                MockRwaCard(
+                    balance = rwaBalance,
+                    isLoading = isRwaLoading,
+                    onBuyClick = { showBuyRwaDialog = true },
+                    onSellClick = { showSellRwaDialog = true }
                 )
             }
 
@@ -223,7 +439,9 @@ fun GrowScreen(navController: NavController) {
                     onInvestNowClick = {
                         val swept = AppState.sweepBalanceRemainderToGrow()
                         if (swept == 0.0 && AppState.roundUpSettings.value.totalAccumulated > 0) {
-                            AppState.triggerManualRoundUpInvest()
+                            scope.launch {
+                                AppState.triggerManualRoundUpInvest()
+                            }
                         }
                     }
                 )
@@ -1203,6 +1421,50 @@ private fun HoldingRow(
                 tint = if (isFavorite) PremiumGoldWarm else PundarTheme.colors.textMuted,
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+}
+
+// ── Mock RWA Card ────────────────────────────────────────────────
+@Composable
+fun MockRwaCard(
+    balance: String,
+    isLoading: Boolean,
+    onBuyClick: () -> Unit,
+    onSellClick: () -> Unit
+) {
+    PundarCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("PUNDAR S&P 500 (P_SP500)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
+                    Text("Real-World Asset Sandbox", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
+                }
+                Icon(Icons.Filled.AccountBalance, null, tint = PundarTheme.colors.brandPrimary)
+            }
+            Spacer(Modifier.height(16.dp))
+            if (isLoading) {
+                androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(24.dp), color = PundarTheme.colors.brandPrimary)
+            } else {
+                Text(
+                    text = balance,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PundarTheme.colors.textPrimary
+                )
+                Text("Tokenized Shares", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PundarPrimaryButton(text = "Buy", onClick = onBuyClick, modifier = Modifier.weight(1f))
+                PundarSecondaryButton(text = "Sell", onClick = onSellClick, modifier = Modifier.weight(1f))
+            }
         }
     }
 }

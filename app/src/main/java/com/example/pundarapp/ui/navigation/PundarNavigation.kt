@@ -41,6 +41,7 @@ import com.example.pundarapp.ui.screens.home.PinVerificationScreen
 import com.example.pundarapp.ui.screens.home.CashInScreen
 import com.example.pundarapp.ui.screens.home.LinkCardScreen
 import com.example.pundarapp.ui.screens.home.XlmConverterScreen
+import com.example.pundarapp.ui.screens.home.ActivityHistoryScreen
 import com.example.pundarapp.ui.screens.SplashScreen
 
 object Routes {
@@ -48,6 +49,7 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
+    const val ALL_ACTIVITY = "home/all_activity"
     const val SCORE = "score"
     const val PAY = "pay"
     const val PAY_NEW_BILL = "pay/new"
@@ -138,6 +140,9 @@ fun PundarNavigation() {
             }
             composable(Routes.HOME) {
                 HomeScreen(navController = navController)
+            }
+            composable(Routes.ALL_ACTIVITY) {
+                ActivityHistoryScreen(navController = navController)
             }
             composable(Routes.SCORE) {
                 com.example.pundarapp.ui.screens.home.ScoreScreen(navController = navController)

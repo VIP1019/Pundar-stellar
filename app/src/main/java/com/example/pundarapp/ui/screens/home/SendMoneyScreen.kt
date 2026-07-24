@@ -129,7 +129,8 @@ fun SendMoneyScreen(navController: NavController) {
                                     AppState.processPayRoundUp(
                                         sourceReference = "PAY-${UUID.randomUUID().toString().take(8).uppercase()}",
                                         sourceAmount = sentAmount,
-                                        sourceLabel = "Send Money"
+                                        sourceLabel = "Send Money",
+                                        mpin = mpinInput
                                     )
                                     val activity = HomeActivity(
                                         icon      = "send",
@@ -142,6 +143,7 @@ fun SendMoneyScreen(navController: NavController) {
                                     AppState.homeActivities.add(0, activity)
                                     val uid = AuthRepository.getCurrentUserId()
                                     if (uid != null) HomeRepository.createActivity(uid, activity)
+                                    AppState.incrementPundarScore(2) // +2 points for sending money
                                     AppState.requestHomeRefresh()
                                     Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
                                     navController.navigateUp()

@@ -381,15 +381,18 @@ object AppState {
         )
 
         if (accumulated >= settings.threshold) {
-            triggerManualRoundUpInvest()
+            scope.launch {
+                triggerManualRoundUpInvest("")
+            }
         }
         return remainder
     }
 
-    fun processPayRoundUp(
+    suspend fun processPayRoundUp(
         sourceReference: String,
         sourceAmount: Double,
-        sourceLabel: String
+        sourceLabel: String,
+        mpin: String
     ): RoundUpInvestment? {
         val settings = roundUpSettings.value
         if (!settings.isEnabled) return null
@@ -421,19 +424,41 @@ object AppState {
         roundUpSettings.value = updatedSettings
 
         return if (accumulated >= settings.threshold) {
-            val investment = purchaseTokenizedEquity(
-                sourceReference = sourceReference,
-                sourceAmount = sourceAmount,
-                roundUpAmount = roundUp,
-                accumulatedAmount = accumulated
-            )
-            // Reset accumulated and update lifetime invested
-            roundUpSettings.value = roundUpSettings.value.copy(
-                totalAccumulated = 0.0,
-                totalInvested = roundUpSettings.value.totalInvested + accumulated
-            )
-            persistRoundUpState(investment)
-            investment
+            val pk = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
+            val seed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
+            
+            // Purchase tokenized RWA dynamically
+            val result = StellarWalletManager.buyMockRwa(pk, seed, mpin, accumulated.toString())
+            if (result.isSuccess) {
+                // Update local RWA state
+                fetchRwaBalance()
+                
+                val investment = purchaseTokenizedEquity(
+                    sourceReference = sourceReference,
+                    sourceAmount = sourceAmount,
+                    roundUpAmount = roundUp,
+                    accumulatedAmount = accumulated
+                )
+                // Reset accumulated and update lifetime invested
+                roundUpSettings.value = roundUpSettings.value.copy(
+                    totalAccumulated = 0.0,
+                    totalInvested = roundUpSettings.value.totalInvested + accumulated
+                )
+                persistRoundUpState(investment)
+                investment
+            } else {
+                addHomeActivity(
+                    HomeActivity(
+                        icon = "trending_up",
+                        title = "Round-up failed",
+                        subtitle = result.exceptionOrNull()?.message ?: "Transaction error",
+                        amount = "₱ ${String.format("%,.2f", roundUp)}",
+                        isPositive = false,
+                        module = "Grow"
+                    )
+                )
+                null
+            }
         } else {
             persistRoundUpState(null)
             addHomeActivity(
@@ -450,23 +475,30 @@ object AppState {
         }
     }
 
-    fun triggerManualRoundUpInvest() {
+    suspend fun triggerManualRoundUpInvest(mpin: String = "") {
         val settings = roundUpSettings.value
         val accumulated = settings.totalAccumulated
         if (accumulated <= 0.0) return
 
-        val investment = purchaseTokenizedEquity(
-            sourceReference = "MANUAL-${System.currentTimeMillis()}",
-            sourceAmount = 0.0,
-            roundUpAmount = 0.0,
-            accumulatedAmount = accumulated
-        )
-        // Reset accumulated and update lifetime invested
-        roundUpSettings.value = settings.copy(
-            totalAccumulated = 0.0,
-            totalInvested = settings.totalInvested + accumulated
-        )
-        persistRoundUpState(investment)
+        val pk = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
+        val seed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
+        val result = StellarWalletManager.buyMockRwa(pk, seed, mpin, accumulated.toString())
+        
+        if (result.isSuccess) {
+            fetchRwaBalance()
+            val investment = purchaseTokenizedEquity(
+                sourceReference = "MANUAL-${System.currentTimeMillis()}",
+                sourceAmount = 0.0,
+                roundUpAmount = 0.0,
+                accumulatedAmount = accumulated
+            )
+            // Reset accumulated and update lifetime invested
+            roundUpSettings.value = settings.copy(
+                totalAccumulated = 0.0,
+                totalInvested = settings.totalInvested + accumulated
+            )
+            persistRoundUpState(investment)
+        }
     }
 
     private fun purchaseTokenizedEquity(
@@ -561,13 +593,14 @@ object AppState {
     fun invest(amount: Double): Boolean {
         if (walletBalance.value < amount) return false
         val old = portfolio.value
+        val phpAmount = amount * currentExchangeRate.doubleValue
         portfolio.value = old.copy(
-            totalValue = old.totalValue + amount,
-            totalReturnAmount = old.totalReturnAmount + amount * 0.01,
+            totalValue = old.totalValue + phpAmount,
+            totalReturnAmount = old.totalReturnAmount + phpAmount * 0.01,
             activities = listOf(
                 PortfolioActivity(
                     type = ActivityType.DEPOSIT,
-                    amount = amount,
+                    amount = phpAmount,
                     date = "Just now",
                     description = "Invested via Grow",
                     isPositive = true
@@ -591,13 +624,14 @@ object AppState {
 
     fun withdraw(amount: Double): Boolean {
         val old = portfolio.value
-        if (old.totalValue < amount) return false
+        val phpAmount = amount * currentExchangeRate.doubleValue
+        if (old.totalValue < phpAmount) return false
         portfolio.value = old.copy(
-            totalValue = (old.totalValue - amount).coerceAtLeast(0.0),
+            totalValue = (old.totalValue - phpAmount).coerceAtLeast(0.0),
             activities = listOf(
                 PortfolioActivity(
                     type = ActivityType.WITHDRAWAL,
-                    amount = amount,
+                    amount = phpAmount,
                     date = "Just now",
                     description = "Withdrawn from Grow",
                     isPositive = false
@@ -608,7 +642,7 @@ object AppState {
         updateWalletBalance(walletBalance.value + amount)
         addHomeActivity(
             HomeActivity(
-                icon = "trending_up",
+                icon = "trending_down",
                 title = "Withdrawal",
                 subtitle = "Withdrawn from Grow",
                 amount = "+${String.format("%,.2f", amount)} XLM",
@@ -660,6 +694,7 @@ object AppState {
     val homeActivities = mutableStateListOf<HomeActivity>().apply { addAll(SampleData.homeActivities) }
     val walletBalance = mutableStateOf(0.0)
     val homeRefreshTrigger = mutableIntStateOf(0)
+    val pundarScore = mutableIntStateOf(850)
 
     fun requestHomeRefresh() {
         homeRefreshTrigger.intValue += 1
@@ -712,9 +747,11 @@ object AppState {
         // No-op: balance is already tracked in walletBalance.value.
     }
 
-    private fun addHomeActivity(activity: HomeActivity) {
-        homeActivities.add(0, activity) // newest first
-        if (homeActivities.size > 20) homeActivities.removeAt(homeActivities.lastIndex)
+    fun addHomeActivity(activity: HomeActivity) {
+        val old = homeActivities.toMutableList()
+        old.add(0, activity)
+        homeActivities.clear()
+        homeActivities.addAll(old.take(50)) // Keep last 50 activities
     }
 
     // ── QR PAYLOAD ──────────────────────────────────────────────────
@@ -732,7 +769,17 @@ object AppState {
     // ── SETTINGS ─────────────────────────────────────────────────────────────
     val isBalanceHidden = mutableStateOf(false)
     val preferredCurrency = mutableStateOf("PHP")
-    val currentExchangeRate = mutableDoubleStateOf(1.0)
+    val currentExchangeRate = mutableDoubleStateOf(56.50)
+    
+    val rwaBalance = mutableDoubleStateOf(0.0)
+
+    suspend fun fetchRwaBalance() {
+        val pk = AuthRepository.getCurrentUserStellarPublicKey()
+        if (pk != null) {
+            val balanceStr = StellarWalletManager.getRwaBalance(pk)
+            rwaBalance.doubleValue = balanceStr.toDoubleOrNull() ?: 0.0
+        }
+    }
     val themeMode = mutableStateOf("DARK")
     
     private var prefs: android.content.SharedPreferences? = null
@@ -760,6 +807,15 @@ object AppState {
             if (prefs?.contains(key) == true) {
                 walletBalance.value = prefs?.getFloat(key, 0f)?.toDouble() ?: 0.0
             }
+            pundarScore.value = prefs?.getInt("pundar_score_$phone", 850) ?: 850
+        }
+    }
+
+    fun incrementPundarScore(points: Int = 5) {
+        pundarScore.value += points
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isNotBlank()) {
+            prefs?.edit()?.putInt("pundar_score_$phone", pundarScore.value)?.apply()
         }
     }
     

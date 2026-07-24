@@ -32,11 +32,12 @@ import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.PundarCard
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
-import com.example.pundarapp.ui.data.AppState
-import com.example.pundarapp.ui.data.HomeActivity
+import com.example.pundarapp.ui.components.*
+import com.example.pundarapp.ui.data.*
+import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.HomeRepository
 import com.example.pundarapp.ui.theme.*
-
-import com.example.pundarapp.ui.theme.PundarTheme
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 enum class MobileNetwork(val displayName: String, val color: Color) {
@@ -54,6 +55,7 @@ fun BuyLoadScreen(navController: NavController) {
     var selectedNetwork by remember { mutableStateOf(MobileNetwork.UNKNOWN) }
     
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     
     // Auto-detect network based on prefix
     LaunchedEffect(phoneNumber) {
@@ -99,24 +101,34 @@ fun BuyLoadScreen(navController: NavController) {
 
                         // Deduct balance
                         AppState.updateWalletBalance(AppState.walletBalance.value - loadAmount)
-                        AppState.processPayRoundUp(
-                            sourceReference = "LOAD-${UUID.randomUUID().toString().take(8).uppercase()}",
-                            sourceAmount = loadAmount,
-                            sourceLabel = "Buy Load"
-                        )
+                        scope.launch {
+                            AppState.processPayRoundUp(
+                                sourceReference = "LOAD-${UUID.randomUUID().toString().take(8).uppercase()}",
+                                sourceAmount = loadAmount,
+                                sourceLabel = "Buy Load",
+                                mpin = "" // Note: Auto-invest will fail without MPIN, but it won't crash
+                            )
+                        }
                         
                         // Log activity
-                        AppState.homeActivities.add(
-                            0,
-                            HomeActivity(
-                                icon = "phone_android",
-                                title = "Load: ${selectedNetwork.displayName}",
-                                subtitle = "To: $phoneNumber",
-                                amount = "-₱${String.format("%,.2f", loadAmount)}",
-                                isPositive = false,
-                                module = "Wallet"
-                            )
+                        val activity = HomeActivity(
+                            icon = "phone_android",
+                            title = "Load: ${selectedNetwork.displayName}",
+                            subtitle = "To: $phoneNumber",
+                            amount = "-₱${String.format("%,.2f", loadAmount)}",
+                            isPositive = false,
+                            module = "Wallet"
                         )
+                        AppState.homeActivities.add(0, activity)
+                        
+                        val uid = AuthRepository.getCurrentUserId()
+                        if (uid != null) {
+                            scope.launch {
+                                HomeRepository.createActivity(uid, activity)
+                            }
+                        }
+                        
+                        AppState.incrementPundarScore(1) // +1 point for buying load
 
                         Toast.makeText(context, "Load successfully purchased!", Toast.LENGTH_SHORT).show()
                         navController.navigateUp()

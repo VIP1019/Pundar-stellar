@@ -55,6 +55,7 @@ fun HomeScreen(navController: NavController) {
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
 
+    var selectedActivity by remember { mutableStateOf<com.example.pundarapp.ui.data.HomeActivity?>(null) }
     var isLoadingActivities by remember { mutableStateOf(true) }
     var isRefreshing        by remember { mutableStateOf(false) }
     val pullState           = rememberPullToRefreshState()
@@ -93,7 +94,7 @@ fun HomeScreen(navController: NavController) {
                 userName            = firstName,
                 userInitials        = initials,
                 profileImageUrl     = session?.profileImageUrl,
-                pundarScore         = user.pundarScore,
+                pundarScore         = AppState.pundarScore.intValue,
                 onScoreClick        = { navController.navigate(Routes.SCORE) },
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
@@ -122,7 +123,7 @@ fun HomeScreen(navController: NavController) {
                 }
 
                 // Stats row
-                item { StatsRow(totalSaved, user.pundarScore) }
+                item { StatsRow(totalSaved, AppState.pundarScore.intValue) }
 
                 // Quick Actions
                 item { QuickActionsSection(navController) }
@@ -141,7 +142,7 @@ fun HomeScreen(navController: NavController) {
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
                         TextButton(onClick = {
-                            Toast.makeText(context, "Coming soon!", Toast.LENGTH_SHORT).show()
+                            navController.navigate(com.example.pundarapp.ui.navigation.Routes.ALL_ACTIVITY)
                         }) {
                             Text("View All", style = MaterialTheme.typography.labelLarge, color = Blue400)
                         }
@@ -154,7 +155,11 @@ fun HomeScreen(navController: NavController) {
                     item { EmptyActivity() }
                 } else {
                     itemsIndexed(AppState.homeActivities) { idx, activity ->
-                        ActivityRow(activity = activity, index = idx)
+                        ActivityRow(
+                            activity = activity,
+                            index = idx,
+                            onClick = { selectedActivity = activity }
+                        )
                     }
                 }
 
@@ -167,6 +172,47 @@ fun HomeScreen(navController: NavController) {
             }
         }
     }
+
+    selectedActivity?.let { activity ->
+        AlertDialog(
+            onDismissRequest = { selectedActivity = null },
+            containerColor = PundarTheme.colors.surfaceSecondary,
+            title = {
+                Text(
+                    text = "Activity Details",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = PundarTheme.colors.textPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column {
+                        Text(text = "Title", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
+                        Text(text = activity.title, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
+                    }
+                    Column {
+                        Text(text = "Description", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
+                        Text(text = activity.subtitle, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
+                    }
+                    Column {
+                        Text(text = "Amount", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
+                        Text(text = activity.amount, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
+                    }
+                    Column {
+                        Text(text = "Module", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
+                        Text(text = activity.module, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedActivity = null }) {
+                    Text("Close", color = PundarTheme.colors.brandPrimary)
+                }
+            }
+        )
+    }
+
     } // AnimatedBackground
 }
 
@@ -281,7 +327,7 @@ private fun QuickTile(
 
 // ── Activity Row ──────────────────────────────────────────────────
 @Composable
-private fun ActivityRow(activity: HomeActivity, index: Int) {
+private fun ActivityRow(activity: HomeActivity, index: Int, onClick: () -> Unit = {}) {
     val accent = when (activity.module) {
         "Pay"    -> Blue400
         "Circle" -> PundarTheme.colors.accentGold
@@ -307,6 +353,7 @@ private fun ActivityRow(activity: HomeActivity, index: Int) {
             .fillMaxWidth()
             .graphicsLayer(translationX = slideX.value, alpha = alpha.value)
             .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
             .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
             .border(1.dp, PundarTheme.colors.glassSubtle, RoundedCornerShape(16.dp))
             .padding(14.dp),

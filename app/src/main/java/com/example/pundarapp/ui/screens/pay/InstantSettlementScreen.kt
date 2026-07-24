@@ -124,7 +124,7 @@ fun InstantSettlementScreen(navController: NavController) {
                                 Icon(
                                     Icons.Filled.CheckCircle,
                                     contentDescription = null,
-                                    tint = PundarSuccess,
+                                    tint = Green400,
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Spacer(Modifier.height(12.dp))
@@ -230,10 +230,12 @@ fun InstantSettlementScreen(navController: NavController) {
                         val growInvestment = AppState.processPayRoundUp(
                             sourceReference = transactionRef,
                             sourceAmount = totalSettlement,
-                            sourceLabel = "Instant Settlement"
+                            sourceLabel = "Instant Settlement",
+                            mpin = ""
                         )
                         AppState.requestHomeRefresh()
                         AppState.refreshNotifications()
+                        AppState.incrementPundarScore(5) // +5 points for bill settlement
 
                         processingStage = if (growInvestment != null) {
                             "Buying fractional ${growInvestment.ticker} shares..."
@@ -281,7 +283,7 @@ private fun WalletBalanceCard(balance: Double) {
     Box(
         Modifier.fillMaxWidth()
             .shadow(16.dp, RoundedCornerShape(20.dp),
-                ambientColor = ElectricBlue.copy(0.2f), spotColor = ElectricBlue.copy(0.2f))
+                ambientColor = Electric400.copy(0.2f), spotColor = Electric400.copy(0.2f))
             .clip(RoundedCornerShape(20.dp))
             .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
     ) {
@@ -298,7 +300,7 @@ private fun WalletBalanceCard(balance: Double) {
                 Icon(
                     Icons.Filled.AccountBalanceWallet,
                     contentDescription = null,
-                    tint = ElectricBlue,
+                    tint = Electric400,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(8.dp))
@@ -307,7 +309,7 @@ private fun WalletBalanceCard(balance: Double) {
                     fontSize = 10.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 2.sp,
-                    color = ElectricBlue.copy(0.85f)
+                    color = Electric400.copy(0.85f)
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -329,7 +331,7 @@ private fun SelectableBillCard(
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
-    val accent = if (isSelected) PremiumGoldWarm else ElectricBlue
+    val accent = if (isSelected) PremiumGoldWarm else Electric400
     
     PundarCard {
         Row(
@@ -343,7 +345,7 @@ private fun SelectableBillCard(
                 onCheckedChange = { onToggle() },
                 colors = CheckboxDefaults.colors(
                     checkedColor = PremiumGoldWarm,
-                    uncheckedColor = PundarBorder
+                    uncheckedColor = NavyBorder
                 )
             )
             Spacer(Modifier.width(8.dp))
@@ -409,7 +411,7 @@ private fun SettlementBottomBar(
                         Text(
                             text = "+ ₱${String.format("%,.2f", roundUpAmount)} Grow round-up",
                             style = MaterialTheme.typography.labelSmall,
-                            color = ElectricBlue
+                            color = Electric400
                         )
                     }
                 }
@@ -506,7 +508,7 @@ private fun SettlementConfirmDialog(
                     Text(
                         "₱${String.format("%,.2f", roundUpAmount)}",
                         fontWeight = FontWeight.Bold,
-                        color = ElectricBlue
+                        color = Electric400
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -518,7 +520,7 @@ private fun SettlementConfirmDialog(
                     Text(
                         "₱${String.format("%,.2f", walletBalance - totalAmount - roundUpAmount)}",
                         fontWeight = FontWeight.Bold,
-                        color = if (hasSufficientBalance) PundarSuccess else WarningAmber
+                        color = if (hasSufficientBalance) Green400 else WarningAmber
                     )
                 }
                 
@@ -547,7 +549,7 @@ private fun SettlementConfirmDialog(
                 enabled = hasSufficientBalance,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PundarTheme.colors.brandPrimary,
-                    disabledContainerColor = PundarBorder
+                    disabledContainerColor = NavyBorder
                 )
             ) {
                 Text("Confirm & Pay")
@@ -623,15 +625,15 @@ private fun SuccessDialog(
                             scaleY = scale.value,
                             alpha = alpha.value
                         )
-                        .shadow(12.dp, CircleShape, ambientColor = PundarSuccess.copy(0.4f))
+                        .shadow(12.dp, CircleShape, ambientColor = Green400.copy(0.4f))
                         .clip(CircleShape)
-                        .background(PundarSuccess.copy(0.15f)),
+                        .background(Green400.copy(0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Filled.CheckCircle,
                         contentDescription = null,
-                        tint = PundarSuccess,
+                        tint = Green400,
                         modifier = Modifier.size(48.dp)
                     )
                 }
@@ -662,7 +664,7 @@ private fun SuccessDialog(
                     Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(PundarTheme.colors.bgPrimary)
-                        .border(1.dp, PundarBorder, RoundedCornerShape(12.dp))
+                        .border(1.dp, NavyBorder, RoundedCornerShape(12.dp))
                         .padding(16.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -674,7 +676,7 @@ private fun SuccessDialog(
                             Text(
                                 "₱${String.format("%,.2f", totalAmount)}",
                                 fontWeight = FontWeight.Bold,
-                                color = PundarSuccess,
+                                color = Green400,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -698,7 +700,7 @@ private fun SuccessDialog(
                             Text(
                                 "₱${String.format("%,.2f", roundUpAmount)}",
                                 fontWeight = FontWeight.Bold,
-                                color = ElectricBlue,
+                                color = Electric400,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -711,12 +713,12 @@ private fun SuccessDialog(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon3DCheckBadge(size = 16.dp)
+                    Icon(Icons.Filled.CheckCircle, null, tint = Green400, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "Settlement builds your PUNDAR Score",
                         style = MaterialTheme.typography.bodySmall,
-                        color = ElectricBlue,
+                        color = Electric400,
                         textAlign = TextAlign.Center
                     )
                 }

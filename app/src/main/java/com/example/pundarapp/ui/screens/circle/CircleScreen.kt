@@ -61,7 +61,7 @@ fun CircleScreen(navController: NavController) {
                 userName            = currentName,
                 userInitials        = initials,
                 profileImageUrl     = userSession?.profileImageUrl,
-                pundarScore         = SampleData.currentUser.pundarScore,
+                pundarScore         = AppState.pundarScore.intValue,
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
             )
