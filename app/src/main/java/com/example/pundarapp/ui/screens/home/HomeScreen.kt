@@ -174,42 +174,9 @@ fun HomeScreen(navController: NavController) {
     }
 
     selectedActivity?.let { activity ->
-        AlertDialog(
-            onDismissRequest = { selectedActivity = null },
-            containerColor = PundarTheme.colors.surfaceSecondary,
-            title = {
-                Text(
-                    text = "Activity Details",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = PundarTheme.colors.textPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column {
-                        Text(text = "Title", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
-                        Text(text = activity.title, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
-                    }
-                    Column {
-                        Text(text = "Description", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
-                        Text(text = activity.subtitle, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
-                    }
-                    Column {
-                        Text(text = "Amount", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
-                        Text(text = activity.amount, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
-                    }
-                    Column {
-                        Text(text = "Module", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
-                        Text(text = activity.module, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { selectedActivity = null }) {
-                    Text("Close", color = PundarTheme.colors.brandPrimary)
-                }
-            }
+        ReceiptDialog(
+            activity = activity,
+            onDismiss = { selectedActivity = null }
         )
     }
 

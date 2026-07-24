@@ -62,9 +62,9 @@ fun ActivityHistoryScreen(navController: NavController) {
             }
         }
 
-        // Detail Dialog
+        // Receipt Dialog
         selectedActivity?.let { activity ->
-            ActivityDetailDialog(
+            ReceiptDialog(
                 activity = activity,
                 onDismiss = { selectedActivity = null }
             )
@@ -132,41 +132,3 @@ private fun ActivityRowClickable(activity: HomeActivity, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun ActivityDetailDialog(activity: HomeActivity, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = PundarTheme.colors.surfaceSecondary,
-        title = {
-            Text(
-                text = "Activity Details",
-                style = MaterialTheme.typography.titleLarge,
-                color = PundarTheme.colors.textPrimary,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                DetailRow("Title", activity.title)
-                DetailRow("Description", activity.subtitle)
-                DetailRow("Amount", activity.amount)
-                DetailRow("Module", activity.module)
-                DetailRow("Status", "Completed")
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close", color = PundarTheme.colors.brandPrimary)
-            }
-        }
-    )
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-    Column {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textMuted)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = value, style = MaterialTheme.typography.bodyLarge, color = PundarTheme.colors.textPrimary)
-    }
-}

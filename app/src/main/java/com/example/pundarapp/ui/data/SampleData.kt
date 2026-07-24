@@ -171,7 +171,9 @@ data class HomeActivity(
     val subtitle: String,
     val amount: String,
     val isPositive: Boolean,
-    val module: String // "Pay", "Circle", "Grow"
+    val module: String, // "Pay", "Circle", "Grow"
+    val timestamp: Long = System.currentTimeMillis(),
+    val referenceId: String = "TXN-${System.currentTimeMillis()}"
 )
 
 // ── Sample Data ─────────────────────────────────────────────────
