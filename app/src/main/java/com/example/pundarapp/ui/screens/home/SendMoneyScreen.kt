@@ -218,13 +218,13 @@ fun SendMoneyScreen(navController: NavController) {
             ) {
                 Column {
                     Text("Available Balance",
-                        style = MaterialTheme.typography.labelSmall, color = Blue200.copy(0.75f))
+                        style = MaterialTheme.typography.labelSmall, color = Color.White.copy(0.75f))
                     Spacer(Modifier.height(4.dp))
                     Text(
                         AppState.getDisplayBalance(),
                         style      = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color      = PundarTheme.colors.surfacePrimary
+                        color      = Color.White
                     )
                 }
             }

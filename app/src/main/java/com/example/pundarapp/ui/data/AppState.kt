@@ -544,7 +544,7 @@ object AppState {
                 module = "Grow"
             )
         )
-        
+        persistPortfolioValue()
         return RoundUpInvestment(
             reference = "RINV-${System.currentTimeMillis()}",
             sourceReference = sourceReference,
@@ -609,6 +609,7 @@ object AppState {
         )
         // Deduct from wallet
         updateWalletBalance(walletBalance.value - amount)
+        persistPortfolioValue()
         addHomeActivity(
             HomeActivity(
                 icon = "trending_up",
@@ -640,6 +641,7 @@ object AppState {
         )
         // Add back to wallet
         updateWalletBalance(walletBalance.value + amount)
+        persistPortfolioValue()
         addHomeActivity(
             HomeActivity(
                 icon = "trending_down",
@@ -651,6 +653,13 @@ object AppState {
             )
         )
         return true
+    }
+
+    private fun persistPortfolioValue() {
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isNotBlank()) {
+            prefs?.edit()?.putFloat("portfolio_value_$phone", portfolio.value.totalValue.toFloat())?.apply()
+        }
     }
 
     // ── NOTIFICATIONS ───────────────────────────────────────────────
@@ -808,6 +817,11 @@ object AppState {
                 walletBalance.value = prefs?.getFloat(key, 0f)?.toDouble() ?: 0.0
             }
             pundarScore.value = prefs?.getInt("pundar_score_$phone", 850) ?: 850
+            // Restore portfolio totalValue
+            val savedPortfolioValue = prefs?.getFloat("portfolio_value_$phone", -1f) ?: -1f
+            if (savedPortfolioValue >= 0f) {
+                portfolio.value = portfolio.value.copy(totalValue = savedPortfolioValue.toDouble())
+            }
         }
     }
 
@@ -884,6 +898,10 @@ object AppState {
     }
 
     fun clearSession() {
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isNotBlank()) {
+            prefs?.edit()?.remove("portfolio_value_$phone")?.apply()
+        }
         bills.clear()
         bills.addAll(SampleData.recentBills)
         circles.clear()

@@ -195,7 +195,23 @@ fun GrowScreen(navController: NavController) {
                         val result = com.example.pundarapp.data.stellar.StellarWalletManager.buyMockRwa(pk, seed, rwaPin, rwaAmount)
                         if (result.isSuccess) {
                             val amountDouble = rwaAmount.toDoubleOrNull() ?: 0.0
+                            val phpAmount = amountDouble * AppState.currentExchangeRate.doubleValue
+                            // Deduct wallet
                             AppState.updateWalletBalance(AppState.walletBalance.value - amountDouble)
+                            // Add to portfolio totalValue in PHP
+                            val old = AppState.portfolio.value
+                            AppState.portfolio.value = old.copy(
+                                totalValue = old.totalValue + phpAmount,
+                                activities = listOf(
+                                    com.example.pundarapp.ui.data.PortfolioActivity(
+                                        type = com.example.pundarapp.ui.data.ActivityType.DEPOSIT,
+                                        amount = phpAmount,
+                                        date = "Just now",
+                                        description = "Bought P_SP500 tokenized shares",
+                                        isPositive = true
+                                    )
+                                ) + old.activities
+                            )
                             AppState.addHomeActivity(
                                 com.example.pundarapp.ui.data.HomeActivity(
                                     icon = "trending_up",
@@ -288,7 +304,23 @@ fun GrowScreen(navController: NavController) {
                         val result = com.example.pundarapp.data.stellar.StellarWalletManager.sellMockRwa(pk, seed, rwaPin, rwaAmount)
                         if (result.isSuccess) {
                             val amountDouble = rwaAmount.toDoubleOrNull() ?: 0.0
+                            val phpAmount = amountDouble * AppState.currentExchangeRate.doubleValue
+                            // Refund wallet
                             AppState.updateWalletBalance(AppState.walletBalance.value + amountDouble)
+                            // Subtract from portfolio totalValue in PHP
+                            val old = AppState.portfolio.value
+                            AppState.portfolio.value = old.copy(
+                                totalValue = (old.totalValue - phpAmount).coerceAtLeast(0.0),
+                                activities = listOf(
+                                    com.example.pundarapp.ui.data.PortfolioActivity(
+                                        type = com.example.pundarapp.ui.data.ActivityType.WITHDRAWAL,
+                                        amount = phpAmount,
+                                        date = "Just now",
+                                        description = "Sold P_SP500 tokenized shares",
+                                        isPositive = false
+                                    )
+                                ) + old.activities
+                            )
                             AppState.addHomeActivity(
                                 com.example.pundarapp.ui.data.HomeActivity(
                                     icon = "trending_down",
