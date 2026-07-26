@@ -342,6 +342,16 @@ object StellarWalletManager {
                 Scv.toUint64(BigInteger.valueOf(cycleDurationSeconds))
             )
 
+            Log.d(TAG, "Ensuring account is funded before contract invocation...")
+            try {
+                val server = Server(HORIZON_URL)
+                server.accounts().account(adminPublicKey)
+            } catch (e: Exception) {
+                Log.d(TAG, "Account not found or not funded. Attempting to fund with Friendbot...")
+                fundTestnetAccount(adminPublicKey)
+                kotlinx.coroutines.delay(3000) // Wait for funding to complete
+            }
+
             Log.d(TAG, "Invoking create_circle contract function...")
             val result = invokeContract(adminPublicKey, adminKeyPair, "create_circle", args)
             if (result.isSuccess) {

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,14 +45,19 @@ private val EaseInOutSine = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CircleScreen(navController: NavController) {
+fun CircleScreen(navController: NavController, openDrawer: () -> Unit = {}) {
     val currentName = AuthRepository.getCurrentUserName()
     val initials    = AuthRepository.getCurrentUserInitials()
     val userSession by AuthRepository.currentUserState
     val invitation  = AppState.pendingInvitation.value
 
+    val coroutineScope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val requestedCircles = remember { mutableStateListOf<String>() }
+
     LaunchedEffect(Unit) {
         AppState.refreshCircles()
+        AppState.refreshDiscoverableCircles()
     }
 
     AnimatedBackground(accent = BgAccent.Purple) {
@@ -62,8 +68,10 @@ fun CircleScreen(navController: NavController) {
                 userInitials        = initials,
                 profileImageUrl     = userSession?.profileImageUrl,
                 pundarScore         = AppState.pundarScore.intValue,
+                onRequestClick      = { navController.navigate(Routes.REQUESTS) },
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
-                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
+                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
+                onMenuClick         = openDrawer
             )
         },
         floatingActionButton = {
@@ -78,13 +86,7 @@ fun CircleScreen(navController: NavController) {
         ) {
             item { CircleHeroHeader() }
 
-            if (invitation != null) {
-                item {
-                    InvitationBanner(circleName = invitation.circleName) {
-                        navController.navigate(Routes.circleInvite(invitation.id))
-                    }
-                }
-            }
+
 
             item {
                 Text(
@@ -103,6 +105,38 @@ fun CircleScreen(navController: NavController) {
                     CircleCard(circle = circle, index = idx) {
                         navController.navigate(Routes.circleDetail(circle.id))
                     }
+                }
+            }
+
+            if (AppState.discoverableCircles.isNotEmpty()) {
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item {
+                    Text(
+                        "Discover Paluwagan Groups",
+                        fontWeight    = FontWeight.Bold,
+                        fontSize      = 15.sp,
+                        color         = PundarTheme.colors.textPrimary,
+                        letterSpacing = 0.2.sp
+                    )
+                }
+                itemsIndexed(AppState.discoverableCircles.toList()) { idx, circle ->
+                    val hasRequested = requestedCircles.contains(circle.id)
+                    DiscoverCircleCard(
+                        circle = circle,
+                        hasRequested = hasRequested,
+                        onRequestJoin = {
+                            if (hasRequested) return@DiscoverCircleCard
+                            coroutineScope.launch {
+                                val res = AppState.requestToJoinCircle(circle.id)
+                                if (res.isSuccess) {
+                                    requestedCircles.add(circle.id)
+                                    android.widget.Toast.makeText(context, "Request sent to join ${circle.name}", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    android.widget.Toast.makeText(context, "Failed to send request", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -333,13 +367,13 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        "${String.format("%,.0f", circle.targetAmount)} XLM",
+                        if (circle.currency == "XLM") "${String.format("%,.0f", circle.targetAmount)} XLM" else "${String.format("%,.0f", circle.targetAmount)} ${circle.currency}",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize   = 16.sp,
                         color      = accentColor
                     )
                     Text(
-                        AppState.formatFiat(circle.targetAmount),
+                        if (circle.currency == "XLM") AppState.formatFiat(circle.targetAmount) else "~ ${String.format("%,.2f", circle.targetAmount / AppState.currentExchangeRate.doubleValue.coerceAtLeast(0.0001))} XLM",
                         fontWeight = FontWeight.Medium,
                         fontSize   = 10.sp,
                         color      = PundarTheme.colors.textSecondary
@@ -380,7 +414,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "₱${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} left",
+                    if (circle.currency == "XLM") "${String.format("%,.2f", circle.targetAmount - circle.savedAmount)} XLM left" else "${circle.currency} ${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} left",
                     style      = MaterialTheme.typography.labelSmall,
                     color      = PundarTheme.colors.textSecondary,
                     fontWeight = FontWeight.SemiBold
@@ -404,7 +438,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                 ) {
                     Text("Total Saved", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                     Text(
-                        "₱${String.format("%,.0f", circle.savedAmount)}",
+                        if (circle.currency == "XLM") "${String.format("%,.2f", circle.savedAmount)} XLM" else "${circle.currency} ${String.format("%,.0f", circle.savedAmount)}",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize   = 16.sp,
                         color      = accentColor
@@ -437,6 +471,65 @@ private fun CircleEmptyState() {
                 color     = PundarTheme.colors.textMuted,
                 textAlign = TextAlign.Center
             )
+        }
+    }
+}
+
+// ── Discover Circle Card ───────────────────────────────────────────
+@Composable
+fun DiscoverCircleCard(circle: Circle, hasRequested: Boolean = false, onRequestJoin: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(PundarTheme.colors.surfacePrimary)
+            .border(1.dp, PundarTheme.colors.surfaceSecondary, RoundedCornerShape(24.dp))
+            .padding(20.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = circle.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = PundarTheme.colors.textPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                Button(
+                    onClick = onRequestJoin,
+                    enabled = !hasRequested,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (hasRequested) PundarTheme.colors.surfaceTertiary else NeonGreen.copy(0.15f),
+                        contentColor = if (hasRequested) PundarTheme.colors.textSecondary else NeonGreen,
+                        disabledContainerColor = PundarTheme.colors.surfaceTertiary,
+                        disabledContentColor = PundarTheme.colors.textSecondary
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Text(if (hasRequested) "Requested" else "Request to Join", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.PeopleAlt, null, tint = PundarTheme.colors.textSecondary, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "${circle.memberCount} / ${circle.maxMembers} members",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = PundarTheme.colors.textSecondary
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.AccountBalanceWallet, null, tint = PundarTheme.colors.textSecondary, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Goal: ₱${String.format("%,.0f", circle.targetAmount)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = PundarTheme.colors.textSecondary
+                )
+            }
         }
     }
 }

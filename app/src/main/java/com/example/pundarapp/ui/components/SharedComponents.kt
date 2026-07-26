@@ -101,8 +101,10 @@ fun MemberListItem(
     status:        ContributionStatus,
     isYou:         Boolean = false,
     avatarColor:   Color   = PundarTheme.colors.brandPrimary,
+    payoutDate:    String  = "",
     showNudge:     Boolean = false,
     isHighlighted: Boolean = false,
+    payoutOrder:   Int     = -1,
     modifier:      Modifier = Modifier
 ) {
     val statusColor = when (status) {
@@ -173,6 +175,16 @@ fun MemberListItem(
                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
                 Text("$sharePercent% share",
                     style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textMuted)
+                if (payoutDate.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(payoutDate,
+                        style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.brandPrimary)
+                }
+                if (payoutOrder > 0) {
+                    Spacer(Modifier.height(2.dp))
+                    Text("#$payoutOrder in line",
+                        style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.accentGold, fontWeight = FontWeight.Bold)
+                }
             }
             if (showNudge) {
                 Spacer(Modifier.width(8.dp))

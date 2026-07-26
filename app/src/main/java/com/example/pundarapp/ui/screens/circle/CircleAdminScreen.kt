@@ -48,7 +48,7 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
 
     // Rules state
     var maxMembersInput by remember { mutableStateOf(circle.maxMembers.toString()) }
-    var dueDayInput by remember { mutableStateOf(circle.monthlyDueDay.toString()) }
+    var frequencyValueInput by remember { mutableStateOf(circle.payoutFrequencyValue.toString()) }
     var penaltyInput by remember { mutableStateOf(circle.penaltyAmount.toString()) }
     var penaltyEnabled by remember { mutableStateOf(circle.penaltyEnabled) }
 
@@ -237,15 +237,14 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                     )
                     Spacer(Modifier.height(10.dp))
                     AdminTextField(
-                        value = dueDayInput,
-                        onValueChange = { if (it.length <= 2) dueDayInput = it },
-                        label = "Monthly Due Day (1–28)",
+                        value = frequencyValueInput,
+                        onValueChange = { frequencyValueInput = it },
+                        label = "Release Every (${circle.payoutFrequencyUnit})",
                         keyboardType = KeyboardType.Number
                     )
-                    Spacer(Modifier.height(10.dp))
-
+                    Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Enable Penalty", color = PundarTheme.colors.textSecondary, modifier = Modifier.weight(1f))
+                        Text("Enable Penalty", color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         Switch(
                             checked = penaltyEnabled,
                             onCheckedChange = { penaltyEnabled = it },
@@ -266,13 +265,13 @@ fun CircleAdminScreen(circleId: String, navController: NavController) {
                     Button(
                         onClick = {
                             val newMax = maxMembersInput.toIntOrNull()?.coerceIn(2, 50) ?: circle.maxMembers
-                            val newDay = dueDayInput.toIntOrNull()?.coerceIn(1, 28) ?: circle.monthlyDueDay
+                            val newFreqVal = frequencyValueInput.toIntOrNull()?.coerceIn(1, 365) ?: circle.payoutFrequencyValue
                             val newPenalty = penaltyInput.toDoubleOrNull() ?: circle.penaltyAmount
                             val idx = AppState.circles.indexOfFirst { it.id == circleId }
                             if (idx >= 0) {
                                 AppState.circles[idx] = AppState.circles[idx].copy(
                                     maxMembers = newMax,
-                                    monthlyDueDay = newDay,
+                                    payoutFrequencyValue = newFreqVal,
                                     penaltyAmount = newPenalty,
                                     penaltyEnabled = penaltyEnabled
                                 )

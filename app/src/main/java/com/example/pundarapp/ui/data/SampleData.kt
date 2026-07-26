@@ -31,18 +31,20 @@ data class BillMember(
 )
 
 data class Circle(
-    val id: String,
-    val name: String,
-    val targetAmount: Double,
-    val savedAmount: Double,
-    val targetDate: String,
-    val memberCount: Int,
-    val contributionPerMonth: Double,
-    val members: List<CircleMember>,
+    val id: String = "",
+    val name: String = "",
+    val targetAmount: Double = 0.0,
+    val savedAmount: Double = 0.0,
+    val targetDate: String = "",
+    val memberCount: Int = 0,
+    val contributionPerMonth: Double = 0.0,
+    val members: List<CircleMember> = emptyList(),
     val isActive: Boolean = true,
+    val currency: String = "XLM",
     val escrowAddress: String = "0x7f...9A2B",
     val escrowNetwork: String = "Stellar Network",
-    val monthlyDueDay: Int = 5,
+    val payoutFrequencyValue: Int = 1,
+    val payoutFrequencyUnit: String = "Months",
     val maxMembers: Int = 10,
     val creatorId: String = "",
     val cycleStatus: CycleStatus = CycleStatus.NOT_STARTED,
@@ -51,20 +53,24 @@ data class Circle(
     val penaltyEnabled: Boolean = false,
     val cycleStartDate: String = "",
     val cycleEndDate: String = "",
-    val currentRecipientIndex: Int = 0
+    val currentRecipientIndex: Int = 0,
+    val payoutOrderType: String = "Customized"
 ) {
+    @get:com.google.firebase.firestore.Exclude
     val isFull: Boolean get() = memberCount >= maxMembers
+    @get:com.google.firebase.firestore.Exclude
     val remainingSlots: Int get() = (maxMembers - memberCount).coerceAtLeast(0)
 }
 
 data class CircleMember(
     val userId: String = "",
-    val name: String,
-    val initials: String,
-    val sharePercent: Int,
-    val amount: Double,
-    val status: ContributionStatus,
+    val name: String = "",
+    val initials: String = "",
+    val sharePercent: Int = 0,
+    val amount: Double = 0.0,
+    val status: ContributionStatus = ContributionStatus.PENDING,
     val isYou: Boolean = false,
+    val payoutDate: String = "",
     val avatarColor: Long = 0xFF6B7280
 )
 
@@ -75,27 +81,50 @@ enum class CycleStatus { NOT_STARTED, ACTIVE, PAUSED, COMPLETED }
 enum class InviteMethod { QR_CODE, SHARE_LINK, USERNAME, PHONE_NUMBER }
 
 data class CircleInvitation(
-    val id: String,
+    val id: String = "",
     val circleId: String = "",
-    val circleName: String,
-    val goal: String,
-    val inviterName: String,
-    val inviterScore: Int,
-    val inviterCirclesCompleted: Int,
-    val targetAmount: Double,
-    val fundedPercent: Int,
-    val monthlyContribution: Double,
-    val memberCount: Int,
-    val maxMembers: Int,
+    val circleName: String = "",
+    val goal: String = "",
+    val inviterName: String = "",
+    val inviterScore: Int = 0,
+    val inviterCirclesCompleted: Int = 0,
+    val targetAmount: Double = 0.0,
+    val fundedPercent: Int = 0,
+    val monthlyContribution: Double = 0.0,
+    val memberCount: Int = 0,
+    val maxMembers: Int = 0,
     val inviterInitials: String = "",
     val inviterAvatarColor: Long = 0xFF0052CC
 )
 
 data class CircleJoinRequest(
+    val id: String = "",
+    val userId: String = "",
+    val userName: String = "",
+    val circleId: String = ""
+)
+
+enum class RequestType { BILL_INVITE, CIRCLE_INVITE, CIRCLE_JOIN_REQUEST }
+
+data class AppRequest(
     val id: String,
-    val userId: String,
-    val userName: String,
-    val circleId: String
+    val type: RequestType,
+    val title: String,
+    val subtitle: String,
+    val date: String,
+    val payload: Any // Can cast to BillInvitation, CircleInvitation, or CircleJoinRequest based on type
+)
+
+data class BillInvitation(
+    val id: String = "",
+    val billId: String = "",
+    val billName: String = "",
+    val inviterName: String = "",
+    val inviterPhone: String = "",
+    val inviteePhone: String = "",
+    val yourShare: Double = 0.0,
+    val totalAmount: Double = 0.0,
+    val currency: String = "XLM"
 )
 
 data class Portfolio(
@@ -181,8 +210,8 @@ data class HomeActivity(
 object SampleData {
 
     val currentUser = PundarUser(
-        name = "Juan Dela Cruz",
-        initials = "JD",
+        name = "Tom",
+        initials = "T",
         pundarScore = 850
     )
 

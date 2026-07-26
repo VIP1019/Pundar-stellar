@@ -50,7 +50,7 @@ private val EaseOutBack = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController) {
+fun HomeScreen(navController: NavController, openDrawer: () -> Unit = {}) {
     val user    = SampleData.currentUser
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
@@ -69,6 +69,7 @@ fun HomeScreen(navController: NavController) {
                 ?.let { AppState.homeActivities.addAll(it) }
         }
         AppState.refreshWalletBalance()
+        AppState.refreshCircles()
     }
 
     LaunchedEffect(Unit, refreshTrigger) { refreshData(); isLoadingActivities = false }
@@ -96,8 +97,10 @@ fun HomeScreen(navController: NavController) {
                 profileImageUrl     = session?.profileImageUrl,
                 pundarScore         = AppState.pundarScore.intValue,
                 onScoreClick        = { navController.navigate(Routes.SCORE) },
+                onRequestClick      = { navController.navigate(Routes.REQUESTS) },
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
-                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
+                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
+                onMenuClick         = openDrawer
             )
         },
         containerColor = Color.Transparent
@@ -189,7 +192,7 @@ private fun StatsRow(totalSaved: Double, score: Int) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         StatCard(Modifier.weight(1f), "Total Saved",
             "₱${String.format("%,.0f", totalSaved)}", Icons.Filled.Savings, PundarTheme.colors.accentGreen, 0)
-        StatCard(Modifier.weight(1f), "Credit Score",
+        StatCard(Modifier.weight(1f), "Pundar Score",
             score.toString(), Icons.Filled.Star, PundarTheme.colors.accentGold, 70)
     }
 }

@@ -37,6 +37,7 @@ import com.example.pundarapp.ui.theme.*
 
 import com.example.pundarapp.ui.theme.PundarTheme
 import com.example.pundarapp.data.remote.AuthRepository
+import kotlinx.coroutines.launch
 
 private val EaseOutBack   = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
 private val EaseOutExpo   = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
@@ -44,7 +45,7 @@ private val EaseInOutSine = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PayScreen(navController: NavController) {
+fun PayScreen(navController: NavController, openDrawer: () -> Unit = {}) {
     val bills         = AppState.bills
     val settledCount  = bills.count { it.status == BillStatus.SETTLED }
     val pendingCount  = bills.count { it.status == BillStatus.PENDING || it.status == BillStatus.PARTIAL }
@@ -52,6 +53,10 @@ fun PayScreen(navController: NavController) {
     val userSession by AuthRepository.currentUserState
     val currentName   = userSession?.name ?: "User"
     val initials      = AuthRepository.getCurrentUserInitials()
+
+    val scope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+    val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
 
     AnimatedBackground(accent = BgAccent.Teal) {
     Scaffold(
@@ -61,16 +66,34 @@ fun PayScreen(navController: NavController) {
                 userInitials        = initials,
                 profileImageUrl     = userSession?.profileImageUrl,
                 pundarScore         = AppState.pundarScore.intValue,
+                onRequestClick      = { navController.navigate(Routes.REQUESTS) },
                 onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
-                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
+                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
+                onMenuClick         = openDrawer
             )
         },
         floatingActionButton = { PayFab { navController.navigate(Routes.PAY_NEW_BILL) } },
         containerColor = Color.Transparent
     ) { padding ->
-        LazyColumn(
-            modifier            = Modifier.fillMaxSize().padding(padding),
-            contentPadding      = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                scope.launch {
+                    if (AuthRepository.isUserLoggedIn()) {
+                        val remoteBills = com.example.pundarapp.data.remote.PayRepository.getBills()
+                        bills.clear()
+                        bills.addAll(remoteBills)
+                    }
+                    isRefreshing = false
+                }
+            },
+            state = pullState,
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
+            LazyColumn(
+                modifier            = Modifier.fillMaxSize(),
+                contentPadding      = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item { PayHeroHeader() }
@@ -96,6 +119,7 @@ fun PayScreen(navController: NavController) {
                 }
             }
         }
+        } // PullToRefreshBox
     }
     } // AnimatedBackground
 }

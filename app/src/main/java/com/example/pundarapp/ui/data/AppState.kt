@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import android.util.Log
 import android.telephony.TelephonyManager
 import java.util.Locale
@@ -93,7 +94,7 @@ fun getCurrencySymbol(code: String): String {
 object AppState {
 
     // ── PAY ─────────────────────────────────────────────────────────
-    val bills = mutableStateListOf<GroupBill>().apply { addAll(SampleData.recentBills) }
+    val bills = mutableStateListOf<GroupBill>()
     private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
         Log.e("AppState", "Background operation failed", exception)
     }
@@ -104,12 +105,13 @@ object AppState {
         scope.launch {
             if (AuthRepository.isUserLoggedIn()) {
                 val remoteBills = PayRepository.getBills()
-                if (remoteBills.isNotEmpty()) {
-                    bills.clear()
-                    bills.addAll(remoteBills)
-                }
+                bills.clear()
+                bills.addAll(remoteBills)
+                
                 refreshNotifications()
                 loadFavorites()
+                refreshCircles()
+                loadHomeActivities(AuthRepository.getCurrentUserPhone())
             }
         }
     }
@@ -177,10 +179,78 @@ object AppState {
         }
     }
 
+    fun refreshBills() {
+        scope.launch {
+            if (AuthRepository.isUserLoggedIn()) {
+                val remoteBills = PayRepository.getBills()
+                bills.clear()
+                bills.addAll(remoteBills)
+            }
+        }
+    }
+
     // ── CIRCLE ──────────────────────────────────────────────────────
-    val circles = mutableStateListOf<Circle>().apply { addAll(SampleData.circles) }
+    val circles = mutableStateListOf<Circle>()
+    val discoverableCircles = mutableStateListOf<Circle>()
     val pendingInvitation = mutableStateOf<CircleInvitation?>(null)
     val pendingJoinRequests = mutableStateListOf<CircleJoinRequest>()
+    val unifiedRequests = mutableStateListOf<com.example.pundarapp.ui.data.AppRequest>()
+
+    fun refreshUnifiedRequests() {
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isBlank()) return
+        scope.launch {
+            val requests = mutableListOf<com.example.pundarapp.ui.data.AppRequest>()
+            
+            // 1. Bill Invitations
+            val billInvites = com.example.pundarapp.data.remote.PayRepository.getBillInvitations(phone)
+            billInvites.forEach { bi ->
+                requests.add(
+                    com.example.pundarapp.ui.data.AppRequest(
+                        id = bi.id,
+                        type = com.example.pundarapp.ui.data.RequestType.BILL_INVITE,
+                        title = "Split Bill Request",
+                        subtitle = "${bi.inviterName} invited you to split '${bi.billName}'. Your share: ${String.format("%,.2f", bi.yourShare)} XLM.",
+                        date = "Just now",
+                        payload = bi
+                    )
+                )
+            }
+            
+            // 2. Circle Invitations
+            val circleInvites = CircleRepository.getPendingInvitations(phone)
+            circleInvites.forEach { ci ->
+                requests.add(
+                    com.example.pundarapp.ui.data.AppRequest(
+                        id = ci.id,
+                        type = com.example.pundarapp.ui.data.RequestType.CIRCLE_INVITE,
+                        title = "Circle Invitation",
+                        subtitle = "${ci.inviterName} invited you to join '${ci.circleName}'. Goal: ${ci.goal}",
+                        date = "Just now",
+                        payload = ci
+                    )
+                )
+            }
+            
+            // 3. Circle Join Requests
+            val joinRequests = CircleRepository.getPendingJoinRequestsForCreator(phone)
+            joinRequests.forEach { cjr ->
+                requests.add(
+                    com.example.pundarapp.ui.data.AppRequest(
+                        id = cjr.id,
+                        type = com.example.pundarapp.ui.data.RequestType.CIRCLE_JOIN_REQUEST,
+                        title = "Join Request",
+                        subtitle = "${cjr.userName} requested to join your circle.",
+                        date = "Just now",
+                        payload = cjr
+                    )
+                )
+            }
+            
+            unifiedRequests.clear()
+            unifiedRequests.addAll(requests)
+        }
+    }
 
     fun refreshCircles() {
         val userId = AuthRepository.getCurrentUserPhone()
@@ -189,7 +259,27 @@ object AppState {
             val remoteCircles = CircleRepository.getCirclesForUser(userId)
             circles.clear()
             circles.addAll(remoteCircles)
+            // Still updating legacy variables for backward compatibility if any
+            val pendingInvites = CircleRepository.getPendingInvitations(userId)
+            pendingInvitation.value = pendingInvites.firstOrNull()
         }
+        refreshUnifiedRequests()
+    }
+
+    fun refreshDiscoverableCircles() {
+        val userId = AuthRepository.getCurrentUserPhone()
+        if (userId.isBlank()) return
+        scope.launch {
+            val remoteDiscoverable = CircleRepository.getDiscoverableCircles(userId)
+            discoverableCircles.clear()
+            discoverableCircles.addAll(remoteDiscoverable)
+        }
+    }
+
+    suspend fun requestToJoinCircle(circleId: String): Result<Unit> {
+        val userId = AuthRepository.getCurrentUserPhone()
+        val userName = AuthRepository.getCurrentUserName()
+        return CircleRepository.requestToJoinCircle(circleId, userId, userName)
     }
 
     fun refreshJoinRequests(circleId: String) {
@@ -224,49 +314,60 @@ object AppState {
 
     suspend fun acceptInvitation(invitation: CircleInvitation): Result<Unit> {
         return try {
-            val newCircle = Circle(
-                id = "circle_${invitation.id}",
-                name = invitation.circleName,
-                targetAmount = invitation.targetAmount,
-                savedAmount = invitation.targetAmount * invitation.fundedPercent / 100.0,
-                targetDate = "Dec 2025",
-                memberCount = invitation.memberCount + 1,
-                contributionPerMonth = invitation.monthlyContribution,
-                members = listOf(
-                    CircleMember(
-                        name = AuthRepository.getCurrentUserName(),
-                        initials = AuthRepository.getCurrentUserInitials(),
-                        sharePercent = (100.0 / (invitation.memberCount + 1)).toInt(),
-                        amount = invitation.monthlyContribution,
-                        status = ContributionStatus.PAID,
-                        isYou = true,
-                        avatarColor = 0xFF0052CC
+            val userId = AuthRepository.getCurrentUserPhone()
+            val userName = AuthRepository.getCurrentUserName()
+            val userInitials = AuthRepository.getCurrentUserInitials()
+            
+            // Join the circle in Firestore
+            val joinResult = CircleRepository.joinCircle(
+                circleId = invitation.circleId,
+                userId = userId,
+                userName = userName,
+                userInitials = userInitials,
+                monthlyContribution = invitation.monthlyContribution
+            )
+            
+            if (joinResult.isSuccess) {
+                // Update invitation status
+                CircleRepository.updateInvitationStatus(invitation.id, "ACCEPTED")
+                pendingInvitation.value = null
+                
+                refreshCircles()
+                
+                addHomeActivity(
+                    HomeActivity(
+                        icon = "savings",
+                        title = invitation.circleName,
+                        subtitle = "Joined circle",
+                        amount = "+${String.format("%,.0f", invitation.monthlyContribution)} XLM/mo",
+                        isPositive = true,
+                        module = "Circle"
                     )
-                ),
-                isActive = true
-            )
-            circles.add(0, newCircle)
-            pendingInvitation.value = null
-
-            addHomeActivity(
-                HomeActivity(
-                    icon = "savings",
-                    title = invitation.circleName,
-                    subtitle = "Joined circle",
-                    amount = "+${String.format("%,.0f", invitation.monthlyContribution)} XLM/mo",
-                    isPositive = true,
-                    module = "Circle"
                 )
-            )
-            Result.success(Unit)
+                Result.success(Unit)
+            } else {
+                Result.failure(joinResult.exceptionOrNull() ?: Exception("Failed to join"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    fun contributeToCircle(circleId: String, amount: Double): Boolean {
+    suspend fun rejectInvitation(invitation: CircleInvitation): Result<Unit> {
+        return try {
+            val result = CircleRepository.updateInvitationStatus(invitation.id, "REJECTED")
+            if (result.isSuccess) {
+                pendingInvitation.value = null
+            }
+            result
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun contributeToCircle(circleId: String, circleCurrencyAmount: Double, xlmAmount: Double): Boolean {
         // Guard: insufficient balance
-        if (walletBalance.value < amount) return false
+        if (walletBalance.value < xlmAmount) return false
         val index = circles.indexOfFirst { it.id == circleId }
         if (index >= 0) {
             val old = circles[index]
@@ -274,28 +375,96 @@ object AppState {
                 if (member.isYou) {
                     member.copy(
                         status = ContributionStatus.PAID,
-                        amount = member.amount + amount
+                        amount = member.amount + circleCurrencyAmount
                     )
                 } else {
                     member
                 }
             }
-            circles[index] = old.copy(
-                savedAmount = (old.savedAmount + amount).coerceAtMost(old.targetAmount),
+            var finalCircle = old.copy(
+                savedAmount = (old.savedAmount + circleCurrencyAmount).coerceAtMost(old.targetAmount),
                 members = updatedMembers
             )
+            
+            var releasedFunds = 0.0
+            var recipientName = ""
+            
+            if (finalCircle.savedAmount >= finalCircle.targetAmount) {
+                // Auto-Release logic
+                val recipientIndex = finalCircle.currentRecipientIndex
+                if (recipientIndex < finalCircle.members.size) {
+                    val recipient = finalCircle.members[recipientIndex]
+                    recipientName = recipient.name
+                    releasedFunds = finalCircle.targetAmount
+                    
+                    val amountXlm = if (old.currency == "XLM") finalCircle.targetAmount else (finalCircle.targetAmount / AppState.currentExchangeRate.doubleValue)
+                    if (recipient.isYou) {
+                        // Directly add to wallet if you are the recipient
+                        updateWalletBalance(walletBalance.value + amountXlm)
+                    } else {
+                        // Update the other user's balance in Firestore
+                        scope.launch {
+                            try {
+                                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                val docId = if (recipient.userId.isNotEmpty()) recipient.userId else recipient.name
+                                val doc = db.collection("users").document(docId).get().await()
+                                if (doc.exists()) {
+                                    val currentBal = doc.getDouble("wallet_balance") ?: doc.getDouble("walletBalance") ?: 0.0
+                                    val newBal = currentBal + amountXlm
+                                    db.collection("users").document(docId).update(mapOf(
+                                        "wallet_balance" to newBal,
+                                        "walletBalance" to newBal
+                                    ))
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("AppState", "Failed to update recipient balance", e)
+                            }
+                        }
+                    }
+                    
+                    // Reset savedAmount, advance recipient, and reset member statuses for the next cycle
+                    val nextCycleMembers = finalCircle.members.map { m ->
+                        m.copy(status = com.example.pundarapp.ui.data.ContributionStatus.PENDING, amount = 0.0)
+                    }
+                    
+                    finalCircle = finalCircle.copy(
+                        savedAmount = 0.0,
+                        currentRecipientIndex = recipientIndex + 1,
+                        members = nextCycleMembers
+                    )
+                }
+            }
+            
+            circles[index] = finalCircle
+            
+            scope.launch {
+                com.example.pundarapp.data.remote.CircleRepository.updateCircle(finalCircle)
+            }
+            
             // Deduct from wallet
-            updateWalletBalance(walletBalance.value - amount)
+            updateWalletBalance(walletBalance.value - xlmAmount)
             addHomeActivity(
                 HomeActivity(
                     icon = "savings",
                     title = old.name,
                     subtitle = "Contribution sent",
-                    amount = "-${String.format("%,.2f", amount)} XLM",
+                    amount = if (old.currency == "XLM") "-${String.format("%,.2f", xlmAmount)} XLM" else "-${old.currency} ${String.format("%,.2f", circleCurrencyAmount)}",
                     isPositive = false,
                     module = "Circle"
                 )
             )
+            if (releasedFunds > 0) {
+                addHomeActivity(
+                    HomeActivity(
+                        icon = "savings",
+                        title = finalCircle.name,
+                        subtitle = "Funds auto-released to $recipientName",
+                        amount = if (old.currency == "XLM") "+${String.format("%,.2f", releasedFunds)} XLM" else "+${old.currency} ${String.format("%,.2f", releasedFunds)}",
+                        isPositive = true,
+                        module = "Circle"
+                    )
+                )
+            }
         }
         return true
     }
@@ -700,22 +869,22 @@ object AppState {
     }
 
     // ── HOME ACTIVITY FEED ──────────────────────────────────────────
-    val homeActivities = mutableStateListOf<HomeActivity>().apply { addAll(SampleData.homeActivities) }
+    val homeActivities = mutableStateListOf<HomeActivity>()
     val walletBalance = mutableStateOf(0.0)
     val homeRefreshTrigger = mutableIntStateOf(0)
-    val pundarScore = mutableIntStateOf(850)
+    val pundarScore = mutableIntStateOf(800)
 
     fun requestHomeRefresh() {
         homeRefreshTrigger.intValue += 1
     }
 
     fun loadUserBalance(phone: String, remoteBalance: Double) {
-        val key = "wallet_balance_$phone"
-        val hasLocal = prefs?.contains(key) == true
-        val localBalance = if (hasLocal) prefs?.getFloat(key, 0f)?.toDouble() ?: 0.0 else -1.0
-        val finalBalance = if (localBalance >= 0.0) localBalance else remoteBalance
+        // On login/load, the remote backend should always be the source of truth,
+        // so we don't accidentally load an outdated local cache if another user sent us funds.
+        val finalBalance = remoteBalance
         walletBalance.value = finalBalance
 
+        val key = "wallet_balance_$phone"
         prefs?.edit()?.putFloat(key, finalBalance.toFloat())?.apply()
         if (phone.isNotBlank()) {
             scope.launch {
@@ -749,11 +918,22 @@ object AppState {
     }
 
     fun refreshWalletBalance() {
-        // Local wallet balance is the source of truth, managed by
-        // Cash In / Send / Pay / Circle / Grow operations within the app.
-        // The Stellar on-chain balance is not used for display because
-        // Cash In is a simulated fiat bridge, not an actual Stellar tx.
-        // No-op: balance is already tracked in walletBalance.value.
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isNotBlank()) {
+            scope.launch {
+                try {
+                    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    val doc = db.collection("users").document(phone).get().await()
+                    if (doc.exists()) {
+                        val remoteBalance = doc.getDouble("wallet_balance") ?: doc.getDouble("walletBalance") ?: 0.0
+                        walletBalance.value = remoteBalance
+                        prefs?.edit()?.putFloat("wallet_balance_$phone", remoteBalance.toFloat())?.apply()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("AppState", "Failed to refresh wallet balance from Firestore", e)
+                }
+            }
+        }
     }
 
     fun addHomeActivity(activity: HomeActivity) {
@@ -761,6 +941,65 @@ object AppState {
         old.add(0, activity)
         homeActivities.clear()
         homeActivities.addAll(old.take(50)) // Keep last 50 activities
+        saveHomeActivities()
+    }
+
+    private fun saveHomeActivities() {
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isBlank()) return
+        scope.launch {
+            try {
+                val list = homeActivities.map { a ->
+                    mapOf(
+                        "icon" to a.icon,
+                        "title" to a.title,
+                        "subtitle" to a.subtitle,
+                        "amount" to a.amount,
+                        "isPositive" to a.isPositive,
+                        "module" to a.module,
+                        "timestamp" to a.timestamp,
+                        "referenceId" to a.referenceId
+                    )
+                }
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users").document(phone)
+                    .set(mapOf("homeActivities" to list), com.google.firebase.firestore.SetOptions.merge())
+            } catch (e: Exception) {
+                Log.e("AppState", "Failed to save activities", e)
+            }
+        }
+    }
+
+    fun loadHomeActivities(phone: String) {
+        if (phone.isBlank()) return
+        scope.launch {
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users").document(phone).get()
+                .addOnSuccessListener { doc ->
+                    val acts = doc.get("homeActivities") as? List<Map<String, Any>>
+                    if (acts != null) {
+                        val parsed = acts.map { m ->
+                            HomeActivity(
+                                icon = m["icon"] as? String ?: "",
+                                title = m["title"] as? String ?: "",
+                                subtitle = m["subtitle"] as? String ?: "",
+                                amount = m["amount"] as? String ?: "",
+                                isPositive = m["isPositive"] as? Boolean ?: false,
+                                module = m["module"] as? String ?: "",
+                                timestamp = (m["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
+                                referenceId = m["referenceId"] as? String ?: ""
+                            )
+                        }
+                        scope.launch(Dispatchers.Main) {
+                            homeActivities.clear()
+                            homeActivities.addAll(parsed)
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("AppState", "Failed to load activities", e)
+                }
+        }
     }
 
     // ── QR PAYLOAD ──────────────────────────────────────────────────
@@ -816,7 +1055,11 @@ object AppState {
             if (prefs?.contains(key) == true) {
                 walletBalance.value = prefs?.getFloat(key, 0f)?.toDouble() ?: 0.0
             }
-            pundarScore.value = prefs?.getInt("pundar_score_$phone", 850) ?: 850
+            
+            // Refresh in background to get latest remote balance
+            refreshWalletBalance()
+            
+            pundarScore.intValue = AuthRepository.currentUserState.value?.pundarScore ?: prefs?.getInt("pundar_score_$phone", 800) ?: 800
             // Restore portfolio totalValue
             val savedPortfolioValue = prefs?.getFloat("portfolio_value_$phone", -1f) ?: -1f
             if (savedPortfolioValue >= 0f) {

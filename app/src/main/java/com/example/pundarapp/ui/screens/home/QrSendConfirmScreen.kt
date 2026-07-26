@@ -255,7 +255,13 @@ fun QrSendConfirmScreen(navController: NavController) {
                 enabled = payload.type != QrPayload.TYPE_BILL_PAYMENT,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PundarTheme.colors.brandPrimary, 
+                    focusedLabelColor = PundarTheme.colors.brandPrimary,
+                    focusedTextColor = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor = PundarTheme.colors.textPrimary
+                )
             )
 
             OutlinedTextField(
@@ -263,7 +269,13 @@ fun QrSendConfirmScreen(navController: NavController) {
                 onValueChange = { note = it },
                 label = { Text("Note (optional)") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PundarTheme.colors.brandPrimary, 
+                    focusedLabelColor = PundarTheme.colors.brandPrimary,
+                    focusedTextColor = PundarTheme.colors.textPrimary,
+                    unfocusedTextColor = PundarTheme.colors.textPrimary
+                )
             )
 
             Text(

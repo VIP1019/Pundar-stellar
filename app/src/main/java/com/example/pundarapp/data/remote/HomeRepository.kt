@@ -70,24 +70,25 @@ object HomeRepository {
                 )
             }
 
-            val oldActivities = db.collection("home_activities")
-                .whereEqualTo("user_id", userId)
-                .get()
-                .await()
+            val phone = AuthRepository.getCurrentUserPhone()
+            if (phone.isNotBlank()) {
+                val userDoc = db.collection("users").document(phone).get().await()
+                val acts = userDoc.get("homeActivities") as? List<Map<String, Any>>
+                if (acts != null) {
+                    for (m in acts) {
+                        val icon = m["icon"] as? String ?: continue
+                        val title = m["title"] as? String ?: continue
+                        val subtitle = m["subtitle"] as? String ?: continue
+                        val amountStr = m["amount"] as? String ?: continue
+                        val isPositive = m["isPositive"] as? Boolean ?: false
+                        val module = m["module"] as? String ?: continue
+                        val ts = (m["timestamp"] as? Number)?.toLong() ?: 0L
 
-            for (doc in oldActivities.documents) {
-                val icon = doc.getString("icon") ?: continue
-                val title = doc.getString("title") ?: continue
-                val subtitle = doc.getString("subtitle") ?: continue
-                val amount = doc.getString("amount") ?: continue
-                val isPositive = doc.getBoolean("is_positive") ?: false
-                val module = doc.getString("module") ?: continue
-                val createdAt = doc.getString("created_at") ?: "0"
-                val ts = createdAt.toLongOrNull() ?: 0L
-
-                transactions.add(
-                    Pair(ts, HomeActivity(icon, title, subtitle, amount, isPositive, module))
-                )
+                        transactions.add(
+                            Pair(ts, HomeActivity(icon, title, subtitle, amountStr, isPositive, module, timestamp = ts))
+                        )
+                    }
+                }
             }
 
             val sortedActivities = transactions.sortedByDescending { it.first }.map { it.second }.take(20)

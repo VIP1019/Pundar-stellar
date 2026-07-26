@@ -54,7 +54,8 @@ object AuthRepository {
         val phone: String,
         val stellarPublicKey: String? = null,
         val profileImageUrl: String? = null,
-        val walletBalance: Double = 0.0
+        val walletBalance: Double = 0.0,
+        val pundarScore: Int = 800
     )
 
     suspend fun registerWithPhone(phone: String, fullName: String, mpin: String): Result<Boolean> {
@@ -62,8 +63,8 @@ object AuthRepository {
             val cleanPhone = phone.trim()
             Log.d(TAG, "registerWithPhone: phone=$cleanPhone")
 
-            // Check if phone number already exists
-            val existing = usersCollection.document(cleanPhone).get().await()
+            // Check if phone number already exists with a timeout
+            val existing = kotlinx.coroutines.withTimeout(5000) { usersCollection.document(cleanPhone).get().await() }
             if (existing.exists()) {
                 Log.w(TAG, "registerWithPhone: phone already exists")
                 return Result.failure(Exception("This mobile number is already registered."))
@@ -74,10 +75,13 @@ object AuthRepository {
             val publicKey = keyPair.accountId
             val seed = keyPair.secretSeed
 
-            // Fund account
-            val fundingResult = StellarWalletManager.fundTestnetAccount(publicKey)
-            if (fundingResult.isFailure) {
-                return Result.failure(Exception("Failed to initialize wallet: ${fundingResult.exceptionOrNull()?.message}"))
+            // Fund account (do not block registration if Friendbot fails)
+            try {
+                kotlinx.coroutines.withTimeout(5000) {
+                    StellarWalletManager.fundTestnetAccount(publicKey)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Friendbot funding failed or timed out. Continuing registration.", e)
             }
 
             // Encrypt seed
@@ -98,7 +102,7 @@ object AuthRepository {
                 "wallet_balance" to 0.0,
                 "walletBalance" to 0.0
             )
-            usersCollection.document(cleanPhone).set(userData).await()
+            kotlinx.coroutines.withTimeout(5000) { usersCollection.document(cleanPhone).set(userData).await() }
             Log.d(TAG, "registerWithPhone: success")
 
             // Auto-login: set session & load balance
@@ -128,7 +132,7 @@ object AuthRepository {
             Log.d(TAG, "loginWithPhone: phone=$cleanPhone")
 
             // Look up user in Firestore by phone number
-            val doc = usersCollection.document(cleanPhone).get().await()
+            val doc = kotlinx.coroutines.withTimeout(5000) { usersCollection.document(cleanPhone).get().await() }
 
             if (!doc.exists()) {
                 Log.w(TAG, "loginWithPhone: account not found")
@@ -156,7 +160,8 @@ object AuthRepository {
                 phone = cleanPhone,
                 stellarPublicKey = publicKey,
                 profileImageUrl = profileImage,
-                walletBalance = balance
+                walletBalance = balance,
+                pundarScore = doc.getLong("pundar_score")?.toInt() ?: 800
             )
             currentUserState.value = user
             saveSession(user)
@@ -298,18 +303,15 @@ object AuthRepository {
     }
 
     suspend fun searchUsers(query: String): List<UserData> {
+        if (query.isBlank()) return emptyList()
+        val lowerQuery = query.lowercase()
+
         return try {
-            if (query.isBlank()) return emptyList()
-            
-            // Get all users and filter locally (acceptable for prototyping)
-            val snapshot = usersCollection.get().await()
-            val lowerQuery = query.lowercase()
-            
-            snapshot.documents.mapNotNull { doc ->
+            val snapshot = kotlinx.coroutines.withTimeout(5000) { usersCollection.get().await() }
+            val dbUsers = snapshot.documents.mapNotNull { doc ->
                 val phone = doc.getString("phone_number") ?: return@mapNotNull null
                 val name = doc.getString("full_name") ?: return@mapNotNull null
                 
-                // Exclude current user from search results
                 if (phone == currentUserState.value?.id) return@mapNotNull null
                 
                 if (phone.contains(lowerQuery) || name.lowercase().contains(lowerQuery)) {
@@ -319,8 +321,9 @@ object AuthRepository {
                     null
                 }
             }
+            dbUsers.distinctBy { it.id }
         } catch (e: Exception) {
-            Log.e(TAG, "searchUsers failed", e)
+            Log.e(TAG, "searchUsers failed or timed out", e)
             emptyList()
         }
     }

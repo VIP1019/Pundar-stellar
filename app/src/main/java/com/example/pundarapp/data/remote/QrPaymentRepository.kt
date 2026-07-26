@@ -35,7 +35,7 @@ object QrPaymentRepository {
         if (payload.isExpired()) {
             return Result.failure(Exception("This QR code has expired. Ask the sender to generate a new one."))
         }
-        if (isTokenUsed(payload.securityToken)) {
+        if (payload.type != QrPayload.TYPE_RECEIVE_MONEY && isTokenUsed(payload.securityToken)) {
             return Result.failure(Exception("This QR code has already been used."))
         }
         return Result.success(Unit)
@@ -158,15 +158,17 @@ object QrPaymentRepository {
             )
 
             qrPayload?.let { payload ->
-                batch.set(
-                    qrTokensCollection.document(payload.securityToken),
-                    hashMapOf(
-                        "used" to true,
-                        "used_at" to now,
-                        "used_by" to senderId,
-                        "type" to payload.type
+                if (payload.type != QrPayload.TYPE_RECEIVE_MONEY) {
+                    batch.set(
+                        qrTokensCollection.document(payload.securityToken),
+                        hashMapOf(
+                            "used" to true,
+                            "used_at" to now,
+                            "used_by" to senderId,
+                            "type" to payload.type
+                        )
                     )
-                )
+                }
                 if (payload.type == QrPayload.TYPE_BILL_PAYMENT && billQrRecord != null) {
                     batch.update(
                         db.collection("group_bills").document(billQrRecord.billId),

@@ -134,7 +134,7 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                             .size(40.dp)
                                             .clip(CircleShape)
                                             .background(
-                                                if (member.name == "You") PundarBlueSubtle
+                                                if (member.name == "You") PundarTheme.colors.brandPrimary.copy(alpha = 0.1f)
                                                 else Color(member.avatarColor)
                                             )
                                     ) {
@@ -150,7 +150,8 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                         Text(
                                             text = member.name,
                                             style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.SemiBold
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = PundarTheme.colors.textPrimary
                                         )
                                         if (member.username.isNotEmpty()) {
                                             Text(
@@ -163,7 +164,8 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                     Text(
                                         text = "₱ ${String.format("%,.2f", member.amount)}",
                                         style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        color = PundarTheme.colors.textPrimary
                                     )
                                 }
                                 if (index < bill.members.size - 1) {

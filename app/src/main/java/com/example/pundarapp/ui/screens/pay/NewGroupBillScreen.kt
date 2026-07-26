@@ -81,8 +81,8 @@ fun NewGroupBillScreen(navController: NavController) {
             searchResults = emptyList()
             return@LaunchedEffect
         }
-        
         isSearching = true
+        kotlinx.coroutines.delay(300)
         val users = AuthRepository.searchUsers(searchQuery)
         searchResults = users.map { u ->
             BillMember(
@@ -114,7 +114,7 @@ fun NewGroupBillScreen(navController: NavController) {
             ) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = PundarBlueSubtle,
+                    color = PundarTheme.colors.brandPrimary.copy(alpha = 0.1f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val displayShare = if (selectedTabIndex == 0) sharePerMember else yourShare
@@ -141,7 +141,7 @@ fun NewGroupBillScreen(navController: NavController) {
                                         text = "${String.format("%,.2f", displayShare)} XLM",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = PundarBlueDark
+                                        color = PundarTheme.colors.brandPrimary
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
@@ -239,10 +239,12 @@ fun NewGroupBillScreen(navController: NavController) {
                         value = expenseName,
                         onValueChange = { expenseName = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("e.g. Dinner at BGC", color = PundarTextTertiary) },
+                        placeholder = { Text("e.g. Dinner at BGC", color = PundarTheme.colors.textSecondary) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = PundarTheme.colors.brandPrimary,
-                            unfocusedBorderColor = PundarBorder
+                            unfocusedBorderColor = PundarBorder,
+                            focusedTextColor = PundarTheme.colors.textPrimary,
+                            unfocusedTextColor = PundarTheme.colors.textPrimary
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -315,6 +317,8 @@ fun NewGroupBillScreen(navController: NavController) {
                         unfocusedContainerColor = PundarTheme.colors.surfaceTertiary,
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = PundarTheme.colors.textPrimary,
+                        unfocusedTextColor = PundarTheme.colors.textPrimary
                     ),
                     shape = RoundedCornerShape(24.dp)
                 )
@@ -336,7 +340,7 @@ fun NewGroupBillScreen(navController: NavController) {
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.size(40.dp).clip(CircleShape)
                                 .background(
-                                    if (member.name == "You") PundarBlueSubtle
+                                    if (member.name == "You") PundarTheme.colors.brandPrimary.copy(alpha = 0.1f)
                                     else Color(member.avatarColor)
                                 )
                         ) {
@@ -349,7 +353,7 @@ fun NewGroupBillScreen(navController: NavController) {
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(member.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            Text(member.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
                             if (member.username.isNotEmpty()) {
                                 Text(member.username, style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                             }
@@ -383,7 +387,9 @@ fun NewGroupBillScreen(navController: NavController) {
                                     focusedBorderColor = PundarTheme.colors.brandPrimary,
                                     unfocusedBorderColor = PundarBorder,
                                     focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = PundarTheme.colors.textPrimary,
+                                    unfocusedTextColor = PundarTheme.colors.textPrimary
                                 )
                             )
                         }
@@ -440,7 +446,7 @@ fun NewGroupBillScreen(navController: NavController) {
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(contact.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                Text(contact.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
                                 if (contact.username.isNotEmpty()) {
                                     Text(contact.username, style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
                                 }

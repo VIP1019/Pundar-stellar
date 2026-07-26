@@ -27,7 +27,7 @@ object QrCodeGenerator {
         displayName = displayName,
         walletId = walletId,
         timestamp = System.currentTimeMillis(),
-        securityToken = UUID.randomUUID().toString()
+        securityToken = userId // Static token for personal receive money QR
     )
 
     /** Create a new "BILL_PAYMENT" payload for a pending bill. */

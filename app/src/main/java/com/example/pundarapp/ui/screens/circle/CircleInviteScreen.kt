@@ -119,7 +119,15 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                     onClick = { if (!isFull) showConfirmDialog = true }
                 )
                 Spacer(Modifier.height(12.dp))
-                PundarSecondaryButton(text = "View Detailed Schedule", onClick = { })
+                PundarSecondaryButton(
+                    text = "Decline Invitation", 
+                    onClick = { 
+                        scope.launch {
+                            AppState.rejectInvitation(invite)
+                            navController.popBackStack()
+                        }
+                    }
+                )
             }
         }
     ) { padding ->

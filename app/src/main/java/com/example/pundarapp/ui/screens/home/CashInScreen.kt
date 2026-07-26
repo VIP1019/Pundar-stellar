@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-enum class CashInStep { METHOD, AMOUNT, CONFIRM, RECEIPT }
+enum class CashInStep { METHOD, AMOUNT, CONFIRM, RECEIPT, INSTRUCTIONS, BARCODE, CARD_DETAILS, QR_PH, REMITTANCE, PDAX_INFO }
 
 data class CashInMethod(
     val id: String,
@@ -99,6 +99,11 @@ fun CashInScreen(navController: NavController) {
             "remittance", "Remittance", "Western Union, MoneyGram, Remitly",
             Icons.Filled.FlightLand, Color(0xFF558B2F),
             fee = 0.0, processingTime = "1–3 banking days", limit = "Up to ₱500,000/day"
+        ),
+        CashInMethod(
+            "pundar_pdax", "Pundar Cash In", "Powered by PDAX (Coming Soon)",
+            Icons.Filled.CurrencyExchange, PundarTheme.colors.brandPrimary,
+            fee = 0.0, processingTime = "Future Integration", limit = "TBA"
         )
     )
 
@@ -110,6 +115,12 @@ fun CashInScreen(navController: NavController) {
                     CashInStep.AMOUNT -> "Enter Amount"
                     CashInStep.CONFIRM -> "Review & Confirm"
                     CashInStep.RECEIPT -> "Transaction Complete"
+                    CashInStep.INSTRUCTIONS -> "Transfer Instructions"
+                    CashInStep.BARCODE -> "Pay via OTC"
+                    CashInStep.CARD_DETAILS -> "Enter Card Details"
+                    CashInStep.QR_PH -> "QR Ph Deposit"
+                    CashInStep.REMITTANCE -> "Claim Remittance"
+                    CashInStep.PDAX_INFO -> "Pundar x PDAX"
                 },
                 onBack = {
                     when (currentStep) {
@@ -117,6 +128,12 @@ fun CashInScreen(navController: NavController) {
                         CashInStep.AMOUNT -> currentStep = CashInStep.METHOD
                         CashInStep.CONFIRM -> currentStep = CashInStep.AMOUNT
                         CashInStep.RECEIPT -> navController.navigateUp()
+                        CashInStep.INSTRUCTIONS -> currentStep = CashInStep.AMOUNT
+                        CashInStep.BARCODE -> currentStep = CashInStep.AMOUNT
+                        CashInStep.CARD_DETAILS -> currentStep = CashInStep.AMOUNT
+                        CashInStep.QR_PH -> currentStep = CashInStep.AMOUNT
+                        CashInStep.REMITTANCE -> currentStep = CashInStep.AMOUNT
+                        CashInStep.PDAX_INFO -> currentStep = CashInStep.METHOD
                     }
                 }
             )
@@ -135,21 +152,39 @@ fun CashInScreen(navController: NavController) {
                         Button(
                             onClick = {
                                 when (currentStep) {
-                                    CashInStep.METHOD -> currentStep = CashInStep.AMOUNT
-                                    CashInStep.AMOUNT -> currentStep = CashInStep.CONFIRM
-                                    CashInStep.CONFIRM -> {
+                                    CashInStep.METHOD -> {
+                                        currentStep = CashInStep.AMOUNT
+                                    }
+                                    CashInStep.AMOUNT -> {
+                                        when (selectedMethod?.id) {
+                                            "bank", "ewallet" -> currentStep = CashInStep.INSTRUCTIONS
+                                            "otc" -> currentStep = CashInStep.BARCODE
+                                            "card" -> currentStep = CashInStep.CARD_DETAILS
+                                            "qr" -> currentStep = CashInStep.QR_PH
+                                            "remittance" -> currentStep = CashInStep.REMITTANCE
+                                            "pundar_pdax" -> currentStep = CashInStep.CONFIRM
+                                            else -> currentStep = CashInStep.CONFIRM
+                                        }
+                                    }
+                                    CashInStep.INSTRUCTIONS, CashInStep.BARCODE, CashInStep.CARD_DETAILS,
+                                    CashInStep.QR_PH, CashInStep.REMITTANCE, CashInStep.CONFIRM -> {
                                         isProcessing = true
                                         scope.launch {
-                                            delay(1800)
-                                            val cashInAmt = amount.toDoubleOrNull() ?: 0.0
-                                            if (cashInAmt > 0) {
-                                                AppState.updateWalletBalance(AppState.walletBalance.value + cashInAmt)
+                                            val cashInAmtPhp = amount.toDoubleOrNull() ?: 0.0
+                                            if (cashInAmtPhp > 0) {
+                                                // Fetch exchange rate: how many XLM you get for 1 PHP
+                                                val phpToXlmRate = com.example.pundarapp.data.remote.CurrencyApi.getPhpToXlmRate()
+                                                val cashInAmtXlm = cashInAmtPhp * phpToXlmRate
+                                                
+                                                delay(800) // Small delay for UX simulation
+
+                                                AppState.updateWalletBalance(AppState.walletBalance.value + cashInAmtXlm)
                                                 AppState.addHomeActivity(
                                                     HomeActivity(
                                                         icon = "account_balance_wallet",
                                                         title = "Cash In",
                                                         subtitle = "via ${selectedMethod?.name ?: ""}",
-                                                        amount = "+₱${String.format("%,.2f", cashInAmt)}",
+                                                        amount = "+₱${String.format("%,.2f", cashInAmtPhp)}",
                                                         isPositive = true,
                                                         module = "Wallet",
                                                         timestamp = timestamp,
@@ -168,7 +203,8 @@ fun CashInScreen(navController: NavController) {
                             enabled = when (currentStep) {
                                 CashInStep.METHOD -> selectedMethod != null
                                 CashInStep.AMOUNT -> (amount.toDoubleOrNull() ?: 0.0) >= 100
-                                CashInStep.CONFIRM -> !isProcessing
+                                CashInStep.INSTRUCTIONS, CashInStep.BARCODE, CashInStep.CARD_DETAILS,
+                                CashInStep.QR_PH, CashInStep.REMITTANCE, CashInStep.CONFIRM -> !isProcessing
                                 else -> false
                             },
                             modifier = Modifier
@@ -192,9 +228,14 @@ fun CashInScreen(navController: NavController) {
                                 Text(
                                     text = when (currentStep) {
                                         CashInStep.METHOD -> "Continue"
-                                        CashInStep.AMOUNT -> "Review Cash In"
+                                        CashInStep.AMOUNT -> "Continue"
                                         CashInStep.CONFIRM -> "Confirm Cash In"
-                                        else -> ""
+                                        CashInStep.INSTRUCTIONS -> "Simulate Transfer"
+                                        CashInStep.QR_PH -> "Simulate Received Funds"
+                                        CashInStep.BARCODE -> "Done (Simulate Pay)"
+                                        CashInStep.CARD_DETAILS -> "Process Card Payment"
+                                        CashInStep.REMITTANCE -> "Claim Funds"
+                                        else -> "Continue"
                                     },
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
@@ -225,6 +266,25 @@ fun CashInScreen(navController: NavController) {
                 CashInStep.AMOUNT -> AmountEntryView(selectedMethod, amount) { amount = it }
                 CashInStep.CONFIRM -> ConfirmationView(selectedMethod, amount)
                 CashInStep.RECEIPT -> CashInReceiptView(selectedMethod, amount, refNumber, timestamp) { navController.navigateUp() }
+                CashInStep.INSTRUCTIONS -> InstructionsView(selectedMethod) { 
+                    // Simulate Transfer
+                    amount = "1000" // Mock incoming amount
+                    isProcessing = true
+                    currentStep = CashInStep.CONFIRM
+                }
+                CashInStep.BARCODE -> BarcodeView(selectedMethod, amount, refNumber) { navController.navigateUp() }
+                CashInStep.CARD_DETAILS -> CardDetailsView(selectedMethod, amount) { currentStep = CashInStep.CONFIRM }
+                CashInStep.QR_PH -> QrPhView(selectedMethod) {
+                    amount = "500" // Mock incoming amount
+                    isProcessing = true
+                    currentStep = CashInStep.CONFIRM
+                }
+                CashInStep.REMITTANCE -> RemittanceView(selectedMethod) { 
+                    amount = "2500" // Mock incoming amount
+                    isProcessing = true
+                    currentStep = CashInStep.CONFIRM
+                }
+                CashInStep.PDAX_INFO -> PdaxView(selectedMethod)
             }
         }
     }
@@ -235,7 +295,10 @@ fun CashInScreen(navController: NavController) {
 private fun CashInStepIndicator(currentStep: CashInStep) {
     val steps = listOf("Method", "Amount", "Confirm")
     val currentIndex = when (currentStep) {
-        CashInStep.METHOD -> 0; CashInStep.AMOUNT -> 1; CashInStep.CONFIRM -> 2; else -> 2
+        CashInStep.METHOD -> 0
+        CashInStep.AMOUNT, CashInStep.CARD_DETAILS -> 1
+        CashInStep.CONFIRM -> 2
+        else -> 2
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -796,6 +859,30 @@ private fun ConfirmationView(
                 )
             }
         }
+        if (selectedMethod?.id == "pundar_pdax") {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(PundarTheme.colors.brandPrimary.copy(alpha = 0.08f))
+                        .border(1.dp, PundarTheme.colors.brandPrimary.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(Icons.Filled.CurrencyExchange, null, tint = PundarTheme.colors.brandPrimary,
+                        modifier = Modifier.size(16.dp).padding(top = 1.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "FUTURE INTEGRATION FOR PDAX TO WORK IN REAL WORLD",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PundarTheme.colors.textPrimary,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -970,3 +1057,206 @@ private fun CashInReceiptView(
 @Composable
 private fun Modifier.graphicsLayerHelper(scale: Float): Modifier =
     this.graphicsLayer(scaleX = scale, scaleY = scale)
+
+// ═══════════════════════════════════════════════════════════════
+//  NEW VIEWS FOR DIFFERENT CASH-IN FLOWS
+// ═══════════════════════════════════════════════════════════════
+
+@Composable
+private fun InstructionsView(selectedMethod: CashInMethod?, onSimulate: () -> Unit) {
+    val userName = AuthRepository.getCurrentUserName().ifBlank { "PUNDAR User" }
+    val userPhone = AuthRepository.getCurrentUserPhone()
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(selectedMethod?.icon ?: Icons.Filled.AccountBalance, null, tint = selectedMethod?.color ?: PundarTheme.colors.brandPrimary, modifier = Modifier.size(64.dp))
+        Spacer(Modifier.height(24.dp))
+        Text("To cash in, open your Bank or E-Wallet app (BDO, BPI, GCash, Maya, etc.) and send money via InstaPay to:",
+            style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(32.dp))
+        
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = PundarTheme.colors.surfaceSecondary,
+            border = BorderStroke(1.dp, PundarTheme.colors.glassMedium)
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Bank / Wallet", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textMuted)
+                Text("PUNDAR Wallet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
+                Spacer(Modifier.height(16.dp))
+                
+                Text("Account Name", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textMuted)
+                Text(userName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
+                Spacer(Modifier.height(16.dp))
+                
+                Text("Account Number", style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textMuted)
+                SelectionContainer {
+                    Text(userPhone, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PundarTheme.colors.brandPrimary)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BarcodeView(selectedMethod: CashInMethod?, amount: String, refNumber: String, onDone: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Present this barcode to the cashier at any partner outlet (7-Eleven, Cebuana, Palawan, etc.)",
+            style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(32.dp))
+        
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White,
+            shadowElevation = 8.dp
+        ) {
+            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Amount to Pay", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                Text("₱${amount}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = Color.Black)
+                Spacer(Modifier.height(24.dp))
+                
+                // Mock Barcode Lines
+                Row(Modifier.fillMaxWidth().height(80.dp), horizontalArrangement = Arrangement.Center) {
+                    repeat(30) {
+                        Box(modifier = Modifier.width((1..4).random().dp).fillMaxHeight().background(Color.Black))
+                        Spacer(Modifier.width((1..3).random().dp))
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(refNumber, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.Black, letterSpacing = 2.sp)
+                Spacer(Modifier.height(8.dp))
+                Text("Expires in 24:00:00", style = MaterialTheme.typography.labelSmall, color = Color.Red)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardDetailsView(selectedMethod: CashInMethod?, amount: String, onNext: () -> Unit) {
+    var cardNumber by remember { mutableStateOf("") }
+    var expiry by remember { mutableStateOf("") }
+    var cvv by remember { mutableStateOf("") }
+    
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp)
+    ) {
+        Text("Enter your debit or credit card details to cash in ₱${amount}.",
+            style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
+        Spacer(Modifier.height(24.dp))
+        
+        OutlinedTextField(
+            value = cardNumber,
+            onValueChange = { cardNumber = it },
+            label = { Text("Card Number") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PundarTheme.colors.brandPrimary,
+                focusedLabelColor = PundarTheme.colors.brandPrimary,
+                unfocusedBorderColor = PundarTheme.colors.glassMedium
+            )
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(
+                value = expiry,
+                onValueChange = { expiry = it },
+                label = { Text("MM/YY") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary,
+                    unfocusedBorderColor = PundarTheme.colors.glassMedium
+                )
+            )
+            OutlinedTextField(
+                value = cvv,
+                onValueChange = { cvv = it },
+                label = { Text("CVV") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PundarTheme.colors.brandPrimary,
+                    focusedLabelColor = PundarTheme.colors.brandPrimary,
+                    unfocusedBorderColor = PundarTheme.colors.glassMedium
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun QrPhView(selectedMethod: CashInMethod?, onSimulate: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Scan this QR Ph code using any supported bank or e-wallet app to cash in to your PUNDAR wallet.",
+            style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(32.dp))
+        
+        Surface(
+            modifier = Modifier.size(250.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White,
+            shadowElevation = 8.dp
+        ) {
+            Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.QrCode2, contentDescription = "QR Code", modifier = Modifier.fillMaxSize(), tint = Color.Black)
+                // Center logo
+                Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.White).border(2.dp, Color.Black, CircleShape), contentAlignment = Alignment.Center) {
+                    Text("QR", fontWeight = FontWeight.Bold, color = Color.Black)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RemittanceView(selectedMethod: CashInMethod?, onClaim: () -> Unit) {
+    var refNumber by remember { mutableStateOf("") }
+    
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp)
+    ) {
+        Text("Claim your remittance directly to your PUNDAR wallet. Supported partners: Western Union, MoneyGram, and Remitly.",
+            style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
+        Spacer(Modifier.height(24.dp))
+        
+        OutlinedTextField(
+            value = refNumber,
+            onValueChange = { refNumber = it },
+            label = { Text("Reference Number / MTCN") },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PundarTheme.colors.brandPrimary,
+                focusedLabelColor = PundarTheme.colors.brandPrimary,
+                unfocusedBorderColor = PundarTheme.colors.glassMedium
+            )
+        )
+    }
+}
+
+@Composable
+private fun PdaxView(selectedMethod: CashInMethod?) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(selectedMethod?.icon ?: Icons.Filled.CurrencyExchange, null, tint = selectedMethod?.color ?: PundarTheme.colors.brandPrimary, modifier = Modifier.size(80.dp))
+        Spacer(Modifier.height(24.dp))
+        Text("PDAX Integration Coming Soon", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(16.dp))
+        Text("You will soon be able to directly cash in and trade crypto using our seamless PDAX integration.",
+            style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary, textAlign = TextAlign.Center)
+    }
+}

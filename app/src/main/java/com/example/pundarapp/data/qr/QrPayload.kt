@@ -51,6 +51,9 @@ data class QrPayload(
  * Caller should reject expired QRs.
  */
 fun QrPayload.isExpired(ttlMs: Long = 5L * 60L * 1000L): Boolean {
+    // Receive money QR codes are static and do not expire
+    if (this.type == QrPayload.TYPE_RECEIVE_MONEY) return false
+    
     val now = System.currentTimeMillis()
     return now - timestamp > ttlMs
 }

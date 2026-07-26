@@ -1,9 +1,22 @@
 package com.example.pundarapp.ui.navigation
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
+import kotlinx.coroutines.launch
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -11,6 +24,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pundarapp.ui.components.PundarBottomBar
+import com.example.pundarapp.ui.components.PundarSidebar
 import com.example.pundarapp.ui.theme.PundarTheme
 import com.example.pundarapp.ui.screens.auth.LoginScreen
 import com.example.pundarapp.ui.screens.auth.RegisterScreen
@@ -74,6 +88,7 @@ object Routes {
     fun circleInviteMethods(circleId: String) = "circle/$circleId/invite-methods"
     const val SETTINGS = "settings"
     const val NOTIFICATIONS = "notifications"
+    const val REQUESTS = "requests"
     const val SCAN = "scan"
     const val CHANGE_MPIN = "change_mpin"
     const val SEND_MONEY = "send_money"
@@ -97,7 +112,26 @@ fun PundarNavigation() {
 
     val showBottomBar = currentRoute in bottomBarRoutes
 
-    Scaffold(
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
+    val closeDrawer: () -> Unit = { scope.launch { drawerState.close() } }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = currentRoute != Routes.SPLASH && currentRoute != Routes.LOGIN && currentRoute != Routes.REGISTER,
+        drawerContent = {
+            PundarSidebar(
+                currentRoute = currentRoute,
+                onNavigate = { route ->
+                    closeDrawer()
+                    navController.navigate(route)
+                },
+                onClose = { closeDrawer() }
+            )
+        }
+    ) {
+        Scaffold(
         containerColor = PundarTheme.colors.bgPrimary,
         contentColor = PundarTheme.colors.textPrimary,
         bottomBar = {
@@ -139,7 +173,7 @@ fun PundarNavigation() {
                 RegisterScreen(navController = navController)
             }
             composable(Routes.HOME) {
-                HomeScreen(navController = navController)
+                HomeScreen(navController = navController, openDrawer = openDrawer)
             }
             composable(Routes.ALL_ACTIVITY) {
                 ActivityHistoryScreen(navController = navController)
@@ -156,8 +190,11 @@ fun PundarNavigation() {
             composable(Routes.NOTIFICATIONS) {
                 NotificationScreen(navController = navController)
             }
+            composable(Routes.REQUESTS) {
+                com.example.pundarapp.ui.screens.home.RequestsScreen(navController = navController)
+            }
             composable(Routes.PAY) {
-                PayScreen(navController = navController)
+                PayScreen(navController = navController, openDrawer = openDrawer)
             }
             composable(Routes.SCAN) {
                 ScanScreen(navController = navController)
@@ -192,7 +229,7 @@ fun PundarNavigation() {
                 BillQrScreen(billId = billId, navController = navController)
             }
             composable(Routes.CIRCLE) {
-                CircleScreen(navController = navController)
+                CircleScreen(navController = navController, openDrawer = openDrawer)
             }
             composable(Routes.CIRCLE_CREATE) {
                 CreateCircleScreen(navController = navController)
@@ -228,7 +265,7 @@ fun PundarNavigation() {
             }
 */
             composable(Routes.GROW) {
-                GrowScreen(navController = navController)
+                GrowScreen(navController = navController, openDrawer = openDrawer)
             }
             composable(Routes.ROUND_UP_SETTINGS) {
                 RoundUpSettingsScreen(navController = navController)
@@ -253,5 +290,6 @@ fun PundarNavigation() {
                 LinkCardScreen(navController = navController)
             }
         }
+    }
     }
 }

@@ -97,4 +97,19 @@ object NotificationRepository {
             Log.w(TAG, "seedDefaultsIfEmpty skipped: ${e.message}")
         }
     }
+
+    suspend fun sendNotification(userId: String, title: String, message: String, kind: String = "INFO"): Result<Boolean> = try {
+        val data = hashMapOf(
+            "title" to title,
+            "message" to message,
+            "kind" to kind,
+            "created_at" to System.currentTimeMillis(),
+            "is_read" to false
+        )
+        collection(userId).document().set(data).await()
+        Result.success(true)
+    } catch (e: Exception) {
+        Log.e(TAG, "sendNotification failed", e)
+        Result.failure(e)
+    }
 }

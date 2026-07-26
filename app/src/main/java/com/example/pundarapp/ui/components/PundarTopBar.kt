@@ -35,8 +35,10 @@ fun PundarMainTopBar(
     profileImageUrl: String? = null,
     pundarScore: Int = 850,
     onScoreClick: () -> Unit = {},
+    onRequestClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onMenuClick: () -> Unit = {}
 ) {
     val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
     val topBarBorderColor = if (PundarTheme.colors.isLight)
@@ -74,13 +76,22 @@ fun PundarMainTopBar(
                 }
             },
             navigationIcon = {
-                PundarAvatar(
-                    initials = userInitials,
-                    imageUrl = profileImageUrl,
-                    modifier = Modifier.padding(start = 12.dp, end = 4.dp),
-                    size = 40.dp,
-                    showRing = true
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = "Menu",
+                            tint = PundarTheme.colors.textPrimary
+                        )
+                    }
+                    PundarAvatar(
+                        initials = userInitials,
+                        imageUrl = profileImageUrl,
+                        modifier = Modifier.padding(start = 4.dp, end = 4.dp),
+                        size = 40.dp,
+                        showRing = true
+                    )
+                }
             },
             actions = {
                 Box(
@@ -101,6 +112,15 @@ fun PundarMainTopBar(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold
                         )
+                    }
+                }
+                IconButton(onClick = onRequestClick) {
+                    if (com.example.pundarapp.ui.data.AppState.unifiedRequests.isNotEmpty()) {
+                        BadgedBox(badge = { Badge(containerColor = ElectricBlue) }) {
+                            Icon(Icons.Filled.MailOutline, "Requests", tint = PundarTheme.colors.textSecondary)
+                        }
+                    } else {
+                        Icon(Icons.Filled.MailOutline, "Requests", tint = PundarTheme.colors.textSecondary)
                     }
                 }
                 IconButton(onClick = onNotificationClick) {
@@ -231,7 +251,8 @@ fun PundarGrowTopBar(
     profileImageUrl: String? = null,
     pundarScore: Int = 850,
     onNotificationClick: () -> Unit = {},
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onMenuClick: () -> Unit = {}
 ) {
     val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
     val topBarBorderColor = if (PundarTheme.colors.isLight) Color(0xFFE2E8F0) else PundarTheme.colors.glassMedium
@@ -248,6 +269,15 @@ fun PundarGrowTopBar(
                     Spacer(Modifier.width(10.dp))
                     Text("PUNDAR", fontWeight = FontWeight.Black, fontSize = 18.sp,
                         color = PundarTheme.colors.textPrimary, letterSpacing = 2.sp)
+                }
+            },
+            navigationIcon = {
+                IconButton(onClick = onMenuClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Menu,
+                        contentDescription = "Menu",
+                        tint = PundarTheme.colors.textPrimary
+                    )
                 }
             },
             actions = {

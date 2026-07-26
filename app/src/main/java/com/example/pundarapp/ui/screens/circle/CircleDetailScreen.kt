@@ -3,7 +3,9 @@ package com.example.pundarapp.ui.screens.circle
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -36,7 +38,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
         ?: run { navController.navigateUp(); return }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val currentUserId = AuthRepository.getCurrentUserId()
+    val currentUserId = AuthRepository.getCurrentUserPhone()
     val isOwner = circle.creatorId == currentUserId
     val isMember = circle.members.any { it.isYou }
     val isFull = circle.isFull
@@ -48,53 +50,105 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
 
     var showContributeDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
-    var contributeAmount by remember { mutableStateOf("") }
+    var contributionMultiplier by remember { mutableStateOf(1) }
     var contributeError by remember { mutableStateOf("") }
-    var isFiatMode by remember { mutableStateOf(false) }
 
     // Contribute Dialog
     if (showContributeDialog) {
         AlertDialog(
             onDismissRequest = { showContributeDialog = false },
-            title = { Text("Contribute to ${circle.name}", fontWeight = FontWeight.Bold) },
+            containerColor = PundarTheme.colors.surfacePrimary,
+            titleContentColor = PundarTheme.colors.textPrimary,
+            textContentColor = PundarTheme.colors.textPrimary,
+            title = { Text("Contribute: ${circle.name}", fontWeight = FontWeight.Bold) },
             text = {
+                val totalAmount = circle.contributionPerMonth * contributionMultiplier
+                val rate = AppState.currentExchangeRate.doubleValue
+                val totalXlm = if (circle.currency == "XLM") totalAmount else (totalAmount / rate)
                 Column {
                     Text(
                         "Wallet Balance: ${String.format("%,.2f", AppState.walletBalance.value)} XLM",
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (AppState.walletBalance.value >= circle.contributionPerMonth) PundarSuccess else PundarWarning
+                        color = if (AppState.walletBalance.value >= totalXlm) PundarSuccess else PundarWarning
                     )
-                    Spacer(Modifier.height(12.dp))
-                    CurrencyAmountInput(
-                        value = contributeAmount,
-                        onValueChange = { contributeAmount = it; contributeError = "" },
-                        isFiatMode = isFiatMode,
-                        onToggleMode = { isFiatMode = !isFiatMode },
-                        errorMessage = contributeError,
-                        label = "Contribution Amount"
-                    )
+                    Spacer(Modifier.height(16.dp))
+                    
+                    Text("Select number of contributions:", style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        IconButton(
+                            onClick = { if (contributionMultiplier > 1) contributionMultiplier-- },
+                            modifier = Modifier.background(PundarTheme.colors.surfaceTertiary, CircleShape)
+                        ) {
+                            Icon(Icons.Filled.Remove, contentDescription = "Decrease", tint = PundarTheme.colors.textPrimary)
+                        }
+                        
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "$contributionMultiplier",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PundarTheme.colors.textPrimary
+                            )
+                            Text(
+                                if (contributionMultiplier == 1) "Contribution" else "Contributions",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = PundarTheme.colors.textSecondary
+                            )
+                        }
+                        
+                        IconButton(
+                            onClick = { contributionMultiplier++ },
+                            modifier = Modifier.background(PundarTheme.colors.surfaceTertiary, CircleShape)
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = "Increase", tint = PundarTheme.colors.textPrimary)
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = PundarTheme.colors.borderPrimary)
+                    Spacer(Modifier.height(16.dp))
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Total to pay", fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
+                        val displayTotal = if (circle.currency == "XLM") "${String.format("%,.2f", totalAmount)} XLM" else "${circle.currency} ${String.format("%,.0f", totalAmount)}"
+                        Text(displayTotal, fontWeight = FontWeight.Bold, color = PundarTheme.colors.brandPrimary)
+                    }
+                    
+                    if (contributeError.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(contributeError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val amount = contributeAmount.toDoubleOrNull() ?: circle.contributionPerMonth
-                        val finalAmt = if (isFiatMode) amount / AppState.currentExchangeRate.doubleValue else amount
-                        val success = AppState.contributeToCircle(circleId, finalAmt)
+                        val totalAmount = circle.contributionPerMonth * contributionMultiplier
+                        val rate = AppState.currentExchangeRate.doubleValue
+                        val xlmAmt = if (circle.currency == "XLM") totalAmount else (if (rate > 0) totalAmount / rate else 0.0)
+                        val circleCurrencyAmt = if (circle.currency == "XLM") xlmAmt else (xlmAmt * rate)
+                        val success = AppState.contributeToCircle(circleId, circleCurrencyAmt, xlmAmt)
                         if (success) {
-                            Toast.makeText(context, "${String.format("%,.2f", finalAmt)} XLM contributed!", Toast.LENGTH_SHORT).show()
+                            val displayAmt = if (circle.currency == "XLM") "${String.format("%,.2f", xlmAmt)} XLM" else "${circle.currency} ${String.format("%,.0f", circleCurrencyAmt)}"
+                            Toast.makeText(context, "$displayAmt contributed!", Toast.LENGTH_SHORT).show()
                             showContributeDialog = false
-                            contributeAmount = ""
+                            contributionMultiplier = 1
                         } else {
                             contributeError = "Insufficient balance!"
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.accentGold, contentColor = PundarTheme.colors.textPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.accentGold, contentColor = PundarTheme.colors.surfacePrimary),
                     shape = RoundedCornerShape(12.dp)
                 ) { Text("Confirm", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showContributeDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showContributeDialog = false }) { Text("Cancel", color = PundarTheme.colors.textSecondary) }
             }
         )
     }
@@ -103,6 +157,9 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
     if (showShareDialog) {
         AlertDialog(
             onDismissRequest = { showShareDialog = false },
+            containerColor = PundarTheme.colors.surfacePrimary,
+            titleContentColor = PundarTheme.colors.textPrimary,
+            textContentColor = PundarTheme.colors.textPrimary,
             title = { Text("Share Circle Details", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
@@ -124,7 +181,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                 ) { Text("Copy Link", color = PundarTheme.colors.surfacePrimary, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showShareDialog = false }) { Text("Close") }
+                TextButton(onClick = { showShareDialog = false }) { Text("Close", color = PundarTheme.colors.textSecondary) }
             }
         )
     }
@@ -195,10 +252,10 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Total Saved", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
-                            Text("₱ ${String.format("%,.0f", circle.savedAmount)}",
+                            Text(if (circle.currency == "XLM") "${String.format("%,.2f", circle.savedAmount)} XLM" else "${circle.currency} ${String.format("%,.0f", circle.savedAmount)}",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold, color = PundarTheme.colors.brandPrimary)
-                            Text("of ₱ ${String.format("%,.0f", circle.targetAmount)}",
+                            Text(if (circle.currency == "XLM") "of ${String.format("%,.2f", circle.targetAmount)} XLM" else "of ${circle.currency} ${String.format("%,.0f", circle.targetAmount)}",
                                 style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
                         }
                     }
@@ -210,7 +267,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${(progress * 100).toInt()}% Completed",
                             style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
-                        Text("₱ ${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} remaining",
+                        Text(if (circle.currency == "XLM") "${String.format("%,.2f", circle.targetAmount - circle.savedAmount)} XLM remaining" else "${circle.currency} ${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} remaining",
                             style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                     }
 
@@ -244,43 +301,6 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                 }
             }
 
-            // ── Pending Join Requests (owner only) ───────────────
-            if (isOwner && AppState.pendingJoinRequests.isNotEmpty()) {
-                item {
-                    Text("Pending Join Requests", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
-                }
-                items(AppState.pendingJoinRequests.toList()) { request ->
-                    PundarCard {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(request.userName, fontWeight = FontWeight.SemiBold)
-                                Text("Wants to join", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
-                            }
-                            if (isFull) {
-                                Text("Circle Full", color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.labelSmall)
-                            } else {
-                                TextButton(onClick = {
-                                    scope.launch {
-                                        val result = AppState.approveJoinRequest(request.id)
-                                        result.onFailure {
-                                            Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
-                                        }
-                                    }
-                                }) { Text("Approve", color = PundarSuccess) }
-                                TextButton(onClick = {
-                                    scope.launch { AppState.rejectJoinRequest(request.id) }
-                                }) { Text("Reject", color = MaterialTheme.colorScheme.error) }
-                            }
-                        }
-                    }
-                }
-            }
-
             // ── Members ──────────────────────────────────────────
             item {
                 Row(modifier = Modifier.fillMaxWidth(),
@@ -305,8 +325,10 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                                 status = member.status,
                                 isYou = member.isYou,
                                 avatarColor = if (member.isYou) PundarTheme.colors.brandPrimary else androidx.compose.ui.graphics.Color(member.avatarColor),
+                                payoutDate = member.payoutDate,
                                 showNudge = member.status != ContributionStatus.PAID && !member.isYou,
-                                isHighlighted = member.status != ContributionStatus.PAID && !member.isYou
+                                isHighlighted = member.status != ContributionStatus.PAID && !member.isYou,
+                                payoutOrder = index + 1
                             )
                             if (index < circle.members.size - 1) {
                                 HorizontalDivider(color = PundarDivider, modifier = Modifier.padding(horizontal = 12.dp))
@@ -330,9 +352,9 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                             modifier = Modifier.size(20.dp).padding(top = 2.dp))
                         Spacer(Modifier.width(12.dp))
                         Column {
-                            Text("Monthly Due Date", style = MaterialTheme.typography.labelMedium,
+                            Text("Payout Frequency", style = MaterialTheme.typography.labelMedium,
                                 color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
-                            Text("${circle.monthlyDueDay}th of every month",
+                            Text("Every ${circle.payoutFrequencyValue} ${circle.payoutFrequencyUnit}",
                                 style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                         }
                     }
@@ -344,7 +366,7 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                         Column {
                             Text("Contribution Amount", style = MaterialTheme.typography.labelMedium,
                                 color = PundarTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
-                            Text("₱ ${String.format("%,.0f", circle.contributionPerMonth)} / member / month",
+                            Text(if (circle.currency == "XLM") "${String.format("%,.2f", circle.contributionPerMonth)} XLM / member / month" else "${circle.currency} ${String.format("%,.0f", circle.contributionPerMonth)} / member / month",
                                 style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary)
                         }
                     }
