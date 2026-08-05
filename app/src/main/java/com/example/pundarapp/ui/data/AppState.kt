@@ -401,20 +401,58 @@ object AppState {
                     if (recipient.isYou) {
                         // Directly add to wallet if you are the recipient
                         updateWalletBalance(walletBalance.value + amountXlm)
+                        
+                        addHomeActivity(
+                            HomeActivity(
+                                icon = "savings",
+                                title = finalCircle.name,
+                                subtitle = "Funds auto-released to you",
+                                amount = if (old.currency == "XLM") "+${String.format("%,.2f", releasedFunds)} XLM" else "+${old.currency} ${String.format("%,.2f", releasedFunds)}",
+                                isPositive = true,
+                                module = "Circle"
+                            )
+                        )
                     } else {
                         // Update the other user's balance in Firestore
                         scope.launch {
                             try {
                                 val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                                 val docId = if (recipient.userId.isNotEmpty()) recipient.userId else recipient.name
-                                val doc = db.collection("users").document(docId).get().await()
+                                var doc = db.collection("users").document(docId).get().await()
+                                
+                                if (!doc.exists()) {
+                                    // Fallback: try finding the user by their full_name
+                                    val usersByName = db.collection("users").whereEqualTo("full_name", recipient.name).get().await()
+                                    if (usersByName.documents.isNotEmpty()) {
+                                        doc = usersByName.documents.first()
+                                    }
+                                }
+
                                 if (doc.exists()) {
                                     val currentBal = doc.getDouble("wallet_balance") ?: doc.getDouble("walletBalance") ?: 0.0
                                     val newBal = currentBal + amountXlm
-                                    db.collection("users").document(docId).update(mapOf(
+                                    db.collection("users").document(doc.id).update(mapOf(
                                         "wallet_balance" to newBal,
                                         "walletBalance" to newBal
-                                    ))
+                                    )).await()
+                                    
+                                    // Add activity for the recipient in Firestore
+                                    val activityId = java.util.UUID.randomUUID().toString()
+                                    val remoteActivity = hashMapOf(
+                                        "id" to activityId,
+                                        "userId" to doc.id,
+                                        "icon" to "savings",
+                                        "title" to finalCircle.name,
+                                        "subtitle" to "Funds auto-released to you",
+                                        "amount" to if (old.currency == "XLM") "+${String.format("%,.2f", releasedFunds)} XLM" else "+${old.currency} ${String.format("%,.2f", releasedFunds)}",
+                                        "timestamp" to System.currentTimeMillis(),
+                                        "isPositive" to true,
+                                        "module" to "Circle"
+                                    )
+                                    db.collection("recent_activities").document(activityId).set(remoteActivity).await()
+                                    
+                                } else {
+                                    android.util.Log.e("AppState", "Could not find recipient user document in Firestore to credit balance.")
                                 }
                             } catch (e: Exception) {
                                 android.util.Log.e("AppState", "Failed to update recipient balance", e)
@@ -427,10 +465,12 @@ object AppState {
                         m.copy(status = com.example.pundarapp.ui.data.ContributionStatus.PENDING, amount = 0.0)
                     }
                     
+                    val newRecipientIndex = recipientIndex + 1
                     finalCircle = finalCircle.copy(
                         savedAmount = 0.0,
-                        currentRecipientIndex = recipientIndex + 1,
-                        members = nextCycleMembers
+                        currentRecipientIndex = newRecipientIndex,
+                        members = nextCycleMembers,
+                        isActive = newRecipientIndex < finalCircle.members.size
                     )
                 }
             }
@@ -453,18 +493,6 @@ object AppState {
                     module = "Circle"
                 )
             )
-            if (releasedFunds > 0) {
-                addHomeActivity(
-                    HomeActivity(
-                        icon = "savings",
-                        title = finalCircle.name,
-                        subtitle = "Funds auto-released to $recipientName",
-                        amount = if (old.currency == "XLM") "+${String.format("%,.2f", releasedFunds)} XLM" else "+${old.currency} ${String.format("%,.2f", releasedFunds)}",
-                        isPositive = true,
-                        module = "Circle"
-                    )
-                )
-            }
         }
         return true
     }

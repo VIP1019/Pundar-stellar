@@ -27,12 +27,14 @@ import javax.crypto.spec.SecretKeySpec
 object StellarWalletManager {
     private const val TAG = "StellarWalletManager"
     private const val HORIZON_URL = "https://horizon-testnet.stellar.org"
-    private const val SOROBAN_URL = "https://soroban-testnet.stellar.org"
+    private const val SOROBAN_URL = "https://soroban-testnet.stellar.org:443"
     private const val FRIEND_BOT_URL = "https://friendbot.stellar.org/?addr="
     private const val ITERATIONS = 10000
     private const val KEY_LENGTH = 256
     private const val IV_SIZE = 12
     private const val TAG_SIZE = 128
+
+    const val CIRCLE_CONTRACT_ID = "CBGZJWLQHJSRWFS2HMBD5SRWY5BAIB76PS7S5MGFJXNN34NF4QDSE3Y3"
 
     const val USDC_ASSET_CODE = "USDC"
     const val USDC_ISSUER = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"

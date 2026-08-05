@@ -252,7 +252,8 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Total Saved", style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
-                            Text(if (circle.currency == "XLM") "${String.format("%,.2f", circle.savedAmount)} XLM" else "${circle.currency} ${String.format("%,.0f", circle.savedAmount)}",
+                            val displaySaved = if (!circle.isActive) circle.targetAmount else circle.savedAmount
+                            Text(if (circle.currency == "XLM") "${String.format("%,.2f", displaySaved)} XLM" else "${circle.currency} ${String.format("%,.0f", displaySaved)}",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold, color = PundarTheme.colors.brandPrimary)
                             Text(if (circle.currency == "XLM") "of ${String.format("%,.2f", circle.targetAmount)} XLM" else "of ${circle.currency} ${String.format("%,.0f", circle.targetAmount)}",
@@ -261,20 +262,26 @@ fun CircleDetailScreen(circleId: String, navController: NavController) {
                     }
 
                     Spacer(Modifier.height(24.dp))
-                    val progress = (circle.savedAmount / circle.targetAmount).toFloat().coerceIn(0f, 1f)
+                    val progress = if (!circle.isActive) 1f else (circle.savedAmount / circle.targetAmount).toFloat().coerceIn(0f, 1f)
+                    val displaySaved = if (!circle.isActive) circle.targetAmount else circle.savedAmount
+                    
                     PundarProgressBar(progress = progress, color = PundarTheme.colors.brandPrimary)
                     Spacer(Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${(progress * 100).toInt()}% Completed",
+                        Text(if (!circle.isActive) "100% Completed" else "${(progress * 100).toInt()}% Completed",
                             style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
-                        Text(if (circle.currency == "XLM") "${String.format("%,.2f", circle.targetAmount - circle.savedAmount)} XLM remaining" else "${circle.currency} ${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} remaining",
-                            style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
+                        if (circle.isActive) {
+                            Text(if (circle.currency == "XLM") "${String.format("%,.2f", circle.targetAmount - circle.savedAmount)} XLM remaining" else "${circle.currency} ${String.format("%,.0f", circle.targetAmount - circle.savedAmount)} remaining",
+                                style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
+                        } else {
+                            Text("All payouts complete", style = MaterialTheme.typography.labelMedium, color = PundarSuccess)
+                        }
                     }
 
                     Spacer(Modifier.height(24.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (isMember) {
+                        if (isMember && circle.isActive) {
                             Button(
                                 onClick = { showContributeDialog = true },
                                 modifier = Modifier.weight(1f).height(48.dp),
