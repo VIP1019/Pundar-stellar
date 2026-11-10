@@ -24,8 +24,9 @@ import com.example.pundarapp.ui.screens.home.NotificationData
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.theme.PundarTheme
 
-private val TopBarBgDark = Color(0xF2090F1F)   // original dark header
-private val TopBarBgLight = Color(0xFFFAFBFF)  // crisp white-blue for light mode
+private val HeroNavyBg = Color(0xFF0B1B3D)      // Signature Deep Dark Navy header
+private val HeroNavyButton = Color(0xFF1E2E5C)  // Circular dark-navy icon container
+private val HeroNavySub = Color(0xFF94A3B8)     // Muted slate subtitle on navy
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,57 +41,53 @@ fun PundarMainTopBar(
     onSettingsClick: () -> Unit = {},
     onMenuClick: () -> Unit = {}
 ) {
-    val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
-    val topBarBorderColor = if (PundarTheme.colors.isLight)
-        Color(0xFFE2E8F0) // Subtle gray border in light mode
-    else
-        PundarTheme.colors.glassMedium
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(topBarBg)
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    listOf(Color.Transparent, topBarBorderColor),
-                    startY = 0f, endY = Float.POSITIVE_INFINITY
-                ),
-                shape = RectangleShape
-            )
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .background(HeroNavyBg)
     ) {
         TopAppBar(
             title = {
                 Column {
                     Text(
-                        text = "Hey, ${userName.split(" ").first()} 👋",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = PundarTheme.colors.textPrimary
+                        text = "Kamusta,",
+                        fontSize = 11.sp,
+                        color = HeroNavySub
                     )
                     Text(
-                        text = "Every transaction counts.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = PundarTheme.colors.textMuted,
-                        letterSpacing = 0.2.sp
+                        text = userName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = Color.White
                     )
                 }
             },
             navigationIcon = {
-                PundarAvatar(
-                    initials = userInitials,
-                    imageUrl = profileImageUrl,
-                    modifier = Modifier.padding(start = 12.dp, end = 4.dp),
-                    size = 40.dp,
-                    showRing = true
-                )
+                Box(
+                    modifier = Modifier
+                        .padding(start = 12.dp, end = 6.dp)
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(HeroNavyButton)
+                        .border(1.5.dp, Color(0xFF3B82F6), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        userInitials,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                }
             },
             actions = {
                 Box(
                     modifier = Modifier
-                        .height(28.dp)
+                        .height(30.dp)
                         .clip(RoundedCornerShape(50.dp))
-                        .background(PundarTheme.colors.accentGold.copy(0.12f))
-                        .border(1.dp, PundarTheme.colors.accentGold.copy(0.30f), RoundedCornerShape(50.dp))
+                        .background(HeroNavyButton)
+                        .border(1.dp, Color(0xFFF59E0B).copy(0.45f), RoundedCornerShape(50.dp))
                         .clickable { onScoreClick() }
                         .padding(horizontal = 10.dp)
                 ) {
@@ -101,35 +98,47 @@ fun PundarMainTopBar(
                             text = "$pundarScore",
                             color = Gold400,
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
-                IconButton(onClick = onRequestClick) {
+                Spacer(Modifier.width(6.dp))
+                IconButton(
+                    onClick = onRequestClick,
+                    modifier = Modifier.size(38.dp).clip(CircleShape).background(HeroNavyButton)
+                ) {
                     if (com.example.pundarapp.ui.data.AppState.unifiedRequests.isNotEmpty()) {
-                        BadgedBox(badge = { Badge(containerColor = ElectricBlue) }) {
-                            Icon(Icons.Filled.MailOutline, "Requests", tint = PundarTheme.colors.textSecondary)
+                        BadgedBox(badge = { Badge(containerColor = Color(0xFF10B981)) }) {
+                            Icon(Icons.Filled.MailOutline, "Requests", tint = Color.White, modifier = Modifier.size(19.dp))
                         }
                     } else {
-                        Icon(Icons.Filled.MailOutline, "Requests", tint = PundarTheme.colors.textSecondary)
+                        Icon(Icons.Filled.MailOutline, "Requests", tint = Color.White, modifier = Modifier.size(19.dp))
                     }
                 }
-                IconButton(onClick = onNotificationClick) {
+                Spacer(Modifier.width(6.dp))
+                IconButton(
+                    onClick = onNotificationClick,
+                    modifier = Modifier.size(38.dp).clip(CircleShape).background(HeroNavyButton)
+                ) {
                     if (NotificationData.hasUnread()) {
-                        BadgedBox(badge = { Badge(containerColor = PundarTheme.colors.accentRed) }) {
-                            Icon(Icons.Filled.Notifications, "Alerts", tint = PundarTheme.colors.textSecondary)
+                        BadgedBox(badge = { Badge(containerColor = Color(0xFF10B981)) }) {
+                            Icon(Icons.Filled.Notifications, "Alerts", tint = Color.White, modifier = Modifier.size(19.dp))
                         }
                     } else {
-                        Icon(Icons.Filled.Notifications, "Alerts", tint = PundarTheme.colors.textSecondary)
+                        Icon(Icons.Filled.Notifications, "Alerts", tint = Color.White, modifier = Modifier.size(19.dp))
                     }
                 }
-                IconButton(onClick = onSettingsClick) {
-                    Icon(Icons.Filled.Settings, "Settings", tint = PundarTheme.colors.textSecondary)
+                Spacer(Modifier.width(6.dp))
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.padding(end = 8.dp).size(38.dp).clip(CircleShape).background(HeroNavyButton)
+                ) {
+                    Icon(Icons.Filled.Settings, "Settings", tint = Color.White, modifier = Modifier.size(19.dp))
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
-                titleContentColor = PundarTheme.colors.textPrimary
+                titleContentColor = Color.White
             )
         )
     }
@@ -146,47 +155,53 @@ fun PundarDetailTopBar(
     showStar: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
-    val topBarBorderColor = if (PundarTheme.colors.isLight) Color(0xFFE2E8F0) else PundarTheme.colors.glassMedium
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(topBarBg)
-            .border(
-                1.dp,
-                Brush.verticalGradient(listOf(Color.Transparent, topBarBorderColor), startY = 0f, endY = Float.POSITIVE_INFINITY),
-                RectangleShape
-            )
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .background(HeroNavyBg)
     ) {
         TopAppBar(
             title = {
-                Text(title, style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(34.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
-                            .background(PundarTheme.colors.surfaceSecondary)
-                            .border(1.dp, PundarTheme.colors.borderPrimary, CircleShape)
+                            .background(HeroNavyButton)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back",
-                            tint = PundarTheme.colors.textPrimary, modifier = Modifier.size(17.dp))
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             },
             actions = {
-                actions()
-                if (showHelp)          IconButton(onClick = {}) { Icon(Icons.Filled.Help,         "Help",  tint = PundarTheme.colors.textSecondary) }
-                if (showMoreOptions)   IconButton(onClick = {}) { Icon(Icons.Filled.MoreVert,      "More",  tint = PundarTheme.colors.textSecondary) }
-                if (showNotifications) IconButton(onClick = {}) { Icon(Icons.Filled.Notifications, "Notif", tint = PundarTheme.colors.textSecondary) }
-                if (showStar)          IconButton(onClick = {}) { Icon(Icons.Filled.Star,           "Fav",   tint = PundarTheme.colors.textSecondary) }
+                CompositionLocalProvider(LocalContentColor provides Color.White) {
+                    actions()
+                    if (showHelp) IconButton(onClick = {}) { Icon(Icons.Filled.Help, "Help", tint = Color.White) }
+                    if (showMoreOptions) IconButton(onClick = {}) { Icon(Icons.Filled.MoreVert, "More", tint = Color.White) }
+                    if (showNotifications) IconButton(onClick = {}) { Icon(Icons.Filled.Notifications, "Notif", tint = Color.White) }
+                    if (showStar) IconButton(onClick = {}) { Icon(Icons.Filled.Star, "Fav", tint = Color.White) }
+                }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent, titleContentColor = PundarTheme.colors.textPrimary)
+                containerColor = Color.Transparent,
+                titleContentColor = Color.White,
+                actionIconContentColor = Color.White
+            )
         )
     }
 }
@@ -200,37 +215,55 @@ fun PundarCircleTopBar(
     userInitials: String = "JD",
     profileImageUrl: String? = null
 ) {
-    val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
-    val topBarBorderColor = if (PundarTheme.colors.isLight) Color(0xFFE2E8F0) else PundarTheme.colors.glassMedium
     Box(
-        modifier = Modifier.fillMaxWidth().background(topBarBg)
-            .border(1.dp, Brush.verticalGradient(listOf(Color.Transparent, topBarBorderColor),
-                startY = 0f, endY = Float.POSITIVE_INFINITY), RectangleShape)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .background(HeroNavyBg)
     ) {
         TopAppBar(
             title = {
-                Text("PUNDAR", fontWeight = FontWeight.Black, fontSize = 18.sp,
-                    color = PundarTheme.colors.textPrimary, letterSpacing = 2.sp)
+                Text(
+                    "PUNDAR",
+                    fontWeight = FontWeight.Black,
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    letterSpacing = 2.sp
+                )
             },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = PundarTheme.colors.textPrimary)
-                }
-            },
-            actions = {
-                PundarAvatar(userInitials, imageUrl = profileImageUrl, size = 34.dp,
-                    showRing = true, initialsFontSize = 12.sp)
-                if (showNotifications) {
-                    IconButton(onClick = onNotificationClick) {
-                        if (NotificationData.hasUnread())
-                            BadgedBox(badge = { Badge(containerColor = PundarTheme.colors.accentRed) }) {
-                                Icon(Icons.Filled.Notifications, "Notifications", tint = PundarTheme.colors.textSecondary)
-                            }
-                        else Icon(Icons.Filled.Notifications, "Notifications", tint = PundarTheme.colors.textSecondary)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(HeroNavyButton)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = PundarTheme.colors.textPrimary)
+            actions = {
+                PundarAvatar(
+                    userInitials,
+                    imageUrl = profileImageUrl,
+                    size = 34.dp,
+                    showRing = true,
+                    initialsFontSize = 12.sp
+                )
+                if (showNotifications) {
+                    Spacer(Modifier.width(6.dp))
+                    IconButton(
+                        onClick = onNotificationClick,
+                        modifier = Modifier.padding(end = 8.dp).size(38.dp).clip(CircleShape).background(HeroNavyButton)
+                    ) {
+                        if (NotificationData.hasUnread())
+                            BadgedBox(badge = { Badge(containerColor = Color(0xFF10B981)) }) {
+                                Icon(Icons.Filled.Notifications, "Notifications", tint = Color.White, modifier = Modifier.size(19.dp))
+                            }
+                        else Icon(Icons.Filled.Notifications, "Notifications", tint = Color.White, modifier = Modifier.size(19.dp))
+                    }
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = Color.White)
         )
     }
 }
@@ -245,55 +278,79 @@ fun PundarGrowTopBar(
     onBack: () -> Unit = {},
     onMenuClick: () -> Unit = {}
 ) {
-    val topBarBg = if (PundarTheme.colors.isLight) TopBarBgLight else TopBarBgDark
-    val topBarBorderColor = if (PundarTheme.colors.isLight) Color(0xFFE2E8F0) else PundarTheme.colors.glassMedium
     Box(
-        modifier = Modifier.fillMaxWidth().background(topBarBg)
-            .border(1.dp, Brush.verticalGradient(listOf(Color.Transparent, topBarBorderColor),
-                startY = 0f, endY = Float.POSITIVE_INFINITY), RectangleShape)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .background(HeroNavyBg)
     ) {
         TopAppBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    PundarAvatar(userInitials, imageUrl = profileImageUrl, size = 34.dp,
-                        showRing = true, initialsFontSize = 12.sp)
+                    PundarAvatar(
+                        userInitials,
+                        imageUrl = profileImageUrl,
+                        size = 34.dp,
+                        showRing = true,
+                        initialsFontSize = 12.sp
+                    )
                     Spacer(Modifier.width(10.dp))
-                    Text("PUNDAR", fontWeight = FontWeight.Black, fontSize = 18.sp,
-                        color = PundarTheme.colors.textPrimary, letterSpacing = 2.sp)
+                    Text(
+                        "PUNDAR Grow",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = Color.White
+                    )
                 }
             },
             navigationIcon = {
                 IconButton(onClick = onMenuClick) {
-                    Icon(
-                        imageVector = Icons.Filled.Menu,
-                        contentDescription = "Menu",
-                        tint = PundarTheme.colors.textPrimary
-                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(HeroNavyButton)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = "Menu",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             },
             actions = {
                 Box(
-                    modifier = Modifier.height(28.dp).clip(RoundedCornerShape(50.dp))
-                        .background(PundarTheme.colors.accentGold.copy(0.12f))
-                        .border(1.dp, PundarTheme.colors.accentGold.copy(0.30f), RoundedCornerShape(50.dp))
+                    modifier = Modifier
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(HeroNavyButton)
+                        .border(1.dp, Color(0xFFF59E0B).copy(0.45f), RoundedCornerShape(50.dp))
                         .padding(horizontal = 10.dp)
                 ) {
                     Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
                         Icon3DStar(size = 12.dp)
                         Spacer(Modifier.width(4.dp))
-                        Text("$pundarScore", color = Gold400,
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "$pundarScore",
+                            color = Gold400,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
-                IconButton(onClick = onNotificationClick) {
+                Spacer(Modifier.width(6.dp))
+                IconButton(
+                    onClick = onNotificationClick,
+                    modifier = Modifier.padding(end = 8.dp).size(38.dp).clip(CircleShape).background(HeroNavyButton)
+                ) {
                     if (NotificationData.hasUnread())
-                        BadgedBox(badge = { Badge(containerColor = PundarTheme.colors.accentRed) }) {
-                            Icon(Icons.Filled.Notifications, "Notifications", tint = PundarTheme.colors.textSecondary)
+                        BadgedBox(badge = { Badge(containerColor = Color(0xFF10B981)) }) {
+                            Icon(Icons.Filled.Notifications, "Notifications", tint = Color.White, modifier = Modifier.size(19.dp))
                         }
-                    else Icon(Icons.Filled.Notifications, "Notifications", tint = PundarTheme.colors.textSecondary)
+                    else Icon(Icons.Filled.Notifications, "Notifications", tint = Color.White, modifier = Modifier.size(19.dp))
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = PundarTheme.colors.textPrimary)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = Color.White)
         )
     }
 }

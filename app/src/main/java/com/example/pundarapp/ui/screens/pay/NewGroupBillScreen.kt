@@ -133,15 +133,16 @@ fun NewGroupBillScreen(navController: NavController) {
     Scaffold(
         topBar = {
             if (currentStep < 5) {
-                Surface(
-                    color = Color.White,
-                    shadowElevation = 0.dp,
-                    modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+                        .background(Color(0xFF0B1B3D))
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -153,27 +154,28 @@ fun NewGroupBillScreen(navController: NavController) {
                                     onClick = {
                                         if (currentStep > 1) currentStep-- else navController.navigateUp()
                                     },
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF1E2E5C))
                                 ) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "Back",
-                                        tint = Color(0xFF0F172A)
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(12.dp))
                                 Column {
                                     Text(
                                         text = if (currentStep == 1) "Identify Recipient" else "Send Confirm",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 18.sp,
-                                        color = Color(0xFF0F172A)
+                                        color = Color.White
                                     )
                                     Text(
-                                        text = "PUNDAR",
+                                        text = "PUNDAR PAY",
                                         fontSize = 11.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = Color(0xFF64748B),
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF94A3B8),
                                         letterSpacing = 1.sp
                                     )
                                 }
@@ -182,16 +184,17 @@ fun NewGroupBillScreen(navController: NavController) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
                                     onClick = { navController.navigateUp() },
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF1E2E5C))
                                 ) {
-                                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color(0xFF0F172A))
+                                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
                                 }
-                                Spacer(Modifier.width(4.dp))
+                                Spacer(Modifier.width(8.dp))
                                 Box(
                                     modifier = Modifier
-                                        .size(32.dp)
+                                        .size(34.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFF0B192C)),
+                                        .background(Color(0xFF1E2E5C))
+                                        .border(1.dp, Color(0xFF3B82F6), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(Icons.Filled.Person, contentDescription = "User", tint = Color.White, modifier = Modifier.size(18.dp))
@@ -202,7 +205,7 @@ fun NewGroupBillScreen(navController: NavController) {
                 }
             }
         },
-        containerColor = Color(0xFFF4F6F9)
+        containerColor = PundarTheme.colors.bgPrimary
     ) { paddingValues ->
         Box(
             modifier = Modifier

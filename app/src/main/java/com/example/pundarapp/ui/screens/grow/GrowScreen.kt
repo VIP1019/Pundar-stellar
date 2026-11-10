@@ -89,7 +89,7 @@ fun GrowScreen(navController: NavController, openDrawer: () -> Unit = {}) {
     }
 
     // ── Scaffold ─────────────────────────────────────────────────
-    AnimatedBackground(accent = BgAccent.Gold) {
+    // Clean Light Slate background matching HomeScreen
 
     // ── Invest Dialog ─────────────────────────────────────────────
     if (showInvestDialog) {
@@ -419,7 +419,7 @@ fun GrowScreen(navController: NavController, openDrawer: () -> Unit = {}) {
     }
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = PundarTheme.colors.bgPrimary,
         topBar = {
             PundarGrowTopBar(
                 userInitials       = userInitials,
@@ -500,7 +500,6 @@ fun GrowScreen(navController: NavController, openDrawer: () -> Unit = {}) {
             }
         }
     }
-    } // AnimatedBackground
 }
 
 

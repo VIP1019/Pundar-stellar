@@ -36,8 +36,6 @@ import com.example.pundarapp.data.remote.CurrencyData
 import com.example.pundarapp.data.remote.supportedCurrencies
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import com.example.pundarapp.ui.components.AnimatedBackground
-import com.example.pundarapp.ui.components.BgAccent
 import com.example.pundarapp.ui.components.PundarAvatar
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
@@ -166,8 +164,11 @@ fun UserSettingsScreen(navController: NavController) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color(0xFF0E2260), PundarTheme.colors.bgPrimary)))
-                    .padding(vertical = 28.dp),
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(PundarTheme.colors.surfacePrimary)
+                    .border(1.dp, PundarTheme.colors.borderPrimary, RoundedCornerShape(20.dp))
+                    .padding(vertical = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

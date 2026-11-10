@@ -1,6 +1,6 @@
 package com.example.pundarapp.ui.screens.pay
 
-import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,36 +12,26 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
-import com.example.pundarapp.ui.components.AnimatedBackground
-import com.example.pundarapp.ui.components.BgAccent
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
-import com.example.pundarapp.ui.data.SampleData
 import com.example.pundarapp.ui.navigation.Routes
-import com.example.pundarapp.ui.theme.*
-
 import com.example.pundarapp.ui.theme.PundarTheme
-import com.example.pundarapp.data.remote.AuthRepository
 import kotlinx.coroutines.launch
-
-private val EaseOutBack   = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
-private val EaseOutExpo   = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-private val EaseInOutSine = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,31 +41,17 @@ fun PayScreen(navController: NavController, openDrawer: () -> Unit = {}) {
     val pendingCount  = bills.count { it.status == BillStatus.PENDING || it.status == BillStatus.PARTIAL }
     val monthTotal    = bills.sumOf { it.yourShare }
     val userSession by AuthRepository.currentUserState
-    val currentName   = userSession?.name ?: "User"
-    val initials      = AuthRepository.getCurrentUserInitials()
+    val initials      = AuthRepository.getCurrentUserInitials().ifBlank { "MJ" }
 
     val scope = rememberCoroutineScope()
     var isRefreshing by remember { mutableStateOf(false) }
-    val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+    val pullState = rememberPullToRefreshState()
 
-    AnimatedBackground(accent = BgAccent.Teal) {
     Scaffold(
-        topBar = {
-            PundarMainTopBar(
-                userName            = currentName,
-                userInitials        = initials,
-                profileImageUrl     = userSession?.profileImageUrl,
-                pundarScore         = AppState.pundarScore.intValue,
-                onRequestClick      = { navController.navigate(Routes.REQUESTS) },
-                onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
-                onSettingsClick     = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
-                onMenuClick         = openDrawer
-            )
-        },
         floatingActionButton = { PayFab { navController.navigate(Routes.PAY_NEW_BILL) } },
-        containerColor = Color.Transparent
+        containerColor = PundarTheme.colors.bgPrimary
     ) { padding ->
-        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
                 isRefreshing = true
@@ -93,230 +69,337 @@ fun PayScreen(navController: NavController, openDrawer: () -> Unit = {}) {
         ) {
             LazyColumn(
                 modifier            = Modifier.fillMaxSize(),
-                contentPadding      = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item { PayHeroHeader() }
-            item { PayStatsCard(settledCount, pendingCount, monthTotal) }
-            item { PayActionRow(navController) }
-            item { PaySectionLabel("Recent Splits") }
-            if (bills.isEmpty()) {
-                item { PayEmptyState() }
-            } else {
-                itemsIndexed(bills.toList()) { idx, bill ->
-                    BillCard(bill = bill, index = idx,
-                        onClick = { navController.navigate(Routes.billDetail(bill.id)) })
+                contentPadding      = PaddingValues(bottom = 110.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // ── DEEP NAVY HERO HEADER + FLOATING ACTION CARD ─────────
+                item {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                                .background(Color(0xFF0B1B3D))
+                                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 44.dp)
+                        ) {
+                            // Top Bar Row inside Navy Hero
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF1E2E5C))
+                                            .border(1.5.dp, Color(0xFF3B82F6), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            initials,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp
+                                        )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            "PUNDAR Pay",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            "Intelligent Settlement · Stellar Rails",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF94A3B8)
+                                        )
+                                    }
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF1E2E5C))
+                                            .clickable { navController.navigate(Routes.NOTIFICATIONS) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Notifications,
+                                            contentDescription = "Notifications",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF1E2E5C))
+                                            .clickable { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Settings,
+                                            contentDescription = "Settings",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(22.dp))
+
+                            // Monthly Spend Center Display
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50.dp))
+                                        .background(Color(0xFF1E2E5C))
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF10B981))
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            "Monthly Group Spend",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFFCBD5E1),
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    text = AppState.formatFiat(monthTotal),
+                                    fontSize = 34.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "≈ ${String.format("%,.2f", monthTotal)} XLM · Stellar Rail",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
+
+                            Spacer(Modifier.height(20.dp))
+
+                            // Inner Stats Card inside Navy Hero (matches Score card on HomeScreen)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF14254E))
+                                    .padding(horizontal = 18.dp, vertical = 14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    PayHeroStat(settledCount, "Settled", Color(0xFF10B981))
+                                    Box(Modifier.width(1.dp).height(28.dp).background(Color.White.copy(alpha = 0.12f)))
+                                    PayHeroStat(pendingCount, "Pending", Color(0xFFF59E0B))
+                                    Box(Modifier.width(1.dp).height(28.dp).background(Color.White.copy(alpha = 0.12f)))
+                                    PayHeroStat(bills.size, "Total Bills", Color(0xFF3B82F6))
+                                }
+                            }
+                        }
+
+                        // Floating White Action Pill overlapping bottom of Navy Header
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .align(Alignment.BottomCenter)
+                                .offset(y = 24.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            color = PundarTheme.colors.surfacePrimary,
+                            shadowElevation = 4.dp,
+                            border = BorderStroke(1.dp, PundarTheme.colors.borderPrimary)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PayFloatingActionItem(
+                                    icon = Icons.Filled.PersonAdd,
+                                    label = "New Bill",
+                                    tint = Color(0xFF2563EB),
+                                    onClick = { navController.navigate(Routes.PAY_NEW_BILL) }
+                                )
+                                PayFloatingActionItem(
+                                    icon = Icons.Filled.FlashOn,
+                                    label = "Instant Settle",
+                                    tint = Color(0xFFF59E0B),
+                                    onClick = { navController.navigate(Routes.INSTANT_SETTLE) }
+                                )
+                                PayFloatingActionItem(
+                                    icon = Icons.Filled.QrCodeScanner,
+                                    label = "Scan QR",
+                                    tint = Color(0xFF10B981),
+                                    onClick = { navController.navigate(Routes.SCAN) }
+                                )
+                            }
+                        }
+                    }
                 }
-            }
-            item {
-                Row(Modifier.fillMaxWidth().padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment     = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Verified, null, tint = ElectricBlue, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Settlement builds your PUNDAR Score.", style = MaterialTheme.typography.bodySmall,
-                        color = PundarTheme.colors.textSecondary)
+
+                item { Spacer(Modifier.height(16.dp)) }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Recent Splits",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            color = PundarTheme.colors.textPrimary
+                        )
+                        Text(
+                            "${bills.size} bills",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PundarTheme.colors.textMuted
+                        )
+                    }
+                }
+
+                if (bills.isEmpty()) {
+                    item {
+                        Box(Modifier.padding(horizontal = 20.dp)) {
+                            PayEmptyState()
+                        }
+                    }
+                } else {
+                    itemsIndexed(bills.toList()) { idx, bill ->
+                        Box(Modifier.padding(horizontal = 20.dp)) {
+                            BillCard(
+                                bill = bill,
+                                onClick = { navController.navigate(Routes.billDetail(bill.id)) }
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 6.dp, start = 20.dp, end = 20.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Verified, null, tint = Color(0xFF2563EB), modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Settlement builds your PUNDAR Score.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PundarTheme.colors.textMuted
+                        )
+                    }
                 }
             }
         }
-        } // PullToRefreshBox
     }
-    } // AnimatedBackground
 }
 
-// ── Glowing FAB ───────────────────────────────────────────────────
+@Composable
+private fun PayHeroStat(count: Int, label: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            count.toString(),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = color
+        )
+        Text(
+            label,
+            fontSize = 11.sp,
+            color = Color(0xFF94A3B8)
+        )
+    }
+}
+
+@Composable
+private fun PayFloatingActionItem(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(tint),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = PundarTheme.colors.textPrimary
+        )
+    }
+}
+
+// ── Clean Navy FAB ────────────────────────────────────────────────
 @Composable
 private fun PayFab(onClick: () -> Unit) {
-    val pulse by rememberInfiniteTransition(label = "fab").animateFloat(
-        initialValue = 0.6f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1000, easing = EaseInOutSine), RepeatMode.Reverse),
-        label = "fabPulse"
-    )
-    Box(
-        Modifier.shadow(
-            (16 * pulse).dp, RoundedCornerShape(18.dp),
-            ambientColor = PremiumGoldWarm.copy(pulse * 0.55f),
-            spotColor    = PremiumGoldWarm.copy(pulse * 0.55f)
+    ExtendedFloatingActionButton(
+        onClick          = onClick,
+        containerColor   = Color(0xFF0B1B3D),
+        contentColor     = Color.White,
+        shape            = RoundedCornerShape(18.dp)
+    ) {
+        Icon(Icons.Filled.AddCircleOutline, "New Bill", tint = Color.White)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "New Group Bill",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelLarge,
+            color = Color.White
         )
-    ) {
-        ExtendedFloatingActionButton(
-            onClick          = onClick,
-            containerColor   = Color.Transparent,
-            contentColor     = PundarTheme.colors.textPrimary,
-            shape            = RoundedCornerShape(18.dp),
-            modifier         = Modifier
-                .clip(RoundedCornerShape(18.dp))
-                .background(Brush.horizontalGradient(listOf(PundarTheme.colors.surfacePrimary.copy(0.7f), PundarTheme.colors.surfaceSecondary.copy(0.7f))))
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(listOf(PremiumGoldWarm.copy(0.8f), PremiumGoldWarm.copy(0.2f))),
-                    shape = RoundedCornerShape(18.dp)
-                )
-        ) {
-            Icon(Icons.Filled.AddCircleOutline, "New Bill", tint = PremiumGoldWarm)
-            Spacer(Modifier.width(8.dp))
-            Text("New Group Bill", fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.labelLarge, color = PundarTheme.colors.textPrimary)
-        }
     }
 }
 
-// ── Hero header ───────────────────────────────────────────────────
+// ── Clean White Bill Card ─────────────────────────────────────────
 @Composable
-private fun PayHeroHeader() {
-    val alpha = remember { Animatable(0f) }
-    val slideY = remember { Animatable(-20f) }
-    LaunchedEffect(Unit) {
-        alpha.animateTo(1f, tween(500, easing = EaseOutExpo))
-        slideY.animateTo(0f, tween(500, easing = EaseOutExpo))
-    }
-    Column(Modifier.graphicsLayer(alpha = alpha.value, translationY = slideY.value)) {
-        Text("PUNDAR Pay", fontWeight = FontWeight.Black, fontSize = 32.sp,
-            color = PundarTheme.colors.textPrimary, letterSpacing = (-0.5).sp)
-        Spacer(Modifier.height(4.dp))
-        Text("Intelligent Settlement · Stellar Rails",
-            style = MaterialTheme.typography.bodyMedium, color = PundarTheme.colors.textSecondary, letterSpacing = 0.3.sp)
-    }
-}
-
-// ── Stats card ────────────────────────────────────────────────────
-@Composable
-private fun PayStatsCard(settled: Int, pending: Int, total: Double) {
-    val infinite = rememberInfiniteTransition(label = "payCard")
-    val sweepX by infinite.animateFloat(
-        initialValue = -700f, targetValue = 1400f,
-        animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing)), label = "ps"
-    )
-    val scale = remember { Animatable(0.9f) }
-    val rotX  = remember { Animatable(-12f) }
-    LaunchedEffect(Unit) {
-        scale.animateTo(1f, tween(550, easing = EaseOutBack))
-        rotX.animateTo(0f,  tween(600, easing = EaseOutExpo))
-    }
-
-    Box(
-        Modifier.fillMaxWidth()
-            .graphicsLayer(scaleX = scale.value, scaleY = scale.value,
-                rotationX = rotX.value, cameraDistance = 14f * 8)
-            .shadow(20.dp, RoundedCornerShape(24.dp),
-                ambientColor = ElectricBlue.copy(0.22f), spotColor = ElectricBlue.copy(0.22f))
-            .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
-    ) {
-        // shimmer
-        Box(Modifier.matchParentSize().background(
-            Brush.linearGradient(listOf(Color.Transparent, PundarTheme.colors.surfacePrimary.copy(0.04f), Color.Transparent),
-                start = Offset(sweepX, 0f), end = Offset(sweepX + 280f, 300f))))
-        // top glow line
-        Box(Modifier.fillMaxWidth().height(1.dp)
-            .background(Brush.horizontalGradient(listOf(Color.Transparent, ElectricBlue.copy(0.7f), Color.Transparent))))
-
-        Column(Modifier.padding(22.dp)) {
-            Text("MONTHLY SPEND", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 2.sp, color = ElectricBlue.copy(0.85f))
-            Spacer(Modifier.height(8.dp))
-            Text("${String.format("%,.2f", total)} XLM", fontWeight = FontWeight.Black,
-                fontSize = 30.sp, color = PundarTheme.colors.textPrimary, letterSpacing = (-1).sp)
-            Text(AppState.formatFiat(total), fontWeight = FontWeight.Medium,
-                fontSize = 14.sp, color = PundarTheme.colors.accentGreen)
-            Spacer(Modifier.height(16.dp))
-            // Divider
-            Box(Modifier.fillMaxWidth().height(1.dp)
-                .background(Brush.horizontalGradient(listOf(Color.Transparent, BorderWhiteStrong, Color.Transparent))))
-            Spacer(Modifier.height(18.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                PayStatPill(settled, "Settled", Icons.Filled.CheckCircle, NeonGreen)
-                Box(Modifier.width(1.dp).height(36.dp).background(PundarTheme.colors.borderPrimary))
-                PayStatPill(pending, "Pending", Icons.Filled.Schedule, WarningAmber)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PayStatPill(
-    count: Int,
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    color: Color
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            FuturisticIconCircle(
-                icon = icon,
-                tint = color,
-                size = 30.dp,
-                iconSize = 15.dp
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = count.toString(),
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = color
-            )
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = PundarTheme.colors.textSecondary)
-    }
-}
-
-
-// ── Action Row ────────────────────────────────────────────────────
-@Composable
-private fun PayActionRow(navController: NavController) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        PayActionBtn(
-            label = "Create Group\nExpense",
-            icon  = Icons.Filled.PersonAdd,
-            brush = Brush.horizontalGradient(listOf(ElectricBlueDeep, ElectricBlue)),
-            tint  = TextOnDark,
-            modifier = Modifier.weight(1f)
-        ) { navController.navigate(Routes.PAY_NEW_BILL) }
-
-        PayActionBtn(
-            label = "Instant\nSettle",
-            icon  = Icons.Filled.FlashOn,
-            brush = Brush.horizontalGradient(listOf(PremiumGoldDim, PremiumGoldWarm)),
-            tint  = PundarTheme.colors.bgSecondary,
-            modifier = Modifier.weight(1f)
-        ) { navController.navigate(Routes.INSTANT_SETTLE) }
-    }
-}
-
-@Composable
-private fun PayActionBtn(
-    label: String, icon: androidx.compose.ui.graphics.vector.ImageVector,
-    brush: Brush, tint: Color, modifier: Modifier, onClick: () -> Unit
-) {
-    val scale = remember { Animatable(0.88f) }
-    LaunchedEffect(Unit) { scale.animateTo(1f, tween(400, easing = EaseOutBack)) }
-    Box(
-        modifier.graphicsLayer(scaleX = scale.value, scaleY = scale.value)
-            .height(56.dp)
-            .shadow(10.dp, RoundedCornerShape(16.dp),
-                ambientColor = PremiumGoldWarm.copy(0.2f), spotColor = ElectricBlue.copy(0.2f))
-            .clip(RoundedCornerShape(16.dp))
-            .background(brush)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp)) {
-            Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(label, color = tint, fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-// ── Bill Card (3D entrance, staggered) ────────────────────────────
-@Composable
-private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, index: Int, onClick: () -> Unit) {
+private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, onClick: () -> Unit) {
     val accent = when (bill.status) {
-        BillStatus.SETTLED -> NeonGreen
-        BillStatus.PENDING -> WarningAmber
-        BillStatus.PARTIAL -> ElectricBlue
+        BillStatus.SETTLED -> Color(0xFF10B981)
+        BillStatus.PENDING -> Color(0xFFF59E0B)
+        BillStatus.PARTIAL -> Color(0xFF2563EB)
     }
     val statusIcon = when (bill.status) {
         BillStatus.SETTLED -> Icons.Filled.CheckCircle
@@ -328,55 +411,71 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, index: Int, 
         BillStatus.PENDING -> "Pending"
         BillStatus.PARTIAL -> "Partial"
     }
-    val slideX = remember { Animatable(50f) }
-    val alpha  = remember { Animatable(0f) }
-    val rotY   = remember { Animatable(15f) }
-    LaunchedEffect(Unit) {
-        slideX.animateTo(0f, tween(380, delayMillis = index * 70, easing = EaseOutExpo))
-        alpha.animateTo(1f,  tween(320, delayMillis = index * 70))
-        rotY.animateTo(0f,   tween(450, delayMillis = index * 70, easing = EaseOutExpo))
-    }
 
-    Box(
-        Modifier.fillMaxWidth()
-            .graphicsLayer(translationX = slideX.value, alpha = alpha.value,
-                rotationY = rotY.value, cameraDistance = 14f * 8)
-            .shadow(12.dp, RoundedCornerShape(20.dp),
-                ambientColor = accent.copy(0.18f), spotColor = accent.copy(0.18f))
-            .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
-            .border(1.dp, Brush.linearGradient(listOf(accent.copy(0.35f), GlassWhite)), RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(16.dp)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = PundarTheme.colors.surfacePrimary,
+        border = BorderStroke(1.dp, PundarTheme.colors.borderPrimary)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp))
-                .background(accent.copy(0.14f))
-                .border(1.dp, accent.copy(0.35f), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(statusIcon, null, tint = accent, modifier = Modifier.size(22.dp))
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(bill.name, style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textPrimary)
+                Text(
+                    bill.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = PundarTheme.colors.textPrimary
+                )
                 Spacer(Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.clip(RoundedCornerShape(5.dp))
-                        .background(accent.copy(0.13f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                        Text(statusLabel, style = MaterialTheme.typography.labelSmall,
-                            color = accent, fontWeight = FontWeight.Bold)
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(accent.copy(0.13f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = accent,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
-                    Text(" · ${bill.memberCount} members · ${bill.date}",
-                        style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
+                    Text(
+                        " · ${bill.memberCount} members · ${bill.date}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PundarTheme.colors.textMuted
+                    )
                 }
             }
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text("₱${String.format("%,.2f", bill.totalAmount)}",
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary)
-                Text("Your: ₱${String.format("%,.2f", bill.yourShare)}",
-                    style = MaterialTheme.typography.bodySmall, color = PundarTheme.colors.textSecondary)
+                Text(
+                    "₱${String.format("%,.2f", bill.totalAmount)}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = PundarTheme.colors.textPrimary
+                )
+                Text(
+                    "Your: ₱${String.format("%,.2f", bill.yourShare)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PundarTheme.colors.textMuted
+                )
             }
         }
     }
@@ -384,26 +483,26 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, index: Int, 
 
 @Composable
 private fun PayEmptyState() {
-    Box(
-        Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
-            .border(1.dp, BorderCharcoal, RoundedCornerShape(20.dp))
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = PundarTheme.colors.surfacePrimary,
+        border = BorderStroke(1.dp, PundarTheme.colors.borderPrimary)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Icon3DReceipt(size = 56.dp)
             Spacer(Modifier.height(10.dp))
             Text("No bills yet.", fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textSecondary)
             Spacer(Modifier.height(4.dp))
-            Text("Tap \"New Group Bill\" to get started.", style = MaterialTheme.typography.bodySmall,
-                color = PundarTheme.colors.textMuted, textAlign = TextAlign.Center)
+            Text(
+                "Tap \"New Group Bill\" to get started.",
+                style = MaterialTheme.typography.bodySmall,
+                color = PundarTheme.colors.textMuted,
+                textAlign = TextAlign.Center
+            )
         }
     }
-}
-
-@Composable
-private fun PaySectionLabel(text: String) {
-    Text(text, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = PundarTheme.colors.textPrimary, letterSpacing = 0.2.sp)
 }

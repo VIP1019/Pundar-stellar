@@ -80,13 +80,15 @@ fun RegisterScreen(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF08122A), PundarTheme.colors.bgPrimary, PundarTheme.colors.bgSecondary)))
+            .background(PundarTheme.colors.bgPrimary)
     ) {
-        // Ambient orb
+        // Deep Navy Hero Header matching HomeScreen
         Box(
-            Modifier.size(300.dp).align(Alignment.TopCenter)
-                .offset(y = (-60).dp).blur(120.dp)
-                .background(PundarTheme.colors.brandPrimary.copy(0.09f), CircleShape)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(270.dp)
+                .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                .background(Color(0xFF0B1B3D))
         )
 
         Column(
@@ -96,9 +98,9 @@ fun RegisterScreen(navController: NavController) {
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(56.dp))
+            Spacer(Modifier.height(48.dp))
 
-            // Header
+            // Header (crisp white on Deep Navy)
             Column(
                 modifier            = Modifier.alpha(formAlpha.value),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -106,27 +108,28 @@ fun RegisterScreen(navController: NavController) {
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = "PUNDAR Logo",
-                    modifier = Modifier.size(80.dp)
+                    modifier = Modifier.size(76.dp)
                 )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
                 Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 24.sp,
-                    color = PundarTheme.colors.textPrimary, letterSpacing = (-0.3).sp)
+                    color = Color.White, letterSpacing = (-0.3).sp)
                 Spacer(Modifier.height(5.dp))
                 Text("Join PUNDAR — build together, grow together.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = PundarTheme.colors.textMuted, textAlign = TextAlign.Center)
+                    color = Color(0xFF94A3B8), textAlign = TextAlign.Center)
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // Form card
-            Box(
+            // Pure White Form Card
+            Surface(
                 modifier = Modifier
                     .graphicsLayer(alpha = formAlpha.value, translationY = formSlide.value)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Brush.linearGradient(listOf(PundarTheme.colors.surfacePrimary, PundarTheme.colors.surfaceSecondary)))
-                    .border(1.dp, Brush.linearGradient(listOf(PundarTheme.colors.glassMedium, PundarTheme.colors.glassSubtle)), RoundedCornerShape(20.dp))
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                color = PundarTheme.colors.surfacePrimary,
+                shadowElevation = 6.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, PundarTheme.colors.borderPrimary)
             ) {
                 Column(modifier = Modifier.padding(22.dp)) {
 

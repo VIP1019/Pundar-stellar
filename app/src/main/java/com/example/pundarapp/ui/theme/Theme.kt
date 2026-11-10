@@ -149,10 +149,10 @@ fun PundarAppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = Color.Transparent.toArgb()
-            window.navigationBarColor = colors.bgTertiary.toArgb()
+            window.statusBarColor = Color(0xFF0B1B3D).toArgb()
+            window.navigationBarColor = colors.bgPrimary.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightStatusBars = false
                 isAppearanceLightNavigationBars = !darkTheme
             }
         }
