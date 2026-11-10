@@ -28,8 +28,6 @@ import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.CurrencyRepository
 import com.example.pundarapp.data.remote.CurrencyData
 import com.example.pundarapp.data.remote.supportedCurrencies
-import com.example.pundarapp.ui.components.AnimatedBackground
-import com.example.pundarapp.ui.components.BgAccent
 import com.example.pundarapp.ui.components.PundarCard
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
@@ -74,27 +72,26 @@ fun XlmConverterScreen(navController: NavController) {
         }
     }
 
-    AnimatedBackground(accent = BgAccent.Purple) {
-        Scaffold(
-            topBar = {
-                PundarDetailTopBar(
-                    title = "XLM Converter",
-                    onBack = { navController.navigateUp() },
-                    actions = {
-                        IconButton(onClick = {
-                            scope.launch {
-                                isRefreshing = true
-                                fetchRates(force = true)
-                                isRefreshing = false
-                            }
-                        }) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh", tint = PundarTheme.colors.textPrimary)
+    Scaffold(
+        topBar = {
+            PundarDetailTopBar(
+                title = "XLM Converter",
+                onBack = { navController.navigateUp() },
+                actions = {
+                    IconButton(onClick = {
+                        scope.launch {
+                            isRefreshing = true
+                            fetchRates(force = true)
+                            isRefreshing = false
                         }
+                    }) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh", tint = Color.White)
                     }
-                )
-            },
-            containerColor = Color.Transparent
-        ) { padding ->
+                }
+            )
+        },
+        containerColor = PundarTheme.colors.bgPrimary
+    ) { padding ->
             PullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = {
@@ -307,5 +304,4 @@ fun XlmConverterScreen(navController: NavController) {
                 }
             }
         }
-    }
 }

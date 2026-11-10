@@ -35,7 +35,7 @@ object QrPaymentRepository {
         if (payload.isExpired()) {
             return Result.failure(Exception("This QR code has expired. Ask the sender to generate a new one."))
         }
-        if (payload.type != QrPayload.TYPE_RECEIVE_MONEY && isTokenUsed(payload.securityToken)) {
+        if (payload.type == QrPayload.TYPE_BILL_PAYMENT && isTokenUsed(payload.securityToken)) {
             return Result.failure(Exception("This QR code has already been used."))
         }
         return Result.success(Unit)
@@ -43,6 +43,40 @@ object QrPaymentRepository {
 
     suspend fun lookupRecipient(userId: String): Result<QrRecipient> {
         return try {
+            // Check if userId is a Stellar public key (56-char G... address)
+            if (userId.startsWith("G") && userId.length == 56) {
+                val query = usersCollection
+                    .whereEqualTo("stellarPublicKey", userId)
+                    .limit(1)
+                    .get()
+                    .await()
+                val matchedDoc = query.documents.firstOrNull()
+                if (matchedDoc != null) {
+                    val name = matchedDoc.getString("full_name") ?: "PUNDAR User"
+                    val active = matchedDoc.getBoolean("is_active") ?: true
+                    if (!active) {
+                        return Result.failure(Exception("Recipient account is inactive."))
+                    }
+                    return Result.success(
+                        QrRecipient(
+                            userId = matchedDoc.id,
+                            displayName = name,
+                            walletId = userId,
+                            isActive = active
+                        )
+                    )
+                }
+                // Valid external Stellar wallet address
+                return Result.success(
+                    QrRecipient(
+                        userId = userId,
+                        displayName = "Stellar Wallet (${userId.take(6)}...${userId.takeLast(4)})",
+                        walletId = userId,
+                        isActive = true
+                    )
+                )
+            }
+
             val doc = usersCollection.document(userId).get().await()
             if (!doc.exists()) {
                 return Result.failure(Exception("Recipient not found."))

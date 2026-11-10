@@ -94,42 +94,42 @@ fun pundarDarkColors() = PundarColors(
 )
 
 fun pundarLightColors() = PundarColors(
-    // Backgrounds: crisp white with very subtle blue tint - premium feel
-    bgPrimary    = Color(0xFFF0F4FF),   // Very light blue-white
-    bgSecondary  = Color(0xFFE8EEF8),   // Slightly deeper for gradient depth
-    bgTertiary   = Color(0xFFFAFCFF),   // Near-pure white for top
+    // Backgrounds: crisp flat light background
+    bgPrimary    = Color(0xFFF4F6F9),   // Light slate background
+    bgSecondary  = Color(0xFFEBEFF5),
+    bgTertiary   = Color(0xFFFFFFFF),   // Pure white top/card background
 
-    // Surfaces: pure white cards that pop off the background
+    // Surfaces: pure flat white cards with solid borders
     surfacePrimary   = Color(0xFFFFFFFF),   // Pure white cards
-    surfaceSecondary = Color(0xFFF5F8FF),   // Very faint blue tint
-    surfaceTertiary  = Color(0xFFEBF0FA),   // Subtle blue for inputs/chips
+    surfaceSecondary = Color(0xFFF8FAFC),   // Soft flat slate
+    surfaceTertiary  = Color(0xFFEEF2F6),   // Flat inputs/chips
 
-    // Borders: clearly visible but not harsh
-    borderPrimary = Color(0xFFD0DAEE),      // Soft blue-gray
+    // Borders: sharp solid borders
+    borderPrimary = Color(0xFFE2E8F0),
 
-    // Text: strong contrast on white background
-    textPrimary   = Color(0xFF0D1B3E),      // Deep navy (rich dark)
-    textSecondary = Color(0xFF2D4278),      // Medium dark navy-blue
-    textMuted     = Color(0xFF5B6E9B),      // Medium muted blue-gray
-    textDim       = Color(0xFF8A9CC8),      // Dim blue-gray for captions
+    // Text: rich dark navy & slate contrast
+    textPrimary   = Color(0xFF0F172A),      // Slate 900
+    textSecondary = Color(0xFF334155),      // Slate 700
+    textMuted     = Color(0xFF64748B),      // Slate 500
+    textDim       = Color(0xFF94A3B8),      // Slate 400
 
-    // Brand: vibrant blue stays the same across themes
-    brandPrimary   = Blue500,
-    brandSecondary = Blue600,
-    brandLight     = Blue300,
+    // Brand: deep navy hero blue of PUNDAR
+    brandPrimary   = Color(0xFF0B1B3D),     // Deep Dark Navy
+    brandSecondary = Color(0xFF0F2450),     // Header Card Navy
+    brandLight     = Color(0xFF2563EB),     // Electric Blue Accent
 
-    // Accents: keep same vivid colors - they work well on both themes
-    accentElectric = Blue500,
-    accentGold     = Color(0xFFD97706),   // Darker gold so it shows on white
-    accentGreen    = Color(0xFF059669),   // Darker green for readability
-    accentRed      = Color(0xFFDC2626),
-    accentOrange   = Color(0xFFEA580C),
+    // Accents matching screenshot
+    accentElectric = Color(0xFF2563EB),     // Send Blue
+    accentGold     = Color(0xFFF59E0B),     // Score Gold / Receive Orange
+    accentGreen    = Color(0xFF10B981),     // Cash In Green
+    accentRed      = Color(0xFFEF4444),     // Alert Red
+    accentOrange   = Color(0xFFF97316),     // Due Soon Orange
 
-    // Glass: dark glass for subtle overlays on white
-    glassSubtle  = Color(0x08000080),     // 3% navy tint
-    glassMedium  = Color(0x14000060),     // 8% navy
-    glassStrong  = Color(0x22000050),     // 13% navy
-    glassBorder  = Color(0xFFD0DAEE),     // Solid light blue border
+    // Flat overlays
+    glassSubtle  = Color(0xFFF1F5F9),
+    glassMedium  = Color(0xFFE2E8F0),
+    glassStrong  = Color(0xFFCBD5E1),
+    glassBorder  = Color(0xFFE2E8F0),
 
     isLight = true
 )
@@ -198,10 +198,10 @@ fun PundarAppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = Color.Transparent.toArgb()
-            window.navigationBarColor = colors.bgTertiary.toArgb()
+            window.statusBarColor = Color(0xFF0B1B3D).toArgb()
+            window.navigationBarColor = colors.bgPrimary.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightStatusBars = false
                 isAppearanceLightNavigationBars = !darkTheme
             }
         }

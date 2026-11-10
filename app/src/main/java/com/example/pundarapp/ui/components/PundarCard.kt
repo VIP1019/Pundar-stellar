@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.theme.PundarTheme
 
@@ -139,8 +140,8 @@ fun PundarPrimaryButton(
             .graphicsLayer(scaleX = scale, scaleY = scale)
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (canClick) Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary))
-                else Brush.linearGradient(listOf(PundarTheme.colors.surfaceTertiary, PundarTheme.colors.surfaceTertiary))
+                if (canClick) Color(0xFF0B192C) // Solid Dark Blue
+                else Color(0xFFE2E8F0)          // Solid Flat Gray
             )
     ) {
         Button(
@@ -148,14 +149,22 @@ fun PundarPrimaryButton(
             modifier          = Modifier.fillMaxSize(),
             enabled           = canClick,
             shape             = RoundedCornerShape(16.dp),
-            colors            = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            colors            = ButtonDefaults.buttonColors(
+                containerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent
+            ),
             elevation         = ButtonDefaults.buttonElevation(0.dp),
             interactionSource = src
         ) {
             if (isLoading) {
-                CircularProgressIndicator(Modifier.size(20.dp), color = PundarTheme.colors.surfacePrimary, strokeWidth = 2.dp)
+                CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
             } else {
-                Text(text, fontWeight = FontWeight.SemiBold, color = if (canClick) PundarTheme.colors.surfacePrimary else PundarTheme.colors.textDim)
+                Text(
+                    text,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = if (canClick) Color.White else Color(0xFF64748B)
+                )
             }
         }
     }

@@ -41,8 +41,7 @@ private data class JourneyStep(
 fun FinancialJourneySection(modifier: Modifier = Modifier) {
     val steps = listOf(
         JourneyStep("Spend", Icons.Filled.ShoppingBag, NeonGreen, completed = true, active = false),
-        JourneyStep("Save", Icons.Filled.Savings, NeonGreen, completed = true, active = false),
-        JourneyStep("Grow", Icons.Filled.TrendingUp, ElectricBlue, completed = true, active = true),
+        JourneyStep("Save", Icons.Filled.Savings, NeonGreen, completed = true, active = true),
         JourneyStep("Score", Icons.Filled.EmojiEvents, PremiumGoldWarm, completed = false, active = false),
         JourneyStep("Access", Icons.Filled.VpnKey, NeonCyan, completed = false, active = false)
     )

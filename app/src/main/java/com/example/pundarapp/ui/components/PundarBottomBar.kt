@@ -37,8 +37,7 @@ enum class BottomNavItem(
     HOME("home",   "Home",   Blue400),
     PAY("pay",     "Pay",    Gold500),
     SCAN("scan",   "Scan",   Blue300),
-    CIRCLE("circle", "Circle", Color(0xFF8B5CF6)),
-    GROW("grow",   "Grow",   Green400)
+    CIRCLE("circle", "Circle", Color(0xFF8B5CF6))
 }
 
 // Resolve icons here — extension properties are fine at function level
@@ -48,7 +47,6 @@ private fun iconFor(item: BottomNavItem, selected: Boolean): ImageVector = when 
     BottomNavItem.PAY    -> if (selected) Icons.Filled.Receipt        else Icons.Outlined.Receipt
     BottomNavItem.SCAN   -> if (selected) Icons.Filled.QrCodeScanner  else Icons.Outlined.QrCode2
     BottomNavItem.CIRCLE -> if (selected) Icons.Filled.Groups         else Icons.Outlined.Groups
-    BottomNavItem.GROW   -> if (selected) Icons.Filled.BarChart else Icons.Outlined.BarChart
 }
 
 @Composable
