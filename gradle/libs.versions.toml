@@ -1,6 +1,6 @@
 [versions]
 agp = "8.12.0"
-kotlin = "2.0.21"
+kotlin = "2.2.21"
 coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -10,13 +10,14 @@ activityCompose = "1.13.0"
 composeBom = "2024.09.00"
 navigationCompose = "2.8.5"
 supabase = "3.0.0"
-ktor = "3.0.1"
-kotlinxSerialization = "1.6.3"
+ktor = "3.3.3"
+kotlinxSerialization = "1.8.0"
 credentials = "1.5.0-beta01"
 googleid = "1.1.1"
 google-services = "4.4.2"
 firebase-bom = "33.8.0"
-stellar-sdk = "4.0.0"
+stellar-sdk-lightsail = "4.0.0"
+soneso-stellar-sdk = "1.16.0"
 zxing = "3.5.3"
 lifecycleRuntimeCompose = "2.10.0"
 coil = "2.7.0"
@@ -52,7 +53,8 @@ ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
-stellar-sdk = { group = "network.lightsail", name = "stellar-sdk", version.ref = "stellar-sdk" }
+stellar-sdk-lightsail = { group = "network.lightsail", name = "stellar-sdk", version.ref = "stellar-sdk-lightsail" }
+soneso-stellar-sdk = { group = "com.soneso.stellar", name = "stellar-sdk", version.ref = "soneso-stellar-sdk" }
 
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }

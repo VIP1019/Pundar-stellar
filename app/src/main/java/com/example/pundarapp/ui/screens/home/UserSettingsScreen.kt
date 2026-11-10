@@ -1,5 +1,8 @@
 package com.example.pundarapp.ui.screens.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -220,6 +223,16 @@ fun UserSettingsScreen(navController: NavController) {
                 SettingsRow(Icons.Filled.Phone,    "Phone Number",         Blue400, sub = userPhone) {}
                 RowDivider()
                 SettingsRow(Icons.Filled.Email,    "Email Address",        Blue400) {}
+                val userPk = userSession?.stellarPublicKey ?: ""
+                if (userPk.isNotBlank()) {
+                    RowDivider()
+                    val truncatedPk = "${userPk.take(8)}...${userPk.takeLast(8)}"
+                    SettingsRow(Icons.Filled.AccountBalanceWallet, "Stellar Address", Blue400, sub = truncatedPk) {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Stellar Public Key", userPk))
+                        Toast.makeText(context, "Stellar address copied!", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
 
             Spacer(Modifier.height(16.dp))

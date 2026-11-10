@@ -4,6 +4,8 @@ import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -132,6 +134,53 @@ fun pundarLightColors() = PundarColors(
     isLight = true
 )
 
+/**
+ * Build a Material3 ColorScheme from PundarColors so that all default
+ * Material components (TextField, Button, Dialog, etc.) automatically
+ * pick up the correct text / surface / background colors.
+ */
+@Composable
+private fun pundarMaterialColorScheme(colors: PundarColors) =
+    if (colors.isLight) {
+        lightColorScheme(
+            primary            = colors.brandPrimary,
+            onPrimary          = White,
+            primaryContainer   = colors.brandLight,
+            onPrimaryContainer = colors.textPrimary,
+            secondary          = colors.accentElectric,
+            onSecondary        = White,
+            background         = colors.bgPrimary,
+            onBackground       = colors.textPrimary,
+            surface            = colors.surfacePrimary,
+            onSurface          = colors.textPrimary,
+            surfaceVariant     = colors.surfaceTertiary,
+            onSurfaceVariant   = colors.textSecondary,
+            outline            = colors.borderPrimary,
+            outlineVariant     = colors.borderPrimary,
+            error              = colors.accentRed,
+            onError            = White,
+        )
+    } else {
+        darkColorScheme(
+            primary            = colors.brandPrimary,
+            onPrimary          = White,
+            primaryContainer   = colors.brandSecondary,
+            onPrimaryContainer = TextWhite,
+            secondary          = colors.accentElectric,
+            onSecondary        = White,
+            background         = colors.bgPrimary,
+            onBackground       = colors.textPrimary,
+            surface            = colors.surfacePrimary,
+            onSurface          = colors.textPrimary,
+            surfaceVariant     = colors.surfaceTertiary,
+            onSurfaceVariant   = colors.textSecondary,
+            outline            = colors.borderPrimary,
+            outlineVariant     = colors.borderPrimary,
+            error              = colors.accentRed,
+            onError            = White,
+        )
+    }
+
 @Composable
 fun PundarAppTheme(
     content: @Composable () -> Unit
@@ -160,6 +209,7 @@ fun PundarAppTheme(
 
     CompositionLocalProvider(LocalPundarColors provides colors) {
         MaterialTheme(
+            colorScheme = pundarMaterialColorScheme(colors),
             typography = Typography,
             content = content
         )
