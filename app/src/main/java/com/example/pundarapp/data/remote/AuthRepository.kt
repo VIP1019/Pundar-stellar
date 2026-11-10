@@ -334,4 +334,50 @@ object AuthRepository {
             emptyList()
         }
     }
+
+    /**
+     * Exact lookup of a REGISTERED PUNDAR account by phone number (any common format)
+     * or Stellar public key. Returns null if no such registered account exists.
+     */
+    suspend fun findRegisteredUser(identifier: String): UserData? {
+        val raw = identifier.trim()
+        if (raw.isBlank()) return null
+        return try {
+            kotlinx.coroutines.withTimeout(8000) {
+                fun toUser(doc: com.google.firebase.firestore.DocumentSnapshot): UserData? {
+                    if (!doc.exists()) return null
+                    val phone = doc.getString("phone_number") ?: doc.id
+                    val name = doc.getString("full_name") ?: return null
+                    return UserData(
+                        id = doc.id,
+                        name = name,
+                        phone = phone,
+                        stellarPublicKey = doc.getString("stellarPublicKey")
+                    )
+                }
+
+                if (raw.startsWith("G") && raw.length == 56) {
+                    val snap = usersCollection.whereEqualTo("stellarPublicKey", raw).limit(1).get().await()
+                    return@withTimeout snap.documents.firstOrNull()?.let { toUser(it) }
+                }
+
+                val digits = raw.filter { it.isDigit() }
+                val national = when {
+                    digits.startsWith("63") && digits.length >= 12 -> digits.drop(2)
+                    digits.startsWith("0") -> digits.drop(1)
+                    else -> digits
+                }
+                val candidates = linkedSetOf(raw, digits, national, "0$national", "63$national", "+63$national")
+                    .filter { it.isNotBlank() }
+                for (candidate in candidates) {
+                    val user = toUser(usersCollection.document(candidate).get().await())
+                    if (user != null) return@withTimeout user
+                }
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "findRegisteredUser failed", e)
+            null
+        }
+    }
 }

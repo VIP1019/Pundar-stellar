@@ -107,26 +107,21 @@ fun SendMoneyScreen(navController: NavController) {
                                 val recipientPk: String
                                 val recipientDisplayName: String
 
-                                if (target.startsWith("G") && target.length == 56) {
-                                    recipientPk = target
-                                    recipientDisplayName = "${target.take(6)}...${target.takeLast(6)}"
-                                } else {
-                                    val users = AuthRepository.searchUsers(target)
-                                    val recipient = users.find { it.phone == target }
-                                    if (recipient == null) {
-                                        errorMsg  = "No PUNDAR user found with that number."
-                                        isSending = false
-                                        return@launch
-                                    }
-                                    val pk = recipient.stellarPublicKey
-                                    if (pk.isNullOrBlank()) {
-                                        errorMsg  = "Recipient wallet not found."
-                                        isSending = false
-                                        return@launch
-                                    }
-                                    recipientPk = pk
-                                    recipientDisplayName = recipient.name
+                                // Only registered PUNDAR accounts (by phone or Stellar address) can receive
+                                val recipient = AuthRepository.findRegisteredUser(target)
+                                if (recipient == null) {
+                                    errorMsg  = "No registered PUNDAR account found for that number."
+                                    isSending = false
+                                    return@launch
                                 }
+                                val pk = recipient.stellarPublicKey
+                                if (pk.isNullOrBlank()) {
+                                    errorMsg  = "Recipient wallet not found."
+                                    isSending = false
+                                    return@launch
+                                }
+                                recipientPk = pk
+                                recipientDisplayName = recipient.name
 
                                 val senderPk   = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
                                 val senderSeed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""

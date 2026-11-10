@@ -197,6 +197,7 @@ object AppState {
     val circles = mutableStateListOf<Circle>()
     val discoverableCircles = mutableStateListOf<Circle>()
     val pendingInvitation = mutableStateOf<CircleInvitation?>(null)
+    val pendingInvitations = mutableStateListOf<CircleInvitation>()
     val pendingJoinRequests = mutableStateListOf<CircleJoinRequest>()
     val unifiedRequests = mutableStateListOf<com.example.pundarapp.ui.data.AppRequest>()
 
@@ -265,6 +266,8 @@ object AppState {
             circles.addAll(remoteCircles)
             // Still updating legacy variables for backward compatibility if any
             val pendingInvites = CircleRepository.getPendingInvitations(userId)
+            pendingInvitations.clear()
+            pendingInvitations.addAll(pendingInvites)
             pendingInvitation.value = pendingInvites.firstOrNull()
         }
         refreshUnifiedRequests()
@@ -319,38 +322,33 @@ object AppState {
     suspend fun acceptInvitation(invitation: CircleInvitation): Result<Unit> {
         return try {
             val userId = AuthRepository.getCurrentUserPhone()
-            val userName = AuthRepository.getCurrentUserName()
-            val userInitials = AuthRepository.getCurrentUserInitials()
-            
-            // Join the circle in Firestore
-            val joinResult = CircleRepository.joinCircle(
-                circleId = invitation.circleId,
+            val refreshed = CircleRepository.refreshInvitation(invitation)
+            val respondResult = CircleRepository.respondToCircleTerms(
+                circleId = refreshed.circleId,
                 userId = userId,
-                userName = userName,
-                userInitials = userInitials,
-                monthlyContribution = invitation.monthlyContribution
+                accept = true,
+                termsVersion = refreshed.termsVersion
             )
-            
-            if (joinResult.isSuccess) {
-                // Update invitation status
+
+            if (respondResult.isSuccess) {
                 CircleRepository.updateInvitationStatus(invitation.id, "ACCEPTED")
-                pendingInvitation.value = null
-                
+                pendingInvitations.removeAll { it.id == invitation.id || it.circleId == invitation.circleId }
+                pendingInvitation.value = pendingInvitations.firstOrNull()
                 refreshCircles()
-                
+
                 addHomeActivity(
                     HomeActivity(
                         icon = "savings",
-                        title = invitation.circleName,
-                        subtitle = "Joined circle",
-                        amount = "+${String.format("%,.0f", invitation.monthlyContribution)} XLM/mo",
+                        title = refreshed.circleName,
+                        subtitle = "Accepted Circle Terms (v${refreshed.termsVersion})",
+                        amount = "${String.format("%,.2f", refreshed.monthlyContribution)} ${refreshed.currency}",
                         isPositive = true,
                         module = "Circle"
                     )
                 )
                 Result.success(Unit)
             } else {
-                Result.failure(joinResult.exceptionOrNull() ?: Exception("Failed to join"))
+                Result.failure(respondResult.exceptionOrNull() ?: Exception("Failed to accept terms"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -359,10 +357,18 @@ object AppState {
 
     suspend fun rejectInvitation(invitation: CircleInvitation): Result<Unit> {
         return try {
-            val result = CircleRepository.updateInvitationStatus(invitation.id, "REJECTED")
-            if (result.isSuccess) {
-                pendingInvitation.value = null
-            }
+            val userId = AuthRepository.getCurrentUserPhone()
+            val refreshed = CircleRepository.refreshInvitation(invitation)
+            CircleRepository.respondToCircleTerms(
+                circleId = refreshed.circleId,
+                userId = userId,
+                accept = false,
+                termsVersion = refreshed.termsVersion
+            )
+            val result = CircleRepository.updateInvitationStatus(invitation.id, "DECLINED")
+            pendingInvitations.removeAll { it.id == invitation.id || it.circleId == invitation.circleId }
+            pendingInvitation.value = pendingInvitations.firstOrNull()
+            refreshCircles()
             result
         } catch (e: Exception) {
             Result.failure(e)

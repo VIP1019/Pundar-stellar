@@ -9,9 +9,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.example.pundarapp" />
-                  <option name="mobileSdkAppId" value="1:1015849837056:android:8bbc59d335fc7deb85aee5" />
-                  <option name="projectId" value="pundar-app" />
-                  <option name="projectNumber" value="1015849837056" />
+                  <option name="mobileSdkAppId" value="1:838328520865:android:3fb356064a8bb871bc20e0" />
+                  <option name="projectId" value="pundar-app-3d9a3" />
+                  <option name="projectNumber" value="838328520865" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

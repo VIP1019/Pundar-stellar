@@ -453,15 +453,28 @@ private fun PhoneTab(circleId: String) {
             )
         )
 
+        val verifyScope = rememberCoroutineScope()
+        var isChecking by remember { mutableStateOf(false) }
+
         Button(
+            enabled = !isChecking,
             onClick = {
                 if (phone.length != 11) {
                     phoneError = "Enter a valid 11-digit number."
                     return@Button
                 }
                 phoneError = null
-                Toast.makeText(context, "Invite sent to $phone!", Toast.LENGTH_SHORT).show()
-                phone = ""
+                verifyScope.launch {
+                    isChecking = true
+                    val user = com.example.pundarapp.data.remote.AuthRepository.findRegisteredUser(phone)
+                    isChecking = false
+                    if (user == null) {
+                        phoneError = "Not a registered PUNDAR account. Only verified users can be invited."
+                    } else {
+                        Toast.makeText(context, "Invite sent to ${user.name}!", Toast.LENGTH_SHORT).show()
+                        phone = ""
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),

@@ -120,6 +120,16 @@ fun QrSendConfirmScreen(navController: NavController) {
                             }
 
                             val isExternalStellar = recipient.userId.startsWith("G") && recipient.userId.length == 56
+                            if (isExternalStellar && AuthRepository.findRegisteredUser(recipient.userId) == null) {
+                                Toast.makeText(
+                                    context,
+                                    "Recipient is not a registered PUNDAR account.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                isProcessing = false
+                                pin = ""
+                                return@launch
+                            }
                             val transfer: Result<String> = if (isExternalStellar) {
                                 val senderPk = AuthRepository.getCurrentUserStellarPublicKey().orEmpty()
                                 val senderSeed = AuthRepository.getCurrentUserEncryptedSeed().orEmpty()

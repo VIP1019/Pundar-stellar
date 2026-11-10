@@ -37,7 +37,8 @@ enum class BottomNavItem(
     HOME("home",   "Home",   Blue400),
     PAY("pay",     "Pay",    Gold500),
     SCAN("scan",   "Scan",   Blue300),
-    CIRCLE("circle", "Circle", Color(0xFF8B5CF6))
+    CIRCLE("circle", "Circle", Color(0xFF8B5CF6)),
+    PROFILE("settings", "Profile", Color(0xFF10B981))
 }
 
 // Resolve icons here — extension properties are fine at function level
@@ -47,6 +48,7 @@ private fun iconFor(item: BottomNavItem, selected: Boolean): ImageVector = when 
     BottomNavItem.PAY    -> if (selected) Icons.Filled.Receipt        else Icons.Outlined.Receipt
     BottomNavItem.SCAN   -> if (selected) Icons.Filled.QrCodeScanner  else Icons.Outlined.QrCode2
     BottomNavItem.CIRCLE -> if (selected) Icons.Filled.Groups         else Icons.Outlined.Groups
+    BottomNavItem.PROFILE -> if (selected) Icons.Filled.Person        else Icons.Outlined.Person
 }
 
 @Composable
@@ -116,6 +118,12 @@ private fun RowScope.NavItem(
     if (item == BottomNavItem.SCAN) {
         Box(
             modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+        Box(
+            modifier = Modifier
                 .size(52.dp)
                 .graphicsLayer(scaleX = scale, scaleY = scale)
                 .clip(CircleShape)
@@ -138,6 +146,7 @@ private fun RowScope.NavItem(
                 tint               = if (selected) PundarTheme.colors.surfacePrimary else PundarTheme.colors.textSecondary,
                 modifier           = Modifier.size(24.dp)
             )
+        }
         }
     } else {
         Column(

@@ -30,6 +30,29 @@ data class BillMember(
     val avatarColor: Long = 0xFF6B7280
 )
 
+data class CircleTransactionRecord(
+    val id: String = "ctx_${System.currentTimeMillis()}",
+    val type: String = "CONTRIBUTION", // "PROPOSAL_CREATED", "TERMS_ACCEPTED", "TERMS_DECLINED", "TERMS_REVISED", "CIRCLE_ACTIVATION", "CONTRIBUTION", "PAYOUT", "VALIDATION_CHECK"
+    val title: String = "",
+    val memberName: String = "",
+    val memberPhone: String = "",
+    val roundNumber: Int = 1,
+    val amount: Double = 0.0,
+    val currency: String = "XLM",
+    val status: String = "CONFIRMED", // "CONFIRMED", "REJECTED", "FAILED"
+    val txHash: String = "",
+    val timestamp: Long = System.currentTimeMillis()
+) {
+    @get:com.google.firebase.firestore.Exclude
+    val round: Int
+        get() = roundNumber
+
+    @get:com.google.firebase.firestore.Exclude
+    val formattedTime: String
+        get() = java.text.SimpleDateFormat("MMM dd, yyyy hh:mm a", java.util.Locale.getDefault())
+            .format(java.util.Date(timestamp))
+}
+
 data class Circle(
     val id: String = "",
     val name: String = "",
@@ -41,12 +64,13 @@ data class Circle(
     val members: List<CircleMember> = emptyList(),
     val isActive: Boolean = true,
     val currency: String = "XLM",
-    val escrowAddress: String = "0x7f...9A2B",
-    val escrowNetwork: String = "Stellar Network",
+    val escrowAddress: String = "CBGZJWLQHJSRWFS2HMBD5SRWY5BAIB76PS7S5MGFJXNN34NF4QDSE3Y3",
+    val escrowNetwork: String = "Stellar Testnet · Soroban",
     val payoutFrequencyValue: Int = 1,
     val payoutFrequencyUnit: String = "Months",
     val maxMembers: Int = 10,
     val creatorId: String = "",
+    val creatorName: String = "",
     val cycleStatus: CycleStatus = CycleStatus.NOT_STARTED,
     val allowedInviteMethods: List<InviteMethod> = InviteMethod.values().toList(),
     val penaltyAmount: Double = 0.0,
@@ -54,12 +78,37 @@ data class Circle(
     val cycleStartDate: String = "",
     val cycleEndDate: String = "",
     val currentRecipientIndex: Int = 0,
-    val payoutOrderType: String = "Customized"
+    val payoutOrderType: String = "Deterministic Fixed Rotation",
+    // ── SOW Deterministic Circle Lifecycle Fields ──
+    val lifecycleStatus: String = "ACTIVE", // "AWAITING_ACCEPTANCE", "DECLINED_REVISION_NEEDED", "READY_TO_ACTIVATE", "ACTIVE", "COMPLETED"
+    val termsVersion: Int = 1,
+    val currentRound: Int = 1,
+    val sorobanCircleId: Long = 0L,
+    val activationTxHash: String = "",
+    val paidRounds: List<Int> = emptyList(),
+    val transactionHistory: List<CircleTransactionRecord> = emptyList()
 ) {
     @get:com.google.firebase.firestore.Exclude
     val isFull: Boolean get() = memberCount >= maxMembers
     @get:com.google.firebase.firestore.Exclude
     val remainingSlots: Int get() = (maxMembers - memberCount).coerceAtLeast(0)
+    @get:com.google.firebase.firestore.Exclude
+    val scheduledPayoutAmount: Double get() = contributionPerMonth * members.size.coerceAtLeast(1)
+    @get:com.google.firebase.firestore.Exclude
+    val allMembersAcceptedCurrentTerms: Boolean get() =
+        members.isNotEmpty() && members.all { it.acceptanceStatus == "ACCEPTED" && it.acceptedTermsVersion == termsVersion }
+    @get:com.google.firebase.firestore.Exclude
+    val hasDeclinedMember: Boolean get() =
+        members.any { it.acceptanceStatus == "DECLINED" }
+    @get:com.google.firebase.firestore.Exclude
+    val allCurrentRoundContributionsComplete: Boolean get() =
+        lifecycleStatus == "ACTIVE" && members.isNotEmpty() && members.all { it.status == ContributionStatus.PAID }
+    @get:com.google.firebase.firestore.Exclude
+    val isCurrentRoundPayoutEligible: Boolean get() =
+        allCurrentRoundContributionsComplete && !paidRounds.contains(currentRound) && currentRound in 1..members.size
+    @get:com.google.firebase.firestore.Exclude
+    val currentRoundRecipient: CircleMember? get() =
+        members.find { it.payoutRound == currentRound } ?: members.getOrNull(currentRound - 1)
 }
 
 data class CircleMember(
@@ -71,7 +120,14 @@ data class CircleMember(
     val status: ContributionStatus = ContributionStatus.PENDING,
     val isYou: Boolean = false,
     val payoutDate: String = "",
-    val avatarColor: Long = 0xFF6B7280
+    val avatarColor: Long = 0xFF6B7280,
+    val stellarPublicKey: String = "",
+    val payoutRound: Int = 1,
+    val acceptanceStatus: String = "ACCEPTED", // "ACCEPTED", "PENDING", "DECLINED"
+    val acceptedTermsVersion: Int = 1,
+    val contributionTxHash: String = "",
+    val hasReceivedPayout: Boolean = false,
+    val payoutTxHash: String = ""
 )
 
 enum class ContributionStatus { PAID, PENDING, OVERDUE }
@@ -94,7 +150,10 @@ data class CircleInvitation(
     val memberCount: Int = 0,
     val maxMembers: Int = 0,
     val inviterInitials: String = "",
-    val inviterAvatarColor: Long = 0xFF0052CC
+    val inviterAvatarColor: Long = 0xFF0052CC,
+    val termsVersion: Int = 1,
+    val scheduleText: String = "Every 1 Months",
+    val currency: String = "XLM"
 )
 
 data class CircleJoinRequest(

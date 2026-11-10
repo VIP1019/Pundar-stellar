@@ -20,6 +20,8 @@ pub struct CircleState {
     pub pooled_amount: i128,
     pub cycle_deadline: u64, // timestamp
     pub dissolved: bool,
+    pub completed: bool,
+    pub paid_rounds: Vec<u32>,
 }
 
 #[contracttype]
@@ -44,6 +46,16 @@ impl PundarCircleContract {
     }
 
     pub fn create_circle(env: Env, members: Vec<Address>, contribution_amount: i128, payout_order: Vec<Address>, token_address: Address, cycle_duration: u64) -> u64 {
+        if members.is_empty() {
+            panic!("Circle must have at least one member");
+        }
+        if contribution_amount <= 0 {
+            panic!("Contribution amount must be positive");
+        }
+        if payout_order.len() != members.len() {
+            panic!("Payout order must assign exactly one round per member");
+        }
+
         let mut count: u64 = env.storage().instance().get(&DataKey::CircleCount).unwrap_or(0);
         count += 1;
 
@@ -67,6 +79,8 @@ impl PundarCircleContract {
             pooled_amount: 0,
             cycle_deadline: env.ledger().timestamp() + cycle_duration,
             dissolved: false,
+            completed: false,
+            paid_rounds: Vec::new(&env),
         };
 
         env.storage().persistent().set(&DataKey::CircleCfg(count), &cfg);
@@ -84,6 +98,9 @@ impl PundarCircleContract {
 
         if state.dissolved {
             panic!("Circle is dissolved");
+        }
+        if state.completed {
+            panic!("Circle has already completed all payout rounds");
         }
 
         if amount != cfg.contribution_amount {
@@ -113,6 +130,16 @@ impl PundarCircleContract {
         if state.dissolved {
             panic!("Circle is dissolved");
         }
+        if state.completed {
+            panic!("Circle has already completed all payout rounds");
+        }
+
+        if state.paid_rounds.contains(&state.current_cycle) {
+            panic!("Current round has already been paid out");
+        }
+        if state.next_payout_index >= cfg.payout_order.len() {
+            panic!("All scheduled payout rounds have been completed");
+        }
 
         let mut all_contributed = true;
         for m in cfg.members.iter() {
@@ -126,16 +153,27 @@ impl PundarCircleContract {
             panic!("Not all members have contributed for this cycle");
         }
 
+        let expected_payout = cfg.contribution_amount * (cfg.members.len() as i128);
+        if state.pooled_amount != expected_payout {
+            panic!("Pooled amount does not match deterministic scheduled payout");
+        }
+
         let recipient = cfg.payout_order.get(state.next_payout_index).expect("Payout order error");
-        let amount_to_pay = state.pooled_amount;
+        let amount_to_pay = expected_payout;
 
         let client = token::Client::new(&env, &cfg.token_address);
         client.transfer(&env.current_contract_address(), &recipient, &amount_to_pay);
 
-        state.current_cycle += 1;
+        state.paid_rounds.push_back(state.current_cycle);
         state.pooled_amount = 0;
-        state.next_payout_index = (state.next_payout_index + 1) % cfg.payout_order.len();
-        state.cycle_deadline = env.ledger().timestamp() + cfg.cycle_duration;
+        state.next_payout_index += 1;
+
+        if state.next_payout_index >= cfg.payout_order.len() {
+            state.completed = true;
+        } else {
+            state.current_cycle += 1;
+            state.cycle_deadline = env.ledger().timestamp() + cfg.cycle_duration;
+        }
 
         let mut next_contributions = Map::new(&env);
         for m in cfg.members.iter() {

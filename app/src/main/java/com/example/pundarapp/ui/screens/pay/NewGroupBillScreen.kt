@@ -25,6 +25,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -68,6 +70,12 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.launch
+import com.example.pundarapp.data.remote.HomeRepository
+import com.example.pundarapp.data.stellar.PayStellarClient
+import com.example.pundarapp.data.stellar.PaymentResult
+import com.example.pundarapp.data.stellar.StellarWalletManager
+import com.example.pundarapp.data.stellar.Stroops
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,13 +84,15 @@ fun NewGroupBillScreen(navController: NavController) {
     var currentStep by remember { mutableIntStateOf(1) }
 
     // ── Step 1 & 2 Inputs ──────────────────────────────────────────
-    var merchantName by remember { mutableStateOf("Balangay Cafe & Co.") }
-    var merchantRef by remember { mutableStateOf("BAL-9021-PH") }
-    var merchantAddress by remember { mutableStateOf("balangay*pundar.site") }
-    var isQrPhMerchant by remember { mutableStateOf(true) }
+    var merchantName by remember { mutableStateOf("") }
+    var merchantRef by remember { mutableStateOf("") }
+    var merchantAddress by remember { mutableStateOf("") }
+    var isQrPhMerchant by remember { mutableStateOf(false) }
+    // True only after the recipient was verified as a REGISTERED PUNDAR account
+    var recipientVerified by remember { mutableStateOf(false) }
 
     var totalAmountInput by remember { mutableStateOf("850") }
-    var expenseNameInput by remember { mutableStateOf("Balangay Cafe & Co.") }
+    var expenseNameInput by remember { mutableStateOf("") }
     var isFiatMode by remember { mutableStateOf(true) } // PHP mode
 
     // ── Step 3 Split Mode ─────────────────────────────────────────
@@ -91,9 +101,7 @@ fun NewGroupBillScreen(navController: NavController) {
     // Selected group members (starts with "You" + sample friends)
     val selectedMembers = remember {
         mutableStateListOf(
-            BillMember("You", "@currentuser", "YOU", 0.0, 0xFF0B192C),
-            BillMember("Maria Santos", "@maria", "MP", 0.0, 0xFF10B981),
-            BillMember("Alex Kumar", "@alexk", "AK", 0.0, 0xFF8B5CF6)
+            BillMember("You", "@currentuser", "YOU", 0.0, 0xFF0B192C)
         )
     }
 
@@ -103,6 +111,16 @@ fun NewGroupBillScreen(navController: NavController) {
     var showEnterNumberDialog by remember { mutableStateOf(false) }
     var showGenerateGroupQrDialog by remember { mutableStateOf(false) }
     var showAddPeopleDialog by remember { mutableStateOf(false) }
+
+    // Real Stellar Testnet payment state
+    val payScope = rememberCoroutineScope()
+    val payContext = LocalContext.current
+    var showPayPinDialog by remember { mutableStateOf(false) }
+    var payPinInput by remember { mutableStateOf("") }
+    var isPaying by remember { mutableStateOf(false) }
+    var payError by remember { mutableStateOf<String?>(null) }
+    var txHash by remember { mutableStateOf("") }
+    var paidXlm by remember { mutableDoubleStateOf(0.0) }
 
     // Reference ID generated for payment
     var generatedRefNo by remember { mutableStateOf("001318387") }
@@ -162,6 +180,81 @@ fun NewGroupBillScreen(navController: NavController) {
     }
 
     val yourSharePhp = computedMembers.find { it.name == "You" }?.amount ?: sharePerMemberPhp
+    val yourShareXlm = if (exchangeRate > 0.0) yourSharePhp / exchangeRate else 0.0
+
+    // Pays the user's share to the verified recipient on Stellar Testnet, then shows the receipt.
+    fun submitStellarPayment(pin: String) {
+        payScope.launch {
+            isPaying = true
+            payError = null
+            try {
+                val recipientKey = merchantAddress
+                if (!(recipientKey.startsWith("G") && recipientKey.length == 56)) {
+                    payError = "Recipient has no Stellar wallet. Pick a verified PUNDAR account."
+                    return@launch
+                }
+                val stroops = Stroops.fromXlmString(String.format(Locale.US, "%.7f", yourShareXlm))
+                if (stroops == null || stroops <= 0) {
+                    payError = "Your share must be greater than zero."
+                    return@launch
+                }
+                val senderSeed = AuthRepository.getCurrentUserEncryptedSeed().orEmpty()
+                if (senderSeed.isBlank()) {
+                    payError = "Your Stellar wallet is not set up."
+                    return@launch
+                }
+                val secret = try {
+                    StellarWalletManager.decryptSecretSeed(senderSeed, pin)
+                } catch (e: Exception) {
+                    payError = "Incorrect PIN."
+                    return@launch
+                }
+                when (val result = PayStellarClient.sendPayment(secret, recipientKey, stroops, "PUNDAR Split")) {
+                    is PaymentResult.Success -> {
+                        txHash = result.hash
+                        paidXlm = yourShareXlm
+                        generatedRefNo = result.hash.take(12).uppercase()
+                        completedTimestamp = System.currentTimeMillis()
+
+                        val newBill = GroupBill(
+                            id = "bill_$generatedRefNo",
+                            name = expenseNameInput.ifBlank { merchantName },
+                            totalAmount = totalInPhp,
+                            memberCount = computedMembers.size,
+                            status = BillStatus.PENDING,
+                            date = "Today",
+                            yourShare = yourSharePhp,
+                            members = computedMembers
+                        )
+                        AppState.addBill(newBill)
+
+                        val activity = HomeActivity(
+                            icon = "send",
+                            title = "Paid $merchantName",
+                            subtitle = "Split bill · ${expenseNameInput.ifBlank { merchantName }}",
+                            amount = "-₱${String.format(Locale.US, "%,.2f", yourSharePhp)}",
+                            isPositive = false,
+                            module = "Pay"
+                        )
+                        AppState.homeActivities.add(0, activity)
+                        AuthRepository.getCurrentUserId()?.let { HomeRepository.createActivity(it, activity) }
+                        AppState.refreshWalletBalance()
+                        AppState.requestHomeRefresh()
+
+                        showPayPinDialog = false
+                        currentStep = 5
+                    }
+                    is PaymentResult.Failure -> payError = result.message
+                    is PaymentResult.Unknown -> payError = "Network timed out. Check your balance before retrying."
+                }
+            } catch (e: Exception) {
+                payError = e.message ?: "Payment failed."
+            } finally {
+                isPaying = false
+                payPinInput = ""
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -257,11 +350,13 @@ fun NewGroupBillScreen(navController: NavController) {
                             merchantName = merchantName,
                             merchantRef = merchantRef,
                             merchantAddress = merchantAddress,
+                            isRecipientVerified = recipientVerified,
                             onSelectMerchant = { name, ref, addr, scannedAmount ->
                                 merchantName = name
                                 merchantRef = ref
                                 merchantAddress = addr
                                 expenseNameInput = name
+                                recipientVerified = true
                                 if (scannedAmount != null && scannedAmount > 0.0) {
                                     totalAmountInput = if (scannedAmount % 1.0 == 0.0) {
                                         scannedAmount.toLong().toString()
@@ -334,31 +429,24 @@ fun NewGroupBillScreen(navController: NavController) {
                             totalInXlm = totalInXlm,
                             yourSharePhp = yourSharePhp,
                             members = computedMembers,
+                            yourShareXlm = yourShareXlm,
+                            isProcessing = isPaying,
+                            errorMessage = payError,
                             onConfirm = {
-                                generatedRefNo = String.format("%09d", Random().nextInt(1000000000))
-                                completedTimestamp = System.currentTimeMillis()
-
-                                val newBill = GroupBill(
-                                    id = "bill_$generatedRefNo",
-                                    name = expenseNameInput.ifBlank { merchantName },
-                                    totalAmount = totalInPhp,
-                                    memberCount = computedMembers.size,
-                                    status = BillStatus.PENDING,
-                                    date = "Today",
-                                    yourShare = yourSharePhp,
-                                    members = computedMembers
-                                )
-                                AppState.addBill(newBill)
-
-                                currentStep = 5
+                                payError = null
+                                payPinInput = ""
+                                showPayPinDialog = true
                             }
                         )
 
                         5 -> Step5InvoiceReceipt(
-                            merchantName = merchantName.ifBlank { "Balangay Cafe & Co." },
+                            merchantName = merchantName.ifBlank { "Recipient" },
                             merchantRef = merchantRef,
                             isQrPh = isQrPhMerchant,
                             amountPhp = totalInPhp,
+                            yourSharePhp = yourSharePhp,
+                            paidXlm = paidXlm,
+                            txHash = txHash,
                             members = computedMembers,
                             refNo = generatedRefNo,
                             timestamp = completedTimestamp,
@@ -371,14 +459,69 @@ fun NewGroupBillScreen(navController: NavController) {
     }
 
     // ── Dialogs ──────────────────────────────────────────────────
+    if (showPayPinDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isPaying) { showPayPinDialog = false; payPinInput = "" } },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("Confirm with PIN", fontWeight = FontWeight.Bold, color = Color(0xFF0F172A)) },
+            text = {
+                Column {
+                    Text(
+                        "Pay ₱${String.format(Locale.US, "%,.2f", yourSharePhp)} (≈ ${String.format(Locale.US, "%.4f", yourShareXlm)} XLM) to $merchantName on Stellar Testnet.",
+                        fontSize = 13.sp,
+                        color = Color(0xFF64748B)
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    OutlinedTextField(
+                        value = payPinInput,
+                        onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) payPinInput = it },
+                        label = { Text("4-digit PIN") },
+                        singleLine = true,
+                        enabled = !isPaying,
+                        isError = payError != null,
+                        supportingText = payError?.let { msg -> { Text(msg) } },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { submitStellarPayment(payPinInput) },
+                    enabled = payPinInput.length == 4 && !isPaying,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
+                ) {
+                    if (isPaying) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                    } else {
+                        Text("Pay Now", fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showPayPinDialog = false; payPinInput = "" },
+                    enabled = !isPaying
+                ) { Text("Cancel") }
+            }
+        )
+    }
+
     if (showEnterNumberDialog) {
         EnterNumberModalDialog(
             onDismiss = { showEnterNumberDialog = false },
-            onConfirmNumber = { number, name ->
-                merchantName = name.ifBlank { "Merchant ($number)" }
-                merchantRef = "REF-$number"
-                expenseNameInput = merchantName
+            onVerified = { user ->
+                merchantName = user.name
+                merchantRef = user.phone
+                merchantAddress = user.stellarPublicKey?.takeIf { it.isNotBlank() } ?: "${user.phone}*pundar.site"
+                expenseNameInput = user.name
+                recipientVerified = true
                 showEnterNumberDialog = false
+                currentStep = 2
             }
         )
     }
@@ -412,15 +555,19 @@ private fun Step1IdentifyRecipient(
     merchantName: String,
     merchantRef: String,
     merchantAddress: String,
+    isRecipientVerified: Boolean,
     onSelectMerchant: (String, String, String, Double?) -> Unit,
     onOpenEnterNumber: () -> Unit,
     onNext: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
 
     var activeTab by remember { mutableIntStateOf(0) } // 0 = Scan QR, 1 = Phone
     var manualSearchQuery by remember { mutableStateOf("") }
+    var isLookingUp by remember { mutableStateOf(false) }
+    var lookupError by remember { mutableStateOf<String?>(null) }
 
     // Inline CameraX + ML Kit QR scanner state
     var hasCameraPermission by remember {
@@ -459,25 +606,56 @@ private fun Step1IdentifyRecipient(
 
     fun handleScannedRaw(raw: String) {
         val decoded = QrPayload.decode(raw)
-        if (decoded != null) {
-            val name = decoded.displayName?.takeIf { it.isNotBlank() }
-                ?: decoded.billRef?.takeIf { it.isNotBlank() }
-                ?: decoded.userId
-            val ref = decoded.billRef?.takeIf { it.isNotBlank() }
-                ?: decoded.transactionId?.takeIf { it.isNotBlank() }
-                ?: decoded.userId
-            val addr = decoded.walletId?.takeIf { it.isNotBlank() }
-                ?: decoded.username?.takeIf { it.isNotBlank() }
-                ?: "${decoded.userId.lowercase().replace(" ", "")}*pundar.site"
-            onSelectMerchant(name, ref, addr, decoded.amount)
-            Toast.makeText(context, "Recipient detected: $name", Toast.LENGTH_SHORT).show()
-            onNext()
-        } else {
-            val clean = raw.trim()
-            val ref = clean.take(24)
-            onSelectMerchant("QR Merchant ($ref)", ref, "$ref*pundar.site", null)
-            Toast.makeText(context, "QR Scanned: $ref", Toast.LENGTH_SHORT).show()
-            onNext()
+        scope.launch {
+            val candidates = if (decoded != null) {
+                listOfNotNull(decoded.walletId, decoded.username, decoded.userId)
+            } else {
+                listOf(raw.trim())
+            }.filter { it.isNotBlank() }
+
+            var user: AuthRepository.UserData? = null
+            for (candidate in candidates) {
+                user = AuthRepository.findRegisteredUser(candidate)
+                if (user != null) break
+            }
+
+            if (user == null) {
+                Toast.makeText(context, "This QR is not linked to a registered PUNDAR account.", Toast.LENGTH_LONG).show()
+                kotlinx.coroutines.delay(1500)
+                scanLocked.set(false)
+            } else if (user.id == AuthRepository.currentUserState.value?.id) {
+                Toast.makeText(context, "You can't send to your own account.", Toast.LENGTH_LONG).show()
+                kotlinx.coroutines.delay(1500)
+                scanLocked.set(false)
+            } else {
+                val ref = decoded?.billRef?.takeIf { it.isNotBlank() }
+                    ?: decoded?.transactionId?.takeIf { it.isNotBlank() }
+                    ?: user.phone
+                val addr = user.stellarPublicKey?.takeIf { it.isNotBlank() } ?: "${user.phone}*pundar.site"
+                onSelectMerchant(user.name, ref, addr, decoded?.amount)
+                Toast.makeText(context, "Recipient verified: ${user.name}", Toast.LENGTH_SHORT).show()
+                onNext()
+            }
+        }
+    }
+
+    fun verifyManualRecipient() {
+        val query = manualSearchQuery.trim()
+        if (query.isBlank() || isLookingUp) return
+        scope.launch {
+            isLookingUp = true
+            lookupError = null
+            val user = AuthRepository.findRegisteredUser(query)
+            isLookingUp = false
+            when {
+                user == null -> lookupError = "No registered PUNDAR account found for this number."
+                user.id == AuthRepository.currentUserState.value?.id -> lookupError = "You can't send to your own account."
+                else -> {
+                    val addr = user.stellarPublicKey?.takeIf { it.isNotBlank() } ?: "${user.phone}*pundar.site"
+                    onSelectMerchant(user.name, user.phone, addr, null)
+                    onNext()
+                }
+            }
         }
     }
 
@@ -910,35 +1088,49 @@ private fun Step1IdentifyRecipient(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.Storefront, contentDescription = null, tint = Color(0xFF0B192C), modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Selected / Manual Merchant", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                            Text("Recipient", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
-                        Text("Ref: $merchantRef", fontSize = 11.sp, color = Color(0xFF64748B))
+                        if (isRecipientVerified) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Verified, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Verified", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                            }
+                        }
                     }
 
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Current: $merchantName ($merchantAddress)",
+                        if (isRecipientVerified) "$merchantName · $merchantRef"
+                        else "No recipient yet. Scan a PUNDAR QR or enter a registered number.",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1E3A8A)
+                        color = if (isRecipientVerified) Color(0xFF1E3A8A) else Color(0xFF64748B)
                     )
 
                     Spacer(Modifier.height(10.dp))
 
                     OutlinedTextField(
                         value = manualSearchQuery,
-                        onValueChange = { query ->
-                            manualSearchQuery = query
-                            if (query.isNotBlank()) {
-                                val cleanRef = "MER-${query.trim().take(6).uppercase()}"
-                                val cleanAddr = "${query.trim().lowercase().replace(" ", "")}*pundar.site"
-                                onSelectMerchant(query.trim(), cleanRef, cleanAddr, null)
+                        onValueChange = { manualSearchQuery = it; lookupError = null },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Registered mobile number or Stellar address") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color(0xFF64748B)) },
+                        trailingIcon = {
+                            if (isLookingUp) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                TextButton(
+                                    onClick = { verifyManualRecipient() },
+                                    enabled = manualSearchQuery.isNotBlank()
+                                ) { Text("Verify", fontWeight = FontWeight.Bold) }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Enter merchant name or phone...") },
-                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color(0xFF64748B)) },
                         singleLine = true,
+                        isError = lookupError != null,
+                        supportingText = lookupError?.let { msg -> { Text(msg) } },
+                        keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { verifyManualRecipient() }),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White,
@@ -956,6 +1148,7 @@ private fun Step1IdentifyRecipient(
             Spacer(Modifier.height(4.dp))
             Button(
                 onClick = onNext,
+                enabled = isRecipientVerified,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -1800,15 +1993,22 @@ private fun Step4ConfirmSend(
     totalInXlm: Double,
     yourSharePhp: Double,
     members: List<BillMember>,
+    yourShareXlm: Double,
+    isProcessing: Boolean,
+    errorMessage: String?,
     onConfirm: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween
+            .padding(16.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             Text(
                 "Confirm Payment",
                 fontSize = 20.sp,
@@ -1868,7 +2068,8 @@ private fun Step4ConfirmSend(
                     ConfirmDetailRow("Expense Name", expenseName)
                     ConfirmDetailRow("Group Participants", "${members.size} Members")
                     ConfirmDetailRow("Your Portion", "₱${String.format("%,.2f", yourSharePhp)}")
-                    ConfirmDetailRow("Payment Rail", "Stellar Network / PUNDAR Pay")
+                    ConfirmDetailRow("You Pay (XLM)", "${String.format(Locale.US, "%.4f", yourShareXlm)} XLM")
+                    ConfirmDetailRow("Payment Rail", "Stellar Testnet / PUNDAR Pay")
 
                     Spacer(Modifier.height(12.dp))
                     HorizontalDivider(color = Color(0xFFF1F5F9))
@@ -1887,8 +2088,15 @@ private fun Step4ConfirmSend(
             }
         }
 
+        Spacer(Modifier.height(10.dp))
+
+        if (errorMessage != null && !isProcessing) {
+            Text(errorMessage, color = Color(0xFFDC2626), fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+        }
+
         Button(
             onClick = onConfirm,
+            enabled = !isProcessing,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp),
@@ -1924,11 +2132,15 @@ private fun Step5InvoiceReceipt(
     merchantRef: String,
     isQrPh: Boolean,
     amountPhp: Double,
+    yourSharePhp: Double,
+    paidXlm: Double,
+    txHash: String,
     members: List<BillMember>,
     refNo: String,
     timestamp: Long,
     onClose: () -> Unit
 ) {
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault())
     val sdfDate = SimpleDateFormat("MMMM dd, yyyy '|' h:mm a", Locale.getDefault())
     val timeStr = sdfTime.format(Date(timestamp))
@@ -1951,7 +2163,8 @@ private fun Step5InvoiceReceipt(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -2000,7 +2213,14 @@ private fun Step5InvoiceReceipt(
 
             Spacer(Modifier.height(16.dp))
 
-            Text("₱${String.format("%,.2f", amountPhp)}", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+            Text("₱${String.format("%,.2f", yourSharePhp)}", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+            Text(
+                "${String.format(Locale.US, "%.4f", paidXlm)} XLM · Stellar Testnet",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF059669),
+                modifier = Modifier.padding(top = 2.dp)
+            )
 
             Spacer(Modifier.height(28.dp))
 
@@ -2073,10 +2293,41 @@ private fun Step5InvoiceReceipt(
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Text("Ref No. $refNo", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-            Text(fullDateStr, fontSize = 13.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 2.dp))
+            // GCash-style transaction details
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    ConfirmDetailRow("Bill Total", "₱${String.format("%,.2f", amountPhp)}")
+                    ConfirmDetailRow("Amount Paid (your share)", "₱${String.format("%,.2f", yourSharePhp)}")
+                    ConfirmDetailRow("Network Fee", "0.00001 XLM")
+                    ConfirmDetailRow("Network", "Stellar Testnet")
+                    ConfirmDetailRow("Ref No.", refNo)
+                    ConfirmDetailRow("Date", fullDateStr)
+                    if (txHash.isNotBlank()) {
+                        ConfirmDetailRow("Transaction Hash", "${txHash.take(8)}…${txHash.takeLast(8)}")
+                    }
+                }
+            }
+
+            if (txHash.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = { uriHandler.openUri("https://stellar.expert/explorer/testnet/tx/$txHash") },
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(23.dp)
+                ) {
+                    Icon(Icons.Filled.Link, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("View on Stellar Expert", fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
         }
 
         Button(
@@ -2122,51 +2373,116 @@ private fun processGroupBillImageProxy(
 @Composable
 private fun EnterNumberModalDialog(
     onDismiss: () -> Unit,
-    onConfirmNumber: (String, String) -> Unit
+    onVerified: (AuthRepository.UserData) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     var phoneInput by remember { mutableStateOf("") }
-    var nameInput by remember { mutableStateOf("") }
+    var isVerifying by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    fun verify() {
+        val query = phoneInput.trim()
+        if (query.isBlank() || isVerifying) return
+        scope.launch {
+            isVerifying = true
+            errorMsg = null
+            val user = AuthRepository.findRegisteredUser(query)
+            isVerifying = false
+            when {
+                user == null -> errorMsg = "No registered PUNDAR account found for this number."
+                user.id == AuthRepository.currentUserState.value?.id -> errorMsg = "You can't send to your own account."
+                else -> onVerified(user)
+            }
+        }
+    }
+
+    Dialog(onDismissRequest = { if (!isVerifying) onDismiss() }) {
         Card(
-            modifier = Modifier.fillMaxWidth(0.92f).padding(16.dp),
-            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text("Enter Recipient Number / ID", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier.size(52.dp).clip(CircleShape).background(Color(0xFFE0E7FF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Dialpad, contentDescription = null, tint = Color(0xFF1E3A8A), modifier = Modifier.size(26.dp))
+                }
                 Spacer(Modifier.height(12.dp))
+                Text(
+                    "Find Recipient",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Enter the registered PUNDAR mobile number or Stellar address.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF64748B),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(18.dp))
 
                 OutlinedTextField(
                     value = phoneInput,
-                    onValueChange = { phoneInput = it },
+                    onValueChange = { phoneInput = it; errorMsg = null },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Mobile / Account Number") },
-                    shape = RoundedCornerShape(12.dp)
+                    singleLine = true,
+                    enabled = !isVerifying,
+                    isError = errorMsg != null,
+                    supportingText = errorMsg?.let { msg -> { Text(msg) } },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Phone,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { verify() }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedBorderColor = Color(0xFF0B192C),
+                        unfocusedBorderColor = Color(0xFFCBD5E1)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
                 )
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(18.dp))
 
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { nameInput = it },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Merchant Name (Optional)") },
-                    shape = RoundedCornerShape(12.dp)
-                )
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        enabled = !isVerifying,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) { Text("Cancel", fontWeight = FontWeight.SemiBold) }
 
-                Spacer(Modifier.height(16.dp))
-
-                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Spacer(Modifier.width(8.dp))
                     Button(
-                        onClick = { onConfirmNumber(phoneInput, nameInput) },
-                        enabled = phoneInput.isNotBlank(),
-                        shape = RoundedCornerShape(10.dp),
+                        onClick = { verify() },
+                        enabled = phoneInput.isNotBlank() && !isVerifying,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
                     ) {
-                        Text("Confirm")
+                        if (isVerifying) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                        } else {
+                            Text("Verify", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -2285,83 +2601,122 @@ private fun AddPeopleModalDialog(
     onDismiss: () -> Unit,
     onAddMember: (BillMember) -> Unit
 ) {
-    var nameInput by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
     var phoneInput by remember { mutableStateOf("") }
+    var isVerifying by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    val avatarColors = listOf(0xFFEC4899, 0xFFF59E0B, 0xFF10B981, 0xFF8B5CF6, 0xFF0EA5E9)
 
-    val sampleSuggestions = listOf(
-        BillMember("John Dela Cruz", "@johnd", "JD", 0.0, 0xFFEC4899),
-        BillMember("Sarah Tan", "@saraht", "ST", 0.0, 0xFFF59E0B),
-        BillMember("Carlos Reyes", "@carlosr", "CR", 0.0, 0xFF10B981)
-    )
+    fun verifyAndAdd() {
+        val query = phoneInput.trim()
+        if (query.isBlank() || isVerifying) return
+        scope.launch {
+            isVerifying = true
+            errorMsg = null
+            val user = AuthRepository.findRegisteredUser(query)
+            isVerifying = false
+            when {
+                user == null -> errorMsg = "No registered PUNDAR account found. Only verified accounts can join a split."
+                user.id == AuthRepository.currentUserState.value?.id -> errorMsg = "You're already in this split."
+                existingMembers.any { it.name == user.name } -> errorMsg = "${user.name} is already in this split."
+                else -> {
+                    val parts = user.name.trim().split(" ").filter { it.isNotBlank() }
+                    val initials = when {
+                        parts.size >= 2 -> (parts.first().take(1) + parts.last().take(1)).uppercase()
+                        parts.size == 1 -> parts[0].take(2).uppercase()
+                        else -> "PU"
+                    }
+                    onAddMember(
+                        BillMember(
+                            user.name,
+                            "@${user.phone}",
+                            initials,
+                            0.0,
+                            avatarColors[existingMembers.size % avatarColors.size]
+                        )
+                    )
+                }
+            }
+        }
+    }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = { if (!isVerifying) onDismiss() }) {
         Card(
-            modifier = Modifier.fillMaxWidth(0.92f).padding(16.dp),
-            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text("Add Recipient to Group", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier.size(52.dp).clip(CircleShape).background(Color(0xFFE0E7FF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = Color(0xFF1E3A8A), modifier = Modifier.size(26.dp))
+                }
                 Spacer(Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { nameInput = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Friend Name") },
-                    shape = RoundedCornerShape(12.dp)
+                Text("Invite to Split", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Only verified PUNDAR accounts can be added. Enter their registered mobile number.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF64748B),
+                    textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(18.dp))
 
                 OutlinedTextField(
                     value = phoneInput,
-                    onValueChange = { phoneInput = it },
+                    onValueChange = { phoneInput = it; errorMsg = null },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Mobile Number / Username") },
-                    shape = RoundedCornerShape(12.dp)
+                    label = { Text("Registered Mobile Number") },
+                    singleLine = true,
+                    enabled = !isVerifying,
+                    isError = errorMsg != null,
+                    supportingText = errorMsg?.let { msg -> { Text(msg) } },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Phone,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { verifyAndAdd() }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedBorderColor = Color(0xFF0B192C),
+                        unfocusedBorderColor = Color(0xFFCBD5E1)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(18.dp))
 
-                Text("Quick Add Friends:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        enabled = !isVerifying,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) { Text("Cancel", fontWeight = FontWeight.SemiBold) }
 
-                sampleSuggestions.filter { existingMembers.none { m -> m.name == it.name } }.forEach { suggestion ->
-                    Surface(
-                        onClick = { onAddMember(suggestion) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFFF8FAFC),
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                    ) {
-                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier.size(30.dp).clip(CircleShape).background(Color(suggestion.avatarColor)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(suggestion.initials, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Text(suggestion.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Spacer(Modifier.width(8.dp))
                     Button(
-                        onClick = {
-                            val initials = nameInput.take(2).uppercase().ifBlank { "FB" }
-                            onAddMember(BillMember(nameInput, phoneInput, initials, 0.0, 0xFF0B192C))
-                        },
-                        enabled = nameInput.isNotBlank(),
-                        shape = RoundedCornerShape(10.dp),
+                        onClick = { verifyAndAdd() },
+                        enabled = phoneInput.isNotBlank() && !isVerifying,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
                     ) {
-                        Text("Add")
+                        if (isVerifying) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+                        } else {
+                            Text("Verify & Add", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
