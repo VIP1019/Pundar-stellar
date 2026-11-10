@@ -57,41 +57,28 @@ fun AnimatedBackground(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgTop)
+            .background(PundarTheme.colors.bgPrimary)
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-
-            // Base gradient
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(bgTop, bgBottom)
+        if (!isLight) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val width = size.width
+                val height = size.height
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(bgTop, bgBottom)
+                    )
                 )
-            )
-
-            // Animated blob
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(accentColor.copy(alpha = blobAlpha1), Color.Transparent),
-                    center = Offset(
-                        x = width * (0.2f + 0.6f * animValue),
-                        y = height * (0.1f + 0.2f * (1f - animValue))
-                    ),
-                    radius = width * 0.8f
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(accentColor.copy(alpha = blobAlpha1), Color.Transparent),
+                        center = Offset(
+                            x = width * (0.2f + 0.6f * animValue),
+                            y = height * (0.1f + 0.2f * (1f - animValue))
+                        ),
+                        radius = width * 0.8f
+                    )
                 )
-            )
-            
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(accentColor.copy(alpha = blobAlpha2), Color.Transparent),
-                    center = Offset(
-                        x = width * (0.8f - 0.5f * animValue),
-                        y = height * (0.8f - 0.3f * animValue)
-                    ),
-                    radius = width * 0.6f
-                )
-            )
+            }
         }
         content()
     }

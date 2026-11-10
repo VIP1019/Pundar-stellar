@@ -1056,7 +1056,7 @@ object AppState {
             rwaBalance.doubleValue = balanceStr.toDoubleOrNull() ?: 0.0
         }
     }
-    val themeMode = mutableStateOf("DARK")
+    val themeMode = mutableStateOf("LIGHT")
     
     private var prefs: android.content.SharedPreferences? = null
 
@@ -1068,8 +1068,8 @@ object AppState {
     fun initPreferences(context: android.content.Context) {
         prefs = context.getSharedPreferences("pundar_prefs", android.content.Context.MODE_PRIVATE)
         isBalanceHidden.value = prefs?.getBoolean("hide_balance", false) ?: false
-        // Theme Mode
-        themeMode.value = prefs?.getString("theme_mode", "DARK") ?: "DARK"
+        // Theme Mode - default to LIGHT
+        themeMode.value = prefs?.getString("theme_mode", "LIGHT") ?: "LIGHT"
 
         // Detect currency from network carrier country on every init — no lock
         val detectedCurrency = countryToCurrency(detectCountryFromNetwork(context))

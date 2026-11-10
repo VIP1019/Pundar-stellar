@@ -76,22 +76,13 @@ fun PundarMainTopBar(
                 }
             },
             navigationIcon = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(
-                            imageVector = Icons.Filled.Menu,
-                            contentDescription = "Menu",
-                            tint = PundarTheme.colors.textPrimary
-                        )
-                    }
-                    PundarAvatar(
-                        initials = userInitials,
-                        imageUrl = profileImageUrl,
-                        modifier = Modifier.padding(start = 4.dp, end = 4.dp),
-                        size = 40.dp,
-                        showRing = true
-                    )
-                }
+                PundarAvatar(
+                    initials = userInitials,
+                    imageUrl = profileImageUrl,
+                    modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+                    size = 40.dp,
+                    showRing = true
+                )
             },
             actions = {
                 Box(

@@ -102,7 +102,7 @@ object Routes {
 }
 
 // Routes where bottom bar should be visible
-private val bottomBarRoutes = setOf(Routes.HOME, Routes.PAY, Routes.SCAN, Routes.CIRCLE, Routes.GROW)
+private val bottomBarRoutes = setOf(Routes.HOME, Routes.PAY, Routes.SCAN, Routes.CIRCLE)
 
 @Composable
 fun PundarNavigation() {
