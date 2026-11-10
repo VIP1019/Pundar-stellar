@@ -100,7 +100,6 @@ fun NewGroupBillScreen(navController: NavController) {
     val itemizedAmounts = remember { mutableStateMapOf<String, String>() }
 
     // Dialog state handlers
-    var showScanQrDialog by remember { mutableStateOf(false) }
     var showEnterNumberDialog by remember { mutableStateOf(false) }
     var showGenerateGroupQrDialog by remember { mutableStateOf(false) }
     var showAddPeopleDialog by remember { mutableStateOf(false) }
@@ -109,26 +108,60 @@ fun NewGroupBillScreen(navController: NavController) {
     var generatedRefNo by remember { mutableStateOf("001318387") }
     var completedTimestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    // Calculation helpers
-    val rawTotal = if (splitModeIndex == 0) {
-        totalAmountInput.toDoubleOrNull() ?: 0.0
-    } else {
-        itemizedAmounts.values.sumOf { it.toDoubleOrNull() ?: 0.0 }
+    // Target bill amount is ALWAYS determined by Step 2 input (never overwritten by itemized sum)
+    val rawTotal = totalAmountInput.toDoubleOrNull() ?: 0.0
+
+    val exchangeRate = AppState.currentExchangeRate.doubleValue.takeIf { it > 0.0 } ?: 56.50
+    val totalInPhp = if (isFiatMode) rawTotal else rawTotal * exchangeRate
+    val totalInXlm = if (isFiatMode) rawTotal / exchangeRate else rawTotal
+
+    // Equal split helper with cent-accurate distribution so sum of shares == totalInPhp
+    val equalSharesByMember = remember(totalInPhp, selectedMembers.size, selectedMembers.toList()) {
+        val count = selectedMembers.size
+        if (count == 0 || totalInPhp <= 0.0) {
+            emptyMap()
+        } else {
+            val totalCents = kotlin.math.round(totalInPhp * 100.0).toLong()
+            val baseCents = totalCents / count
+            val remainderCents = (totalCents % count).toInt()
+            selectedMembers.mapIndexed { index, member ->
+                val memberCents = baseCents + if (index < remainderCents) 1L else 0L
+                member.name to (memberCents / 100.0)
+            }.toMap()
+        }
     }
 
-    val totalInPhp = if (isFiatMode) rawTotal else rawTotal * AppState.currentExchangeRate.doubleValue
-    val totalInXlm = if (isFiatMode) {
-        if (AppState.currentExchangeRate.doubleValue > 0) rawTotal / AppState.currentExchangeRate.doubleValue else 0.0
-    } else rawTotal
+    val sharePerMemberPhp = if (selectedMembers.isNotEmpty() && totalInPhp > 0.0) {
+        totalInPhp / selectedMembers.size
+    } else 0.0
 
-    val sharePerMemberPhp = if (splitModeIndex == 0 && selectedMembers.isNotEmpty() && totalInPhp > 0)
-        totalInPhp / selectedMembers.size else 0.0
-
-    val yourSharePhp = if (splitModeIndex == 0) sharePerMemberPhp
-    else {
-        val rawShare = itemizedAmounts["You"]?.toDoubleOrNull() ?: 0.0
-        if (isFiatMode) rawShare else rawShare * AppState.currentExchangeRate.doubleValue
+    // Itemized allocation metrics (in PHP)
+    val allocatedItemizedPhp = selectedMembers.sumOf { member ->
+        (itemizedAmounts[member.name]?.toDoubleOrNull() ?: 0.0).coerceAtLeast(0.0)
     }
+    val remainingItemizedPhp = totalInPhp - allocatedItemizedPhp
+    val isItemizedMatched = totalInPhp > 0.0 &&
+        kotlin.math.abs(remainingItemizedPhp) < 0.01 &&
+        selectedMembers.all { (itemizedAmounts[it.name]?.toDoubleOrNull() ?: -1.0) >= 0.0 }
+
+    // Compute final member list with exact assigned PHP amounts
+    val computedMembers = remember(
+        splitModeIndex,
+        selectedMembers.toList(),
+        equalSharesByMember,
+        itemizedAmounts.toMap()
+    ) {
+        selectedMembers.map { member ->
+            val memberPhp = if (splitModeIndex == 0) {
+                equalSharesByMember[member.name] ?: sharePerMemberPhp
+            } else {
+                (itemizedAmounts[member.name]?.toDoubleOrNull() ?: 0.0).coerceAtLeast(0.0)
+            }
+            member.copy(amount = memberPhp)
+        }
+    }
+
+    val yourSharePhp = computedMembers.find { it.name == "You" }?.amount ?: sharePerMemberPhp
 
     Scaffold(
         topBar = {
@@ -223,13 +256,20 @@ fun NewGroupBillScreen(navController: NavController) {
                         1 -> Step1IdentifyRecipient(
                             merchantName = merchantName,
                             merchantRef = merchantRef,
-                            onSelectMerchant = { name, ref, addr ->
+                            merchantAddress = merchantAddress,
+                            onSelectMerchant = { name, ref, addr, scannedAmount ->
                                 merchantName = name
                                 merchantRef = ref
                                 merchantAddress = addr
                                 expenseNameInput = name
+                                if (scannedAmount != null && scannedAmount > 0.0) {
+                                    totalAmountInput = if (scannedAmount % 1.0 == 0.0) {
+                                        scannedAmount.toLong().toString()
+                                    } else {
+                                        String.format(Locale.US, "%.2f", scannedAmount)
+                                    }
+                                }
                             },
-                            onOpenScanQr = { showScanQrDialog = true },
                             onOpenEnterNumber = { showEnterNumberDialog = true },
                             onNext = { currentStep = 2 }
                         )
@@ -245,17 +285,44 @@ fun NewGroupBillScreen(navController: NavController) {
                             selectedMembers = selectedMembers,
                             onOpenGenerateQr = { showGenerateGroupQrDialog = true },
                             onOpenAddPeople = { showAddPeopleDialog = true },
-                            onRemoveMember = { m -> if (m.name != "You") selectedMembers.remove(m) },
+                            onRemoveMember = { m ->
+                                if (m.name != "You") {
+                                    selectedMembers.remove(m)
+                                    itemizedAmounts.remove(m.name)
+                                }
+                            },
                             onNext = { currentStep = 3 }
                         )
 
                         3 -> Step3ReviewAndSplit(
                             splitModeIndex = splitModeIndex,
-                            onSplitModeChange = { splitModeIndex = it },
+                            onSplitModeChange = { newMode ->
+                                splitModeIndex = newMode
+                                // Pre-fill itemized amounts with equal cent-accurate shares if empty
+                                if (newMode == 1 && itemizedAmounts.values.all { it.isBlank() }) {
+                                    selectedMembers.forEach { m ->
+                                        val share = equalSharesByMember[m.name] ?: sharePerMemberPhp
+                                        itemizedAmounts[m.name] = String.format(Locale.US, "%.2f", share)
+                                    }
+                                }
+                            },
                             selectedMembers = selectedMembers,
+                            equalSharesByMember = equalSharesByMember,
                             totalInPhp = totalInPhp,
                             sharePerMemberPhp = sharePerMemberPhp,
                             itemizedAmounts = itemizedAmounts,
+                            allocatedItemizedPhp = allocatedItemizedPhp,
+                            remainingItemizedPhp = remainingItemizedPhp,
+                            isItemizedMatched = isItemizedMatched,
+                            onEqualizeAll = {
+                                selectedMembers.forEach { m ->
+                                    val share = equalSharesByMember[m.name] ?: sharePerMemberPhp
+                                    itemizedAmounts[m.name] = String.format(Locale.US, "%.2f", share)
+                                }
+                            },
+                            onClearAll = {
+                                itemizedAmounts.clear()
+                            },
                             onNext = { currentStep = 4 }
                         )
 
@@ -266,7 +333,7 @@ fun NewGroupBillScreen(navController: NavController) {
                             totalInPhp = totalInPhp,
                             totalInXlm = totalInXlm,
                             yourSharePhp = yourSharePhp,
-                            members = selectedMembers,
+                            members = computedMembers,
                             onConfirm = {
                                 generatedRefNo = String.format("%09d", Random().nextInt(1000000000))
                                 completedTimestamp = System.currentTimeMillis()
@@ -274,12 +341,12 @@ fun NewGroupBillScreen(navController: NavController) {
                                 val newBill = GroupBill(
                                     id = "bill_$generatedRefNo",
                                     name = expenseNameInput.ifBlank { merchantName },
-                                    totalAmount = totalInXlm,
-                                    memberCount = selectedMembers.size,
+                                    totalAmount = totalInPhp,
+                                    memberCount = computedMembers.size,
                                     status = BillStatus.PENDING,
                                     date = "Today",
-                                    yourShare = yourSharePhp / AppState.currentExchangeRate.doubleValue,
-                                    members = selectedMembers.toList()
+                                    yourShare = yourSharePhp,
+                                    members = computedMembers
                                 )
                                 AppState.addBill(newBill)
 
@@ -292,7 +359,7 @@ fun NewGroupBillScreen(navController: NavController) {
                             merchantRef = merchantRef,
                             isQrPh = isQrPhMerchant,
                             amountPhp = totalInPhp,
-                            members = selectedMembers,
+                            members = computedMembers,
                             refNo = generatedRefNo,
                             timestamp = completedTimestamp,
                             onClose = { navController.popBackStack() }
@@ -304,18 +371,6 @@ fun NewGroupBillScreen(navController: NavController) {
     }
 
     // ── Dialogs ──────────────────────────────────────────────────
-    if (showScanQrDialog) {
-        ScanQrModalDialog(
-            onDismiss = { showScanQrDialog = false },
-            onQrScanned = { scannedName, scannedRef ->
-                merchantName = scannedName
-                merchantRef = scannedRef
-                expenseNameInput = scannedName
-                showScanQrDialog = false
-            }
-        )
-    }
-
     if (showEnterNumberDialog) {
         EnterNumberModalDialog(
             onDismiss = { showEnterNumberDialog = false },
@@ -356,13 +411,98 @@ fun NewGroupBillScreen(navController: NavController) {
 private fun Step1IdentifyRecipient(
     merchantName: String,
     merchantRef: String,
-    onSelectMerchant: (String, String, String) -> Unit,
-    onOpenScanQr: () -> Unit,
+    merchantAddress: String,
+    onSelectMerchant: (String, String, String, Double?) -> Unit,
     onOpenEnterNumber: () -> Unit,
     onNext: () -> Unit
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     var activeTab by remember { mutableIntStateOf(0) } // 0 = Scan QR, 1 = Phone
     var manualSearchQuery by remember { mutableStateOf("") }
+
+    // Inline CameraX + ML Kit QR scanner state
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted -> hasCameraPermission = granted }
+    )
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    val scannerOptions = remember {
+        BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+    }
+    val barcodeScanner = remember { BarcodeScanning.getClient(scannerOptions) }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val scanLocked = remember { AtomicBoolean(false) }
+    var cameraRef by remember { mutableStateOf<Camera?>(null) }
+    var torchEnabled by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            cameraExecutor.shutdown()
+            barcodeScanner.close()
+        }
+    }
+
+    fun handleScannedRaw(raw: String) {
+        val decoded = QrPayload.decode(raw)
+        if (decoded != null) {
+            val name = decoded.displayName?.takeIf { it.isNotBlank() }
+                ?: decoded.billRef?.takeIf { it.isNotBlank() }
+                ?: decoded.userId
+            val ref = decoded.billRef?.takeIf { it.isNotBlank() }
+                ?: decoded.transactionId?.takeIf { it.isNotBlank() }
+                ?: decoded.userId
+            val addr = decoded.walletId?.takeIf { it.isNotBlank() }
+                ?: decoded.username?.takeIf { it.isNotBlank() }
+                ?: "${decoded.userId.lowercase().replace(" ", "")}*pundar.site"
+            onSelectMerchant(name, ref, addr, decoded.amount)
+            Toast.makeText(context, "Recipient detected: $name", Toast.LENGTH_SHORT).show()
+            onNext()
+        } else {
+            val clean = raw.trim()
+            val ref = clean.take(24)
+            onSelectMerchant("QR Merchant ($ref)", ref, "$ref*pundar.site", null)
+            Toast.makeText(context, "QR Scanned: $ref", Toast.LENGTH_SHORT).show()
+            onNext()
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        try {
+            val image = InputImage.fromFilePath(context, uri)
+            barcodeScanner.process(image)
+                .addOnSuccessListener { barcodes ->
+                    val raw = barcodes.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue
+                    if (raw != null) {
+                        handleScannedRaw(raw)
+                    } else {
+                        Toast.makeText(context, "No QR code found in image.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .addOnFailureListener {
+                    Toast.makeText(context, "Failed to scan image.", Toast.LENGTH_SHORT).show()
+                }
+        } catch (_: Exception) {
+            Toast.makeText(context, "Unable to open selected image.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Reticle laser animation
     val infiniteTransition = rememberInfiniteTransition(label = "laser")
@@ -453,7 +593,10 @@ private fun Step1IdentifyRecipient(
                 Row(modifier = Modifier.padding(4.dp)) {
                     // Button 1: Scan QR Code
                     Surface(
-                        onClick = { activeTab = 0; onOpenScanQr() },
+                        onClick = {
+                            activeTab = 0
+                            scanLocked.set(false)
+                        },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp),
                         color = if (activeTab == 0) Color(0xFF0B192C) else Color.Transparent
@@ -510,12 +653,12 @@ private fun Step1IdentifyRecipient(
             }
         }
 
-        // ── DARK BLUE QR SCANNER VIEWPORT BOX ──────────────────────
+        // ── DARK BLUE QR SCANNER VIEWPORT BOX (DIRECT LIVE CAMERA) ─
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0B192C)) // Dark Blue Palette
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0B192C))
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -538,11 +681,11 @@ private fun Step1IdentifyRecipient(
                                     modifier = Modifier
                                         .size(6.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFF38BDF8))
+                                        .background(if (hasCameraPermission) Color(0xFF10B981) else Color(0xFF38BDF8))
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    "AUTO-DETECT ACTIVE",
+                                    if (hasCameraPermission) "LIVE CAMERA ACTIVE" else "AUTO-DETECT READY",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -555,18 +698,31 @@ private fun Step1IdentifyRecipient(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF1E293B))
-                                    .clickable { onOpenScanQr() },
+                                    .background(if (torchEnabled) Color(0xFFF59E0B) else Color(0xFF1E293B))
+                                    .clickable {
+                                        val next = !torchEnabled
+                                        torchEnabled = next
+                                        cameraRef?.cameraControl?.enableTorch(next)
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Filled.FlashOn, contentDescription = "Flash", tint = Color.White, modifier = Modifier.size(16.dp))
+                                Icon(
+                                    if (torchEnabled) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+                                    contentDescription = "Flash",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
                             }
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFF1E293B))
-                                    .clickable { onOpenScanQr() },
+                                    .clickable {
+                                        galleryLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Filled.Image, contentDescription = "Gallery", tint = Color.White, modifier = Modifier.size(16.dp))
@@ -576,22 +732,100 @@ private fun Step1IdentifyRecipient(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Scanner Viewfinder Area with Corner Brackets
+                    // Live Camera Viewfinder Area with Corner Brackets & Laser Overlay
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(210.dp)
+                            .height(230.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF020617))
-                            .clickable { onOpenScanQr() },
+                            .background(Color(0xFF020617)),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Drawing corner brackets & laser beam line
+                        if (hasCameraPermission) {
+                            AndroidView(
+                                factory = { ctx ->
+                                    val previewView = PreviewView(ctx).apply {
+                                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                                    }
+                                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                                    cameraProviderFuture.addListener({
+                                        val cameraProvider = cameraProviderFuture.get()
+                                        val preview = Preview.Builder().build().also {
+                                            it.setSurfaceProvider(previewView.surfaceProvider)
+                                        }
+                                        val resolutionSelector = ResolutionSelector.Builder()
+                                            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                                            .build()
+                                        val imageAnalyzer = ImageAnalysis.Builder()
+                                            .setResolutionSelector(resolutionSelector)
+                                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                            .build()
+                                        imageAnalyzer.setAnalyzer(cameraExecutor) { imageProxy ->
+                                            if (!scanLocked.get()) {
+                                                processGroupBillImageProxy(barcodeScanner, imageProxy) { barcode ->
+                                                    if (scanLocked.compareAndSet(false, true)) {
+                                                        ContextCompat.getMainExecutor(ctx).execute {
+                                                            handleScannedRaw(barcode)
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                imageProxy.close()
+                                            }
+                                        }
+                                        try {
+                                            cameraProvider.unbindAll()
+                                            val camera = cameraProvider.bindToLifecycle(
+                                                lifecycleOwner,
+                                                CameraSelector.DEFAULT_BACK_CAMERA,
+                                                preview,
+                                                imageAnalyzer
+                                            )
+                                            cameraRef = camera
+                                            camera.cameraControl.enableTorch(torchEnabled)
+                                        } catch (_: Exception) { }
+                                    }, ContextCompat.getMainExecutor(ctx))
+                                    previewView
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.PhotoCamera,
+                                    contentDescription = null,
+                                    tint = Color(0xFF38BDF8),
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "Camera permission required for live QR scan",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFFCBD5E1),
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Allow Camera", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // Drawing corner brackets & laser beam line over the live camera preview
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val stroke = 4.dp.toPx()
                             val bracketLen = 24.dp.toPx()
-                            val pad = 30.dp.toPx()
-                            val cornerColor = Color(0xFF38BDF8) // Electric Blue Corner Accent
+                            val pad = 26.dp.toPx()
+                            val cornerColor = Color(0xFF38BDF8)
 
                             // Top-Left
                             drawLine(cornerColor, Offset(pad, pad), Offset(pad + bracketLen, pad), stroke)
@@ -618,22 +852,6 @@ private fun Step1IdentifyRecipient(
                                 start = Offset(pad, beamY),
                                 end = Offset(size.width - pad, beamY),
                                 strokeWidth = 3.dp.toPx()
-                            )
-                        }
-
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Filled.QrCode2,
-                                contentDescription = null,
-                                tint = Color(0xFF38BDF8),
-                                modifier = Modifier.size(36.dp)
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                "Align code inside frame",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFFCBD5E1)
                             )
                         }
                     }
@@ -690,21 +908,37 @@ private fun Step1IdentifyRecipient(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Person, contentDescription = null, tint = Color(0xFF0B192C), modifier = Modifier.size(20.dp))
+                            Icon(Icons.Filled.Storefront, contentDescription = null, tint = Color(0xFF0B192C), modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Manual Merchant Search", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                            Text("Selected / Manual Merchant", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
-                        Text("Phone or Federated ID", fontSize = 11.sp, color = Color(0xFF64748B))
+                        Text("Ref: $merchantRef", fontSize = 11.sp, color = Color(0xFF64748B))
                     }
+
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Current: $merchantName ($merchantAddress)",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1E3A8A)
+                    )
 
                     Spacer(Modifier.height(10.dp))
 
                     OutlinedTextField(
                         value = manualSearchQuery,
-                        onValueChange = { manualSearchQuery = it },
+                        onValueChange = { query ->
+                            manualSearchQuery = query
+                            if (query.isNotBlank()) {
+                                val cleanRef = "MER-${query.trim().take(6).uppercase()}"
+                                val cleanAddr = "${query.trim().lowercase().replace(" ", "")}*pundar.site"
+                                onSelectMerchant(query.trim(), cleanRef, cleanAddr, null)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search merchant or enter phone...") },
+                        placeholder = { Text("Enter merchant name or phone...") },
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color(0xFF64748B)) },
+                        singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White,
@@ -962,7 +1196,42 @@ private fun Step2AmountAndBillSplit(
                         }
                     }
 
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(14.dp))
+
+                    // Custom bill amount input field
+                    OutlinedTextField(
+                        value = totalAmountInput,
+                        onValueChange = { raw ->
+                            val cleaned = raw.filter { it.isDigit() || it == '.' }
+                            if (cleaned.count { it == '.' } <= 1) {
+                                val parts = cleaned.split('.')
+                                if (parts.size <= 1 || parts[1].length <= 2) {
+                                    onAmountChange(cleaned)
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Enter Bill Amount (PHP)") },
+                        prefix = { Text("₱ ", fontWeight = FontWeight.Bold, color = Color(0xFF0B192C)) },
+                        trailingIcon = {
+                            if (totalAmountInput.isNotEmpty()) {
+                                IconButton(onClick = { onAmountChange("") }) {
+                                    Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = Color(0xFF64748B), modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color(0xFF0B192C),
+                            unfocusedBorderColor = Color(0xFFCBD5E1)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(Modifier.height(12.dp))
 
                     // ── QUICK PRESET BUTTONS ROW (Dark Blue Theme) ────────────────────────
                     Row(
@@ -974,7 +1243,11 @@ private fun Step2AmountAndBillSplit(
                                 onClick = {
                                     val add = preset.replace("+₱", "").toDoubleOrNull() ?: 0.0
                                     val current = totalAmountInput.toDoubleOrNull() ?: 0.0
-                                    onAmountChange((current + add).toInt().toString())
+                                    val updated = current + add
+                                    onAmountChange(
+                                        if (updated % 1.0 == 0.0) updated.toLong().toString()
+                                        else String.format(Locale.US, "%.2f", updated)
+                                    )
                                 },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(10.dp),
@@ -1108,13 +1381,27 @@ private fun Step2AmountAndBillSplit(
 
         item {
             Spacer(Modifier.height(8.dp))
+            val canProceed = totalInPhp > 0.0 && selectedMembers.isNotEmpty()
+            if (!canProceed) {
+                Text(
+                    "Please enter a bill amount greater than ₱0.00 to continue.",
+                    fontSize = 12.sp,
+                    color = Color(0xFFDC2626),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
             Button(
                 onClick = onNext,
+                enabled = canProceed,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0B192C),
+                    disabledContainerColor = Color(0xFF94A3B8)
+                )
             ) {
                 Text("Continue to Review (Step 3) ➔", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
@@ -1130,11 +1417,23 @@ private fun Step3ReviewAndSplit(
     splitModeIndex: Int,
     onSplitModeChange: (Int) -> Unit,
     selectedMembers: List<BillMember>,
+    equalSharesByMember: Map<String, Double>,
     totalInPhp: Double,
     sharePerMemberPhp: Double,
     itemizedAmounts: MutableMap<String, String>,
+    allocatedItemizedPhp: Double,
+    remainingItemizedPhp: Double,
+    isItemizedMatched: Boolean,
+    onEqualizeAll: () -> Unit,
+    onClearAll: () -> Unit,
     onNext: () -> Unit
 ) {
+    val canProceedStep3 = if (splitModeIndex == 0) {
+        totalInPhp > 0.0 && selectedMembers.isNotEmpty()
+    } else {
+        isItemizedMatched
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -1184,99 +1483,272 @@ private fun Step3ReviewAndSplit(
             }
         }
 
+        // ── BILL SUMMARY & ALLOCATION TRACKER CARD ────────────────
         item {
+            val isItemized = splitModeIndex == 1
+            val isExceeded = isItemized && remainingItemizedPhp < -0.005
+            val isShort = isItemized && remainingItemizedPhp > 0.005
+
+            val borderColor = when {
+                !isItemized -> Color(0xFFE2E8F0)
+                isItemizedMatched -> Color(0xFF10B981)
+                isExceeded -> Color(0xFFEF4444)
+                else -> Color(0xFFF59E0B)
+            }
+            val bgColor = when {
+                !isItemized -> Color(0xFFF8FAFC)
+                isItemizedMatched -> Color(0xFFECFDF5)
+                isExceeded -> Color(0xFFFEF2F2)
+                else -> Color(0xFFFFFBEB)
+            }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                colors = CardDefaults.cardColors(containerColor = bgColor),
+                border = BorderStroke(1.dp, borderColor)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Total Bill Amount", fontSize = 12.sp, color = Color(0xFF64748B))
-                        Text(
-                            "₱${String.format("%,.2f", totalInPhp)}",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF0F172A)
-                        )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Target Bill Amount", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(
+                                "₱${String.format("%,.2f", totalInPhp)}",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF0F172A)
+                            )
+                        }
+                        if (!isItemized) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Share Per Person", fontSize = 12.sp, color = Color(0xFF64748B))
+                                Text(
+                                    "₱${String.format("%,.2f", sharePerMemberPhp)}",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF059669)
+                                )
+                            }
+                        } else {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Allocated Total", fontSize = 12.sp, color = Color(0xFF64748B))
+                                Text(
+                                    "₱${String.format("%,.2f", allocatedItemizedPhp)}",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = when {
+                                        isItemizedMatched -> Color(0xFF059669)
+                                        isExceeded -> Color(0xFFDC2626)
+                                        else -> Color(0xFFD97706)
+                                    }
+                                )
+                            }
+                        }
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("Share Per Person", fontSize = 12.sp, color = Color(0xFF64748B))
-                        Text(
-                            "₱${String.format("%,.2f", sharePerMemberPhp)}",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF059669)
-                        )
+
+                    if (isItemized) {
+                        Spacer(Modifier.height(10.dp))
+                        HorizontalDivider(color = borderColor.copy(alpha = 0.35f))
+                        Spacer(Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Icon(
+                                    imageVector = when {
+                                        isItemizedMatched -> Icons.Filled.CheckCircle
+                                        isExceeded -> Icons.Filled.Error
+                                        else -> Icons.Filled.Info
+                                    },
+                                    contentDescription = null,
+                                    tint = when {
+                                        isItemizedMatched -> Color(0xFF059669)
+                                        isExceeded -> Color(0xFFDC2626)
+                                        else -> Color(0xFFD97706)
+                                    },
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = when {
+                                        isItemizedMatched -> "Exact match! All ₱${String.format("%,.2f", totalInPhp)} allocated."
+                                        isExceeded -> "Exceeds bill by ₱${String.format("%,.2f", -remainingItemizedPhp)}"
+                                        isShort -> "Remaining to allocate: ₱${String.format("%,.2f", remainingItemizedPhp)}"
+                                        else -> "Enter each member's exact share"
+                                    },
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = when {
+                                        isItemizedMatched -> Color(0xFF065F46)
+                                        isExceeded -> Color(0xFF991B1B)
+                                        else -> Color(0xFF92400E)
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+
+                        // Quick helper actions for Itemized mode
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = onEqualizeAll,
+                                modifier = Modifier.weight(1f).height(36.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, Color(0xFF0B192C)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                            ) {
+                                Text("Split Equally", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0B192C))
+                            }
+                            OutlinedButton(
+                                onClick = onClearAll,
+                                modifier = Modifier.weight(1f).height(36.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, Color(0xFF64748B)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                            ) {
+                                Text("Clear All", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
+                            }
+                        }
                     }
                 }
             }
         }
 
         item {
-            Text(
-                "Individual Contributions",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Individual Contributions",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
+                )
+                if (splitModeIndex == 1) {
+                    Text(
+                        "Max total: ₱${String.format("%,.2f", totalInPhp)}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF64748B)
+                    )
+                }
+            }
         }
 
         items(selectedMembers) { member ->
+            val othersAllocatedPhp = selectedMembers
+                .filter { it.name != member.name }
+                .sumOf { (itemizedAmounts[it.name]?.toDoubleOrNull() ?: 0.0).coerceAtLeast(0.0) }
+            val maxAllowedForMember = (totalInPhp - othersAllocatedPhp).coerceAtLeast(0.0)
+            val currentMemberVal = itemizedAmounts[member.name]?.toDoubleOrNull() ?: 0.0
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 color = Color.White,
                 border = BorderStroke(1.dp, Color(0xFFE2E8F0))
             ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color(member.avatarColor)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(member.initials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(member.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF0F172A))
-                        Text(member.username, fontSize = 11.sp, color = Color(0xFF64748B))
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(member.avatarColor)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(member.initials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(member.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF0F172A))
+                            Text(member.username, fontSize = 11.sp, color = Color(0xFF64748B))
+                        }
+
+                        if (splitModeIndex == 0) {
+                            val exactEqualShare = equalSharesByMember[member.name] ?: sharePerMemberPhp
+                            Text(
+                                "₱${String.format("%,.2f", exactEqualShare)}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
+                            )
+                        } else {
+                            OutlinedTextField(
+                                value = itemizedAmounts[member.name] ?: "",
+                                onValueChange = { rawInput ->
+                                    // Sanitize numeric input (max 2 decimal places)
+                                    val cleaned = rawInput.filter { it.isDigit() || it == '.' }
+                                    if (cleaned.count { it == '.' } <= 1) {
+                                        val parts = cleaned.split('.')
+                                        if (parts.size <= 1 || parts[1].length <= 2) {
+                                            if (cleaned.isEmpty()) {
+                                                itemizedAmounts[member.name] = ""
+                                            } else {
+                                                val parsed = cleaned.toDoubleOrNull()
+                                                if (parsed != null) {
+                                                    // Prevent entering an amount that pushes the total over the bill amount
+                                                    if (parsed <= maxAllowedForMember + 0.005) {
+                                                        itemizedAmounts[member.name] = cleaned
+                                                    } else {
+                                                        // Clamp to the exact remaining unallocated balance
+                                                        itemizedAmounts[member.name] = String.format(Locale.US, "%.2f", maxAllowedForMember)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.width(125.dp),
+                                placeholder = { Text("0.00") },
+                                prefix = { Text("₱ ") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = if (isItemizedMatched) Color(0xFF059669) else Color(0xFF0B192C),
+                                    unfocusedBorderColor = Color(0xFFCBD5E1)
+                                ),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
                     }
 
-                    if (splitModeIndex == 0) {
-                        Text(
-                            "₱${String.format("%,.2f", sharePerMemberPhp)}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
-                        )
-                    } else {
-                        OutlinedTextField(
-                            value = itemizedAmounts[member.name] ?: "",
-                            onValueChange = { itemizedAmounts[member.name] = it },
-                            modifier = Modifier.width(110.dp),
-                            placeholder = { Text("0.00") },
-                            prefix = { Text("₱ ") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color(0xFF0B192C),
-                                unfocusedBorderColor = Color(0xFFCBD5E1)
-                            ),
-                            shape = RoundedCornerShape(10.dp)
-                        )
+                    // Show "Fill Remaining (₱X.XX)" pill when in Itemized mode and there is unallocated remainder
+                    if (splitModeIndex == 1 && kotlin.math.abs(maxAllowedForMember - currentMemberVal) >= 0.01) {
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Surface(
+                                onClick = {
+                                    itemizedAmounts[member.name] = String.format(Locale.US, "%.2f", maxAllowedForMember)
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFEFF6FF)
+                            ) {
+                                Text(
+                                    text = "Set to remaining ₱${String.format("%,.2f", maxAllowedForMember)}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E3A8A),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1284,13 +1756,31 @@ private fun Step3ReviewAndSplit(
 
         item {
             Spacer(Modifier.height(8.dp))
+            if (splitModeIndex == 1 && !isItemizedMatched) {
+                Text(
+                    text = if (remainingItemizedPhp > 0.0) {
+                        "Allocate the remaining ₱${String.format("%,.2f", remainingItemizedPhp)} so the split matches ₱${String.format("%,.2f", totalInPhp)}."
+                    } else {
+                        "Reduce itemized amounts by ₱${String.format("%,.2f", -remainingItemizedPhp)} to match ₱${String.format("%,.2f", totalInPhp)}."
+                    },
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFDC2626),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                )
+            }
             Button(
                 onClick = onNext,
+                enabled = canProceedStep3,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0B192C),
+                    disabledContainerColor = Color(0xFF94A3B8)
+                )
             ) {
                 Text("Proceed to Confirm (Step 4) ➔", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
@@ -1376,9 +1866,23 @@ private fun Step4ConfirmSend(
                     ConfirmDetailRow("Merchant / Recipient", merchantName)
                     ConfirmDetailRow("Merchant Ref", merchantRef)
                     ConfirmDetailRow("Expense Name", expenseName)
-                    ConfirmDetailRow("Group Participants", "${members.size} Friends")
+                    ConfirmDetailRow("Group Participants", "${members.size} Members")
                     ConfirmDetailRow("Your Portion", "₱${String.format("%,.2f", yourSharePhp)}")
                     ConfirmDetailRow("Payment Rail", "Stellar Network / PUNDAR Pay")
+
+                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(color = Color(0xFFF1F5F9))
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "SPLIT BREAKDOWN",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF64748B)
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    members.forEach { m ->
+                        ConfirmDetailRow(m.name, "₱${String.format("%,.2f", m.amount)}")
+                    }
                 }
             }
         }
@@ -1589,215 +2093,6 @@ private fun Step5InvoiceReceipt(
 // ═════════════════════════════════════════════════════════════════
 //  MODAL DIALOGS
 // ═════════════════════════════════════════════════════════════════
-
-@Composable
-private fun ScanQrModalDialog(
-    onDismiss: () -> Unit,
-    onQrScanned: (String, String) -> Unit
-) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                PackageManager.PERMISSION_GRANTED
-        )
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted -> hasCameraPermission = granted }
-    )
-    LaunchedEffect(Unit) {
-        if (!hasCameraPermission) {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
-    val scannerOptions = remember {
-        BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
-            .build()
-    }
-    val barcodeScanner = remember { BarcodeScanning.getClient(scannerOptions) }
-    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-    val scanLocked = remember { AtomicBoolean(false) }
-    var cameraRef by remember { mutableStateOf<Camera?>(null) }
-    var torchEnabled by remember { mutableStateOf(false) }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            cameraExecutor.shutdown()
-            barcodeScanner.close()
-        }
-    }
-
-    fun handleScannedRaw(raw: String) {
-        val decoded = QrPayload.decode(raw)
-        if (decoded != null) {
-            val name = decoded.displayName?.takeIf { it.isNotBlank() }
-                ?: decoded.billRef?.takeIf { it.isNotBlank() }
-                ?: decoded.userId
-            val ref = decoded.billRef?.takeIf { it.isNotBlank() }
-                ?: decoded.walletId?.takeIf { it.isNotBlank() }
-                ?: decoded.userId
-            onQrScanned(name, ref)
-        } else {
-            val clean = raw.trim()
-            val ref = clean.take(24)
-            onQrScanned("QR Merchant ($ref)", ref)
-        }
-    }
-
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        try {
-            val image = InputImage.fromFilePath(context, uri)
-            barcodeScanner.process(image)
-                .addOnSuccessListener { barcodes ->
-                    val raw = barcodes.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue
-                    if (raw != null) {
-                        handleScannedRaw(raw)
-                    } else {
-                        Toast.makeText(context, "No QR code found in image.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                .addOnFailureListener {
-                    Toast.makeText(context, "Failed to scan image.", Toast.LENGTH_SHORT).show()
-                }
-        } catch (_: Exception) {
-            Toast.makeText(context, "Unable to open selected image.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(8.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Scan Receiver QR Code", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                Text("Point your camera at QR Ph, Stellar, or PUNDAR QR", fontSize = 12.sp, color = Color(0xFF64748B), textAlign = TextAlign.Center)
-
-                Spacer(Modifier.height(14.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(240.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF0B192C)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (hasCameraPermission) {
-                        AndroidView(
-                            factory = { ctx ->
-                                val previewView = PreviewView(ctx)
-                                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                                cameraProviderFuture.addListener({
-                                    val cameraProvider = cameraProviderFuture.get()
-                                    val preview = Preview.Builder().build().also {
-                                        it.setSurfaceProvider(previewView.surfaceProvider)
-                                    }
-                                    val resolutionSelector = ResolutionSelector.Builder()
-                                        .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
-                                        .build()
-                                    val imageAnalyzer = ImageAnalysis.Builder()
-                                        .setResolutionSelector(resolutionSelector)
-                                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                        .build()
-                                    imageAnalyzer.setAnalyzer(cameraExecutor) { imageProxy ->
-                                        if (!scanLocked.get()) {
-                                            processGroupBillImageProxy(barcodeScanner, imageProxy) { barcode ->
-                                                if (scanLocked.compareAndSet(false, true)) {
-                                                    ContextCompat.getMainExecutor(ctx).execute {
-                                                        handleScannedRaw(barcode)
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            imageProxy.close()
-                                        }
-                                    }
-                                    try {
-                                        cameraProvider.unbindAll()
-                                        val camera = cameraProvider.bindToLifecycle(
-                                            lifecycleOwner,
-                                            CameraSelector.DEFAULT_BACK_CAMERA,
-                                            preview,
-                                            imageAnalyzer
-                                        )
-                                        cameraRef = camera
-                                        camera.cameraControl.enableTorch(torchEnabled)
-                                    } catch (_: Exception) { }
-                                }, ContextCompat.getMainExecutor(ctx))
-                                previewView
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        if (cameraRef?.cameraInfo?.hasFlashUnit() == true) {
-                            IconButton(
-                                onClick = {
-                                    val next = !torchEnabled
-                                    torchEnabled = next
-                                    cameraRef?.cameraControl?.enableTorch(next)
-                                },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.55f), CircleShape)
-                            ) {
-                                Icon(
-                                    imageVector = if (torchEnabled) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
-                                    contentDescription = "Flash",
-                                    tint = if (torchEnabled) Color(0xFFFBBF24) else Color.White
-                                )
-                            }
-                        }
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                            Icon(Icons.Filled.QrCodeScanner, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(48.dp))
-                            Spacer(Modifier.height(8.dp))
-                            Text("Camera permission needed", color = Color.White, fontSize = 13.sp)
-                            Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                                Text("Grant Permission", color = Color(0xFF38BDF8))
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(14.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        galleryLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Filled.Image, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Upload QR from Gallery")
-                }
-
-                Spacer(Modifier.height(6.dp))
-
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel", color = Color(0xFF64748B))
-                }
-            }
-        }
-    }
-}
 
 @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 private fun processGroupBillImageProxy(

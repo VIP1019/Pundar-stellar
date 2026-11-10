@@ -34,7 +34,10 @@ fun BillDetailScreen(billId: String, navController: NavController) {
         ?: run { navController.navigateUp(); return }
     val context = LocalContext.current
     val walletBalance = AppState.walletBalance.value
-    val canAffordSettle = walletBalance >= bill.yourShare
+    val exchangeRate = AppState.currentExchangeRate.doubleValue.takeIf { it > 0.0 } ?: 56.50
+    val totalXlm = bill.totalAmount / exchangeRate
+    val yourShareXlm = bill.yourShare / exchangeRate
+    val canAffordSettle = walletBalance >= yourShareXlm
 
     Scaffold(
         topBar = {
@@ -88,18 +91,18 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                 color = PundarTheme.colors.textSecondary
                             )
                             Text(
-                                text = "${String.format("%,.2f", bill.totalAmount)} XLM",
+                                text = "₱ ${String.format("%,.2f", bill.totalAmount)}",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = PundarTheme.colors.textPrimary
                             )
                             Text(
-                                text = "(${AppState.formatFiat(bill.totalAmount)})",
+                                text = "(≈ ${String.format("%,.2f", totalXlm)} XLM)",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = PundarTheme.colors.textSecondary
                             )
                             Text(
-                                text = "Your share: ${String.format("%,.2f", bill.yourShare)} XLM",
+                                text = "Your share: ₱ ${String.format("%,.2f", bill.yourShare)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = PundarTheme.colors.brandPrimary,
                                 fontWeight = FontWeight.SemiBold
@@ -198,11 +201,11 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         PundarPrimaryButton(
-                            text = "Settle My Share — ${String.format("%,.2f", bill.yourShare)} XLM",
+                            text = "Settle My Share — ₱${String.format("%,.2f", bill.yourShare)} (≈ ${String.format("%,.2f", yourShareXlm)} XLM)",
                             enabled = canAffordSettle,
                             onClick = {
                                 AppState.settleBill(bill.id)
-                                Toast.makeText(context, "Bill settled! ${String.format("%,.2f", bill.yourShare)} XLM deducted.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Bill settled! ₱${String.format("%,.2f", bill.yourShare)} deducted.", Toast.LENGTH_SHORT).show()
                                 navController.navigateUp()
                             }
                         )

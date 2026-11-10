@@ -185,13 +185,14 @@ fun PayScreen(navController: NavController, openDrawer: () -> Unit = {}) {
                                 }
                                 Spacer(Modifier.height(10.dp))
                                 Text(
-                                    text = AppState.formatFiat(monthTotal),
+                                    text = "₱ ${String.format("%,.2f", monthTotal)}",
                                     fontSize = 34.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = Color.White
                                 )
+                                val rate = AppState.currentExchangeRate.doubleValue.takeIf { it > 0.0 } ?: 56.50
                                 Text(
-                                    text = "≈ ${String.format("%,.2f", monthTotal)} XLM · Stellar Rail",
+                                    text = "≈ ${String.format("%,.2f", monthTotal / rate)} XLM · Stellar Rail",
                                     fontSize = 12.sp,
                                     color = Color(0xFF94A3B8)
                                 )

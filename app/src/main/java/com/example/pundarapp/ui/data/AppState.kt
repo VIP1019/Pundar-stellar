@@ -130,7 +130,7 @@ object AppState {
                 icon = "payment",
                 title = bill.name,
                 subtitle = "Pending • ${bill.memberCount} members",
-                amount = "-${String.format("%,.2f", bill.yourShare)} XLM",
+                amount = "-₱ ${String.format("%,.2f", bill.yourShare)}",
                 isPositive = false,
                 module = "Pay"
             )
@@ -142,9 +142,10 @@ object AppState {
         if (index >= 0) {
             val old = bills[index]
             if (old.status == BillStatus.SETTLED) return // already settled
-            // Deduct user's share from wallet
-            val share = old.yourShare
-            updateWalletBalance((walletBalance.value - share).coerceAtLeast(0.0))
+            // Deduct user's share from wallet (convert PHP share to XLM if needed)
+            val rate = currentExchangeRate.doubleValue.takeIf { it > 0.0 } ?: 56.50
+            val shareXlm = old.yourShare / rate
+            updateWalletBalance((walletBalance.value - shareXlm).coerceAtLeast(0.0))
             bills[index] = old.copy(status = BillStatus.SETTLED)
             // Record as home activity
             addHomeActivity(
@@ -152,7 +153,7 @@ object AppState {
                     icon = "payment",
                     title = old.name,
                     subtitle = "Bill settled",
-                    amount = "-${String.format("%,.2f", share)} XLM",
+                    amount = "-₱ ${String.format("%,.2f", old.yourShare)}",
                     isPositive = false,
                     module = "Pay"
                 )
