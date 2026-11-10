@@ -169,7 +169,7 @@ fun ReceiveMoneyScreen(navController: NavController) {
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Account: ${user?.id ?: ""}",
+                        "Mobile: ${user?.phone ?: user?.id ?: ""}",
                         style = MaterialTheme.typography.labelMedium,
                         color = PundarTheme.colors.textPrimary
                     )
@@ -211,19 +211,20 @@ fun ReceiveMoneyScreen(navController: NavController) {
                 )
             )
 
+            val copyAddressMode = qrMode == 1 && !user?.stellarPublicKey.isNullOrBlank()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 PundarOutlinedButton(
-                    text = "Copy",
+                    text = if (copyAddressMode) "Copy Address" else "Copy ID",
                     onClick = {
-                        val copyVal = if (qrMode == 1 && !user?.stellarPublicKey.isNullOrBlank()) {
+                        val copyVal = if (copyAddressMode) {
                             user!!.stellarPublicKey!!
                         } else {
                             user?.id ?: return@PundarOutlinedButton
                         }
-                        val label = if (qrMode == 1) "Stellar Address" else "User ID"
+                        val label = if (copyAddressMode) "Stellar Address" else "User ID"
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(ClipData.newPlainText(label, copyVal))
                         Toast.makeText(context, "$label copied", Toast.LENGTH_SHORT).show()
@@ -252,10 +253,12 @@ fun ReceiveMoneyScreen(navController: NavController) {
                     onClick = {
                         val bmp = qrBitmap ?: return@PundarOutlinedButton
                         val amountText = if (requestedAmount != null) " (₱${String.format("%,.2f", requestedAmount)})" else ""
+                        val pk = user?.stellarPublicKey?.takeIf { it.isNotBlank() }
+                        val stellarText = if (pk != null) " Stellar: $pk" else ""
                         QrCodeGenerator.shareQrBitmap(
                             context = context,
                             bitmap = bmp,
-                            shareText = "Send me money on PUNDAR$amountText. Account: ${user?.id ?: ""}",
+                            shareText = "Send me money on PUNDAR$amountText. Account: ${user?.id ?: ""}.$stellarText".trimEnd('.'),
                             chooserTitle = "Share Receive QR"
                         )
                     },

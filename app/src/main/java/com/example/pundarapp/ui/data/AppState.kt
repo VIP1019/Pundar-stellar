@@ -3,7 +3,10 @@ package com.example.pundarapp.ui.data
 import androidx.compose.runtime.*
 import com.example.pundarapp.data.qr.QrPayload
 import com.example.pundarapp.data.remote.*
+import com.example.pundarapp.data.stellar.PayStellarClient
 import com.example.pundarapp.data.stellar.StellarWalletManager
+import com.example.pundarapp.data.stellar.Stroops
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -951,15 +954,47 @@ object AppState {
         if (phone.isNotBlank()) {
             scope.launch {
                 try {
+                    val publicKey = AuthRepository.getCurrentUserStellarPublicKey()
+                    if (!publicKey.isNullOrBlank()) {
+                        val initialResult = PayStellarClient.getXlmBalance(publicKey)
+                        val resolvedResult = PayStellarClient.recoverMissingAccountBalance(publicKey, initialResult)
+                        if (resolvedResult.isSuccess) {
+                            val stroops = resolvedResult.getOrThrow()
+                            val onChainXlm = stroops.toDouble() / Stroops.PER_XLM
+                            walletBalance.value = onChainXlm
+                            prefs?.edit()?.putFloat("wallet_balance_$phone", onChainXlm.toFloat())?.apply()
+                            try {
+                                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                    .collection("users").document(phone)
+                                    .update(mapOf("wallet_balance" to onChainXlm, "walletBalance" to onChainXlm))
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {}
+                        } else {
+                            // Preserve the last known balance on refresh failure
+                            Log.w(
+                                "AppState",
+                                "Horizon balance refresh failed for $publicKey; preserving last known balance (${walletBalance.value})",
+                                resolvedResult.exceptionOrNull()
+                            )
+                        }
+                        return@launch
+                    }
+
+                    // Fallback to cached Firestore balance only when no Stellar publicKey is configured
                     val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                     val doc = db.collection("users").document(phone).get().await()
                     if (doc.exists()) {
-                        val remoteBalance = doc.getDouble("wallet_balance") ?: doc.getDouble("walletBalance") ?: 0.0
-                        walletBalance.value = remoteBalance
-                        prefs?.edit()?.putFloat("wallet_balance_$phone", remoteBalance.toFloat())?.apply()
+                        val remoteBalance = doc.getDouble("wallet_balance") ?: doc.getDouble("walletBalance")
+                        if (remoteBalance != null) {
+                            walletBalance.value = remoteBalance
+                            prefs?.edit()?.putFloat("wallet_balance_$phone", remoteBalance.toFloat())?.apply()
+                        }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
-                    android.util.Log.e("AppState", "Failed to refresh wallet balance from Firestore", e)
+                    android.util.Log.e("AppState", "Failed to refresh wallet balance; preserving last known balance", e)
                 }
             }
         }

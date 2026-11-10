@@ -31,7 +31,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.HomeRepository
+import com.example.pundarapp.data.stellar.PayStellarClient
+import com.example.pundarapp.data.stellar.PaymentResult
 import com.example.pundarapp.data.stellar.StellarWalletManager
+import com.example.pundarapp.data.stellar.Stroops
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.HomeActivity
@@ -100,30 +103,53 @@ fun SendMoneyScreen(navController: NavController) {
                         isSending     = true
                         scope.launch {
                             try {
-                                val users     = AuthRepository.searchUsers(recipientPhone)
-                                val recipient = users.find { it.phone == recipientPhone.trim() }
-                                if (recipient == null) {
-                                    errorMsg  = "No PUNDAR user found with that number."
-                                    isSending = false
-                                    return@launch
+                                val target = recipientPhone.trim()
+                                val recipientPk: String
+                                val recipientDisplayName: String
+
+                                if (target.startsWith("G") && target.length == 56) {
+                                    recipientPk = target
+                                    recipientDisplayName = "${target.take(6)}...${target.takeLast(6)}"
+                                } else {
+                                    val users = AuthRepository.searchUsers(target)
+                                    val recipient = users.find { it.phone == target }
+                                    if (recipient == null) {
+                                        errorMsg  = "No PUNDAR user found with that number."
+                                        isSending = false
+                                        return@launch
+                                    }
+                                    val pk = recipient.stellarPublicKey
+                                    if (pk.isNullOrBlank()) {
+                                        errorMsg  = "Recipient wallet not found."
+                                        isSending = false
+                                        return@launch
+                                    }
+                                    recipientPk = pk
+                                    recipientDisplayName = recipient.name
                                 }
-                                val recipientPk = recipient.stellarPublicKey
-                                if (recipientPk.isNullOrBlank()) {
-                                    errorMsg  = "Recipient wallet not found."
-                                    isSending = false
-                                    return@launch
-                                }
+
                                 val senderPk   = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
                                 val senderSeed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
-                                val result     = StellarWalletManager.sendPayment(
-                                    senderPublicKey     = senderPk,
-                                    senderEncryptedSeed = senderSeed,
-                                    senderMpin          = mpinInput,
-                                    recipientPublicKey  = recipientPk,
-                                    amountXlm           = amount,
-                                    memo                = message.take(28)
+                                val stroops    = Stroops.fromXlmString(amount)
+                                if (stroops == null || stroops <= 0) {
+                                    errorMsg  = "Enter a valid amount."
+                                    isSending = false
+                                    return@launch
+                                }
+                                val secret = try {
+                                    StellarWalletManager.decryptSecretSeed(senderSeed, mpinInput)
+                                } catch (e: Exception) {
+                                    errorMsg  = "Incorrect PIN."
+                                    isSending = false
+                                    return@launch
+                                }
+                                val result = PayStellarClient.sendPayment(
+                                    secret      = secret,
+                                    destination = recipientPk,
+                                    amountStroops = stroops,
+                                    memo        = message
                                 )
-                                if (result.isSuccess) {
+                                if (result is PaymentResult.Success) {
                                     AppState.refreshWalletBalance()
                                     val sentAmount = amount.toDoubleOrNull() ?: 0.0
                                     AppState.processPayRoundUp(
@@ -134,7 +160,7 @@ fun SendMoneyScreen(navController: NavController) {
                                     )
                                     val activity = HomeActivity(
                                         icon      = "send",
-                                        title     = "Sent to ${recipient.name}",
+                                        title     = "Sent to $recipientDisplayName",
                                         subtitle  = message.ifBlank { "Money Transfer" },
                                         amount    = "-₱${String.format("%,.2f", amount.toDoubleOrNull() ?: 0.0)}",
                                         isPositive = false,
@@ -148,7 +174,11 @@ fun SendMoneyScreen(navController: NavController) {
                                     Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
                                     navController.navigateUp()
                                 } else {
-                                    errorMsg  = result.exceptionOrNull()?.message ?: "Transfer failed."
+                                    errorMsg = when (result) {
+                                        is PaymentResult.Failure -> result.message
+                                        is PaymentResult.Unknown -> "Network timed out. Check your balance before retrying."
+                                        else -> "Transfer failed."
+                                    }
                                     isSending = false
                                 }
                             } catch (e: Exception) {
@@ -235,7 +265,7 @@ fun SendMoneyScreen(navController: NavController) {
             OutlinedTextField(
                 value         = recipientPhone,
                 onValueChange = { recipientPhone = it },
-                placeholder   = { Text("Mobile number (e.g. 09171234567)", color = PundarTheme.colors.textDim) },
+                placeholder   = { Text("Mobile number or Stellar address (G...)", color = PundarTheme.colors.textDim) },
                 leadingIcon   = { Icon(Icons.Filled.Person, null, tint = PundarTheme.colors.textMuted) },
                 trailingIcon  = {
                     // QR scan shortcut
@@ -244,7 +274,7 @@ fun SendMoneyScreen(navController: NavController) {
                     }
                 },
                 modifier        = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 colors          = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor      = Blue400,
                     unfocusedBorderColor    = PundarTheme.colors.borderPrimary,

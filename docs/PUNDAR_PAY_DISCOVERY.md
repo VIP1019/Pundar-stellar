@@ -1,12 +1,12 @@
 # Technical Discovery & Gap Analysis: PUNDAR Pay Stellar Integration
 
-**Document Version:** 1.1 (Delta Check — post-Supabase integration commit)
+**Document Version:** 1.2 (Phase A Closeout — Firestore Active, Supabase Reverted)
 **Project:** PUNDAR (Progressive Unified Network for Digital Asset Resilience)  
 **Target Module:** PUNDAR Pay (Shared Payments on Stellar Testnet)  
 **SDK Evaluated:** Soneso Kotlin Multiplatform Stellar SDK (`com.soneso.stellar:stellar-sdk:1.16.0`)
 
 > [!NOTE]
-> **Delta Check applied 2026-11-10.** Sections updated: §1 Architecture & Patterns, §2 Relevant Existing Code (new rows), §3 Version Conflicts (Ktor / Supabase), §4 Integration Plan (Steps 3 & 5), §5 Risks & Unknowns (new item #6). All other sections are unchanged.  
+> **v1.2 Update (2026-11-10):** Corrected database runtime status based on commit history: commit `c1f32619` introduced Supabase (`SupabaseClient.kt`, `postgrest-kt`, `auth-kt`, and `supabase_schema.sql`), and commit `7c55a525` **reverted all runtime Supabase code and dependencies**, restoring Firebase Firestore as the sole active remote database. Only `supabase_schema.sql` (DDL reference) and unused catalog entries in `gradle/libs.versions.toml` remain. Pay Soneso code lives in `PayStellarClient.kt` while `StellarWalletManager.kt` remains untouched on the Lightsail SDK.
 
 ---
 
@@ -31,16 +31,16 @@
 - **State Management:** Central in-memory Compose Snapshot State singleton in `ui/data/AppState.kt` (`mutableStateListOf`, `mutableStateOf`, `mutableDoubleStateOf`). Screens observe and recompose directly.
 - **Dependency Injection:** None (no Dagger, Hilt, or Koin). Singletons are defined as Kotlin `object`s (`AppState`, `AuthRepository`, `PayRepository`, `TransactionRepository`, `StellarWalletManager`, `QrPaymentRepository`).
 - **Networking & Backend:**
-  - Firebase Firestore (`com.google.firebase:firebase-firestore:33.8.0`) — **currently the active runtime database** for `users`, `group_bills`, `bill_invitations`, and `notifications`.
-  - **Supabase PostgreSQL** (`io.github.jan-tennert.supabase:bom:3.0.0`) — schema defined in `supabase_schema.sql`, dependency entries in `gradle/libs.versions.toml`. As of commit `b72885f` **Supabase is wired into `AuthRepository` and `PayRepository` for auth and bill persistence** (see §2 delta rows). It coexists with Firestore; Firestore is NOT yet removed. Full migration is in progress.
-  - Raw `java.net.URL` in `StellarWalletManager.fundTestnetAccount`.
-  - Ktor Client 3.0.1 declared in Version Catalog (`ktor-client-core`, `ktor-client-android`). **Note:** Supabase `3.0.0` BOM pins its own Ktor version; check for classpath conflicts (see §3).
+  - Firebase Firestore (`com.google.firebase:firebase-firestore:33.8.0`) — **the sole active runtime database** for `users`, `group_bills`, `bill_invitations`, `bill_qrs`, `qr_tokens`, `transactions`, and `notifications`.
+  - **Supabase PostgreSQL (Reverted / Dormant):** Introduced in commit `c1f32619` (`yung pinaayus ni mark na may databased`) and **reverted in commit `7c55a525`** (`okay na login mag login kayo sa google`), which deleted `SupabaseClient.kt` and `GoogleSignInHelper.kt` and removed all Supabase dependencies from `app/build.gradle.kts`. Only `supabase_schema.sql` at the repo root and unused catalog entries in `gradle/libs.versions.toml` remain; zero Kotlin files import or call Supabase at runtime.
+  - Soneso `FriendBot` and `HorizonServer` in `PayStellarClient.kt` for Pay Stellar Testnet operations (Lightsail `StellarWalletManager.kt` retained untouched for Circle/Grow/legacy callers).
+  - Ktor Client `3.3.3` pinned across all Ktor artifacts in `gradle/libs.versions.toml`.
 - **Local Storage:** Android `SharedPreferences` (`"pundar_prefs"` and `"auth_prefs"`).
-- **Serialization:** `kotlinx.serialization` (`kotlinx-serialization-json = "1.6.3"`).
+- **Serialization:** `kotlinx.serialization` (`kotlinx-serialization-json = "1.8.0"`).
 - **Coroutines:** Structured concurrency using `CoroutineScope(Dispatchers.IO + CoroutineExceptionHandler)` inside `AppState`, `rememberCoroutineScope` in composables, and `withContext(Dispatchers.IO)` in repositories.
 - **Hardware Integrations:** CameraX (`1.3.1`) + Google ML Kit Barcode Scanning (`17.2.0`) for QR reading; ZXing Core (`3.5.3`) for QR generation.
-- **Secrets & Configuration:** `stellar.pepper` in `gradle.properties` injected via `buildConfigField("String", "STELLAR_PEPPER", ...)` in `app/build.gradle.kts`. `local.properties` contains Android SDK path. `google-services.json` used by Firebase plugin. **Supabase URL and anon key are not yet injected** — they must be added to `local.properties` and exposed via `BuildConfig` before Supabase code paths can be activated in production.
-- **JVM Toolchain:** `gradle.properties` now sets `org.gradle.java.home=C:\\Program Files\\Java\\jdk-21`. IDE switched from Java 25 to Java 21 (commit `6a817b3`). `app/build.gradle.kts` still declares `JavaVersion.VERSION_11` / `jvmTarget = "11"` — this must be bumped to 17 for the Soneso SDK (Step 1).
+- **Secrets & Configuration:** `stellar.pepper` in `gradle.properties` injected via `buildConfigField("String", "STELLAR_PEPPER", ...)` in `app/build.gradle.kts`. `local.properties` contains Android SDK path. `google-services.json` used by Firebase plugin (updated in commit `6a817b3`).
+- **JVM Toolchain:** `gradle.properties` sets `org.gradle.java.home` to JDK 21 (commits `e9b1a3a`, `6a817b3`). `app/build.gradle.kts` declares `JavaVersion.VERSION_17` / `jvmTarget = "17"` for the Soneso SDK.
 - **Tests & CI:** Only template test files (`ExampleUnitTest.kt` and `ExampleInstrumentedTest.kt`). No CI workflows configured (no `.github/`).
 
 ---
@@ -49,9 +49,10 @@
 
 | Path | Purpose | Reuse or Change |
 | :--- | :--- | :--- |
-| `app/src/main/java/com/example/pundarapp/data/stellar/StellarWalletManager.kt` | Core Stellar logic currently using Java SDK (`network.lightsail:stellar-sdk:4.0.0`). Contains keypair generation, friendbot funding, AES-GCM encryption, balance querying, Horizon payment, path payment, and Soroban circle calls. Duplicate `CIRCLE_CONTRACT_ID` removed in commit `6a982d4`. | **Change**: Replace Lightsail SDK imports (`org.stellar.sdk.*`) with Soneso KMP SDK (`com.soneso.stellar.sdk.*`). Convert synchronous calls to `suspend` functions (`KeyPair.random()`, `KeyPair.fromSecretSeed()`, `transaction.sign()`). Implement proper Horizon error extraction. |
-| `app/src/main/java/com/example/pundarapp/data/remote/AuthRepository.kt` | Handles user registration, MPIN login, session caching in `SharedPreferences`, user search, and Firestore `users` document persistence. **Delta:** Supabase auth (`auth-kt`) added in commit `c1f32619`; login/register screens updated to use Supabase GoTrue alongside Firestore. `encryptedStellarSeed` and plaintext `mpin` **still written to Firestore** `users` document (see Risk #3). `searchUsers` now also reads `stellarPublicKey` from Firestore documents. | **Change**: **CRITICAL SECURITY FIX** (unchanged from v1.0). Remove plaintext `mpin` and `encryptedStellarSeed` from both Firestore write AND any future Supabase `profiles` upsert. Store encrypted seed only in `EncryptedSharedPreferences`. When migrating to Supabase `profiles`, add a `stellar_public_key` column (see Risk #6). |
-| `app/src/main/java/com/example/pundarapp/data/remote/PayRepository.kt` | Persists and fetches `group_bills` from Firestore. **Delta:** Supabase `postgrest-kt` added for `group_bills` in commit `c1f32619`; a parallel Supabase write path exists alongside the Firestore path. Members are now serialized as a map array in Firestore with `name`, `username`, `initials`, `amount`, `avatarColor`. | **Change**: Add `stellarPublicKey`, `isSettled: Boolean`, `settlementTxHash: String?` to the member map. Decide whether the Supabase `bill_members` table or Firestore subcollection is the canonical source of truth before proceeding (see Risk #6). |
+| `app/src/main/java/com/example/pundarapp/data/stellar/StellarWalletManager.kt` | Legacy Stellar logic on Java SDK (`network.lightsail:stellar-sdk:4.0.0`). Contains keypair generation, friendbot funding, AES-GCM encryption, balance querying, Horizon payment, path payment, Mock RWA, and Soroban circle calls. Duplicate `CIRCLE_CONTRACT_ID` removed in commit `6a982d4`. | **Leave Untouched**: Retained on `network.lightsail:stellar-sdk:4.0.0` so Circle, Grow (Mock RWA), and legacy callers continue to work without modification. Soroban Circle helpers are also mirrored in `StellarCircleClient.kt`. |
+| `app/src/main/java/com/example/pundarapp/data/stellar/PayStellarClient.kt` | Pay-side Stellar Testnet client on Soneso KMP SDK (`com.soneso.stellar:stellar-sdk:1.16.0`). | **New (Phase A)**: Implements `generateKeyPair()`, `fundTestnetAccount()`, `getXlmBalance()`, `recoverMissingAccountBalance()` (strictly gated on HTTP 404 `BadRequestException`), and `sendPayment()` returning `PaymentResult`. |
+| `app/src/main/java/com/example/pundarapp/data/remote/AuthRepository.kt` | Handles user registration, MPIN login, session caching in `SharedPreferences`, user search, and Firestore `users` document persistence. **History:** Commit `c1f32619` added Supabase GoTrue, which was reverted in commit `7c55a525` back to pure Firestore (`users/{phone}`). `encryptedStellarSeed` and plaintext `mpin` are currently still written to Firestore `users` document (to be removed in Phase B). | **Change (Phase B)**: Remove plaintext `mpin` and `encryptedStellarSeed` from Firestore `users` document write. Store seed encrypted via Android Keystore AES-GCM and local PBKDF2 MPIN hash on device only. Keep `stellarPublicKey` in Firestore `users/{phone}`. |
+| `app/src/main/java/com/example/pundarapp/data/remote/PayRepository.kt` | Persists and fetches `group_bills` and `bill_invitations` from Firestore. **History:** Commit `c1f32619` added a Supabase `postgrest-kt` path, which was reverted in commit `7c55a525`; all reads and writes currently use Firestore only. | **Change (Phase C)**: Extract Pay persistence behind `data/pay/BillStore.kt` implemented by `FirestoreBillStore`. Add `stellarPublicKey`, stroop shares, member settlement status, and `txHash` support. |
 | `app/src/main/java/com/example/pundarapp/data/remote/TransactionRepository.kt` | Executes `settleBills` by batch-updating Firestore `group_bills` and `users` balances without any blockchain interaction. | **Change**: Connect to `StellarWalletManager` to build, sign, and submit real Stellar Testnet transactions per settled bill before updating Firestore state with the confirmed transaction hash. |
 | `app/src/main/java/com/example/pundarapp/ui/data/AppState.kt` | Central state holder for `bills`, `walletBalance`, exchange rates, and activities. Explicitly marks on-chain balance as unused (`refreshWalletBalance`). | **Change**: Connect `settleBill` and `refreshWalletBalance` to real on-chain Horizon calls via `StellarWalletManager`. Track on-chain balance alongside fiat equivalents. |
 | `app/src/main/java/com/example/pundarapp/ui/data/SampleData.kt` | Defines `GroupBill`, `BillMember`, `BillStatus`, and sample bills. | **Change**: `GroupBill` and `BillMember` use primitive `Double` for money and lack participant Stellar public keys and transaction hashes. Add `stellarPublicKey`, `txHash`, and `settlementStatus` fields. |
@@ -61,8 +62,8 @@
 | `app/src/main/java/com/example/pundarapp/ui/screens/pay/BillQrScreen.kt` | Generates dynamic QR code for a bill share and polls `BillQrRepository`. | **Reuse**: QR generation logic is solid. Verify that QR payload contains creator's `stellarPublicKey` and bill memo. |
 | `app/src/main/java/com/example/pundarapp/data/qr/QrPayload.kt` | Serializable QR payload structure (`TYPE_BILL_PAYMENT`, `walletId`, `amount`, `billRef`). | **Reuse**: Payload already has `walletId` (Stellar public key) and `billRef`. Can be used as-is. |
 | `app/src/main/java/com/example/pundarapp/ui/screens/home/SendMoneyScreen.kt` | P2P transfer screen that prompts for 4-digit MPIN and calls `StellarWalletManager.sendPayment`. | **Reuse**: Serves as the reference UI flow for PIN prompt + on-chain signing + home activity logging. |
-| `supabase_schema.sql` *(repo root)* | Full PostgreSQL DDL for Supabase: `profiles`, `group_bills`, `bill_members`, `circles`, `circle_members`, `portfolios`, `portfolio_activities`, `home_activities`. Introduced in commit `c1f32619`. | **Delta — New file**. `profiles` has **no** `mpin`, `encryptedStellarSeed`, or `stellar_public_key` columns — this is correct non-custodial design for `mpin`/seed, but **`stellar_public_key TEXT` must be added** so participants can pay each other. `group_bills.total_amount` is `DECIMAL(12,2)` (PHP fiat); a companion `stellar_amount NUMERIC(20,7)` column should be added for the XLM stroop-precise amount. |
-| `gradle/libs.versions.toml` | Centralized dependency catalog. | **Delta:** `supabase = "3.0.0"`, `supabase-bom`, `supabase-postgrest`, `supabase-auth`, `supabase-realtime`, `supabase-compose-auth`, `supabase-compose-auth-ui` added. `ktor` remains at `3.0.1` — **conflict risk with Supabase 3.0.0 BOM** (see §3). |
+| `supabase_schema.sql` *(repo root)* | PostgreSQL DDL for Supabase (`profiles`, `group_bills`, `bill_members`, `circles`, `circle_members`, `portfolios`, `portfolio_activities`, `home_activities`). Added in commit `c1f32619`; runtime client removed in commit `7c55a525`. | **Dormant DDL only**. Not wired into the app at runtime. If Supabase is re-enabled later, `profiles` will need `stellar_public_key TEXT` and `bill_members` will need stroop share, status, and tx hash columns. |
+| `gradle/libs.versions.toml` | Centralized dependency catalog. | **Updated (Phase A):** Kotlin `2.2.21`, Ktor `3.3.3` pinned across all Ktor artifacts, `kotlinxSerialization = "1.8.0"`, Soneso `com.soneso.stellar:stellar-sdk:1.16.0` alongside Lightsail `network.lightsail:stellar-sdk:4.0.0`. Unused `supabase-*` catalog entries from commit `c1f32619`/`7c55a525` are not referenced by `app/build.gradle.kts`. |
 | `app/src/main/java/com/example/pundarapp/ui/theme/Theme.kt` *(unstaged)* | Custom theme system. | **Delta (unstaged):** Adds `pundarMaterialColorScheme()` to bridge `PundarColors` into Material 3 `ColorScheme` so default components pick up correct colours. Uncommitted — no functional impact on Stellar integration. |
 
 ---
@@ -145,11 +146,8 @@
    - Soneso SDK was compiled with Kotlin `2.2.21`.
    - While Kotlin 2.0 can consume KMP libraries, Kotlin metadata 2.2 may trigger compiler compatibility warnings. If compiler errors occur on metadata parsing, Kotlin in `gradle/libs.versions.toml` should be bumped to `2.1.10` or higher.
 4. **Library Clashes:**
-   - PUNDAR's `gradle/libs.versions.toml` defines `stellar-sdk = "4.0.0"` from group `network.lightsail`.
-   - Change coordinate to: `group = "com.soneso.stellar"`, `name = "stellar-sdk"`, `version = "1.16.0"`.
-   - PUNDAR defines `ktor = "3.0.1"`, while Soneso SDK uses `3.3.3`. **Delta:** Supabase `3.0.0` BOM also pulls its own Ktor transitive dependency (likely `3.1.x`). Having both Ktor `3.0.1` declared explicitly and Supabase's transitive Ktor on the classpath can produce `NoSuchMethodError` or `ClassNotFoundException` at runtime. **Resolution:** Bump `ktor` in `libs.versions.toml` to `3.3.3` and declare `implementation(platform(libs.supabase.bom))` in `app/build.gradle.kts` without overriding Ktor elsewhere — let the Supabase BOM resolve Ktor transitively.
-   - PUNDAR defines `kotlinxSerialization = "1.6.3"`, while Soneso SDK uses `1.9.0` and Supabase uses `1.7.x`. Bump to `1.8.0`+.
-   - **Delta — New conflict:** `supabase-compose-auth` and `supabase-compose-auth-ui` require `androidx.credentials` `1.3.0`+. PUNDAR pins `credentials = "1.5.0-beta01"` — this is compatible, but verify beta stability before production.
+   - PUNDAR's `gradle/libs.versions.toml` defines `stellar-sdk-lightsail = "4.0.0"` (`network.lightsail`) alongside Soneso `stellar-sdk = "1.16.0"` (`com.soneso.stellar`).
+   - Ktor is pinned to `3.3.3` on every Ktor artifact (`ktor-client-core`, `ktor-client-android`, `ktor-client-okhttp`, `ktor-client-content-negotiation`, `ktor-serialization-kotlinx-json`) and `kotlinxSerialization` is `1.8.0`. Because Supabase was reverted in commit `7c55a525`, no Supabase BOM is loaded on the classpath and a single Ktor version (`3.3.3`) resolves cleanly.
 
 ---
 
@@ -159,14 +157,14 @@
 flowchart TD
     A["Create Group Bill (Equal or Itemized)"] --> B["Calculate Exact Stroops (BigDecimal)"]
     B --> C["Assign Remaining Stroops to Creator"]
-    C --> D["Persist Bill & Participants to Firestore"]
+    C --> D["Persist Bill & Participants via BillStore (FirestoreBillStore)"]
     D --> E["Participant Opens BillDetail / InstantSettlement"]
     E --> F["Enter MPIN / Biometric"]
     F --> G["Decrypt Ed25519 Seed from Local Keystore"]
-    G --> H["Build PaymentOperation with Memo (PAY:billId:userId)"]
-    H --> I["Sign & Submit via HorizonServer"]
+    G --> H["Build PaymentOperation with Memo (PAY:bill.ref)"]
+    H --> I["Sign & Submit via PayStellarClient (HorizonServer)"]
     I --> J{"Horizon Response"}
-    J -- "Success (200)" --> K["Update Bill Member to SETTLED in Firestore with txHash"]
+    J -- "Success (200)" --> K["Update Bill Member to SETTLED via BillStore with txHash"]
     J -- "Error (400 op_underfunded / tx_bad_seq)" --> L["Display Actionable Error / Reload Sequence"]
 ```
 
@@ -175,59 +173,56 @@ flowchart TD
   - `gradle/libs.versions.toml`
   - `app/build.gradle.kts`
 - **Actions:**
-  1. In `libs.versions.toml`, update `stellar-sdk` coordinate from `network.lightsail:stellar-sdk:4.0.0` to `com.soneso.stellar:stellar-sdk:1.16.0`.
-  2. Bump `ktor` to `3.3.3` and `kotlinxSerialization` to `1.8.0` (or `1.9.0`). Declare `implementation(platform(libs.supabase.bom))` and remove explicit Ktor version overrides from Supabase modules so the BOM controls the Ktor transitive version.
-  3. In `app/build.gradle.kts`, change `compileOptions` and `kotlinOptions` to `JavaVersion.VERSION_17` and `jvmTarget = "17"`. (The Gradle JVM is already set to Java 21 via `gradle.properties`; the compilation target just needs bumping from 11 to 17.)
-  4. Add Supabase URL and anon key to `local.properties` (e.g. `supabase.url` and `supabase.anonKey`) and expose via `BuildConfig`.
-- **Done-When Check:** `./gradlew :app:assembleDebug` completes without compiler errors or classpath conflicts.
+  1. In `libs.versions.toml`, add `com.soneso.stellar:stellar-sdk:1.16.0` while retaining `network.lightsail:stellar-sdk:4.0.0` for legacy Circle/Grow callers.
+  2. Bump Kotlin to `2.2.21`, pin `ktor` to `3.3.3` on all Ktor artifacts, and bump `kotlinxSerialization` to `1.8.0`.
+  3. In `app/build.gradle.kts`, change `compileOptions` and `kotlinOptions` to `JavaVersion.VERSION_17` and `jvmTarget = "17"`.
+- **Done-When Check:** `./gradlew :app:assembleDebug` completes without compiler errors or classpath conflicts, and `releaseRuntimeClasspath` resolves a single Ktor version (`3.3.3`).
 
-### Step 2: Refactor Stellar Engine to Soneso KMP SDK
+### Step 2: Implement Pay Stellar Engine on Soneso KMP SDK
 - **Files to touch:**
-  - `app/src/main/java/com/example/pundarapp/data/stellar/StellarWalletManager.kt`
+  - `app/src/main/java/com/example/pundarapp/data/stellar/PayStellarClient.kt`
+  - `app/src/main/java/com/example/pundarapp/data/stellar/Stroops.kt`
 - **Actions:**
-  1. Replace `org.stellar.sdk.*` imports with `com.soneso.stellar.sdk.*` and `com.soneso.stellar.sdk.horizon.*`.
-  2. Replace custom HTTP friendbot call with `FriendBot.fundTestnetAccount(publicKey)`.
-  3. Rewrite `sendPayment` using `HorizonServer.loadAccount()`, `TransactionBuilder`, `PaymentOperation(dest, AssetTypeNative, amount)`, `MemoText(memo)`, and `transaction.sign(keyPair)`.
-  4. Parse `BadRequestException` response body for specific Stellar error codes (`op_underfunded`, `op_no_destination`, `tx_bad_seq`).
-- **Done-When Check:** Unit test or sample script funds a new keypair via `FriendBot` and submits a 1 XLM payment between two testnet addresses, returning a valid transaction hash.
+  1. Create `PayStellarClient.kt` using `com.soneso.stellar.sdk.*` and `com.soneso.stellar.sdk.horizon.*`, leaving `StellarWalletManager.kt` untouched on Lightsail SDK.
+  2. Implement `generateKeyPair()`, `fundTestnetAccount(publicKey)` via `FriendBot.fundTestnetAccount(publicKey)` with retry, `getXlmBalance(publicKey)` in stroops, and `recoverMissingAccountBalance` gated strictly on HTTP 404 (`BadRequestException(code == 404)`).
+  3. Implement `sendPayment` using `HorizonServer.loadAccount()`, `TransactionBuilder`, `PaymentOperation(dest, AssetTypeNative, amount)`, `MemoText(memo)`, and `transaction.sign(keyPair)`.
+  4. Parse `BadRequestException` response body for specific Stellar error codes (`op_underfunded`, `op_no_destination`, `tx_bad_seq`, `tx_insufficient_balance`).
+- **Done-When Check:** Unit test and instrumented smoke test fund two new keypairs via `FriendBot` and submit a 1 XLM payment between two testnet addresses, returning a valid transaction hash.
 
 ### Step 3: Secure Local Keystore (Eliminate Server-Side Custody)
 - **Files to touch:**
   - `app/src/main/java/com/example/pundarapp/data/remote/AuthRepository.kt`
-  - `app/src/main/java/com/example/pundarapp/data/stellar/StellarWalletManager.kt`
-  - `supabase_schema.sql` *(schema migration required)*
+  - `app/src/main/java/com/example/pundarapp/data/stellar/KeyStoreManager.kt` *(new in Phase B)*
 - **Actions:**
   1. Remove `encryptedStellarSeed` and `mpin` fields from the Firestore user document write in `AuthRepository.registerWithPhone`.
-  2. **Delta:** Also ensure no future Supabase `profiles` upsert writes `mpin` or `encryptedStellarSeed` — the current `profiles` table schema correctly omits both. Keep it that way.
-  3. Implement an on-device secure keystore using Android `EncryptedSharedPreferences` (or Android Keystore-backed AES cipher) to store the encrypted seed locally on the device.
-  4. Hash the MPIN locally (e.g. PBKDF2 with salt) for session unlocks; do NOT upload plaintext MPIN anywhere.
-  5. Add `stellar_public_key TEXT` column to the Supabase `profiles` table (migration script required) and upsert the public key (not the seed) on registration so other users can discover it via `searchUsers`.
-- **Done-When Check:** Inspect both Firestore and Supabase `profiles` after registering a new test user: neither database contains `mpin` or `encryptedStellarSeed`; `profiles.stellar_public_key` is populated; wallet decrypts locally with MPIN.
+  2. Implement an on-device secure keystore using Android Keystore AES-GCM to encrypt and store the secret seed locally on the device.
+  3. Hash the MPIN locally (PBKDF2 with per-user salt) with lockout after 5 failed attempts; do NOT upload plaintext MPIN or seed anywhere.
+  4. Keep `stellarPublicKey` in Firestore `users/{phone}` so other users can discover it via `searchUsers`.
+- **Done-When Check:** Inspect Firestore `users/{phone}` after registering a new test user: document contains `stellarPublicKey` and does NOT contain `mpin` or `encryptedStellarSeed`; wallet decrypts locally with MPIN.
 
 ### Step 4: Robust Precision Math & Remainder Rounding
 - **Files to touch:**
   - `app/src/main/java/com/example/pundarapp/ui/data/SampleData.kt`
   - `app/src/main/java/com/example/pundarapp/ui/screens/pay/NewGroupBillScreen.kt`
 - **Actions:**
-  1. Implement split calculation in `NewGroupBillScreen` using `BigDecimal` and integer stroops ($1\text{ XLM} = 10^7\text{ stroops}$):
+  1. Implement split calculation in `NewGroupBillScreen` using `BigDecimal` at input edges and `Long` stroops ($1\text{ XLM} = 10^7\text{ stroops}$) in Pay logic:
      $$\text{shareStroops} = \lfloor \text{totalStroops} / N \rfloor$$
      $$\text{remainderStroops} = \text{totalStroops} - (\text{shareStroops} \times N)$$
   2. Assign the `remainderStroops` to the creator's share so that the exact sum of all shares equals the total bill amount down to the stroop.
   3. Format payment amounts as strings with 7 decimal places for `PaymentOperation`.
 - **Done-When Check:** Creating a 100 XLM bill with 3 members assigns 33.3333334 XLM to the creator and 33.3333333 XLM to each of the other two members; the sum equals exactly 100.0000000 XLM.
 
-### Step 5: Persist Participant Public Keys & Bill Members
+### Step 5: Persist Participant Public Keys & Bill Members via BillStore
 - **Files to touch:**
+  - `app/src/main/java/com/example/pundarapp/data/pay/BillStore.kt` *(new in Phase C)*
+  - `app/src/main/java/com/example/pundarapp/data/pay/FirestoreBillStore.kt` *(new in Phase C)*
   - `app/src/main/java/com/example/pundarapp/data/remote/PayRepository.kt`
   - `app/src/main/java/com/example/pundarapp/ui/data/SampleData.kt`
-  - `supabase_schema.sql` *(schema migration: add `stellar_public_key`, `is_settled`, `settlement_tx_hash` to `bill_members`)*
 - **Actions:**
-  1. Decide on the **canonical data store**: use Supabase `bill_members` table (relational, FK-enforced) as the source of truth for member settlement state going forward; use Firestore `group_bills` only for legacy bills or as a notification relay.
-  2. Update `BillMember` data class to include `stellarPublicKey: String`, `isSettled: Boolean`, and `settlementTxHash: String?`.
-  3. Update `PayRepository.createBill` to write members to both the Firestore member array (for backward compatibility) and the Supabase `bill_members` table with the new columns.
-  4. Update `PayRepository.getBills` to deserialize `members` with the new fields.
-  5. Add a SQL migration to `supabase_schema.sql`: `ALTER TABLE bill_members ADD COLUMN stellar_public_key TEXT; ADD COLUMN is_settled BOOLEAN DEFAULT false; ADD COLUMN settlement_tx_hash TEXT;`
-- **Done-When Check:** A created bill retrieved from either Firestore or Supabase `bill_members` retains all members with their public keys, share amounts, and initial `is_settled = false` settlement status.
+  1. Define `BillStore` (`createBill`, `getBills`, `getBill`, `updateMemberStatus` with `txHash`, pending-hash save/clear) and implement `FirestoreBillStore` backed by Firestore `group_bills`.
+  2. Update `BillMember` data class to include `stellarPublicKey: String`, share stroops, member settlement status, and `settlementTxHash: String?`.
+  3. Delegate `PayRepository` reads and writes to `BillStore`.
+- **Done-When Check:** A created bill retrieved via `BillStore` retains all members with their public keys, stroop share amounts, 8-char `bill.ref`, and initial unsettled status.
 
 ### Step 6: Connect Bill Settlement to Stellar Testnet Transactions
 - **Files to touch:**
@@ -280,10 +275,9 @@ flowchart TD
 5. **Kotlin Multiplatform Timeline & Roadmap:**
    - The current repository is an Android-only project (`com.android.application`), but the goal states a KMP architecture.
    - *Question for Team:* In what milestone will the codebase be restructured into a shared multiplatform module (`:shared` with `commonMain`, `androidMain`, `iosMain`)? Starting with Soneso KMP SDK inside `:app` is clean and fully compatible, and will make moving logic into `commonMain` straightforward when iOS is introduced.
-6. **⚠️ Delta — Supabase Migration vs Firestore: No Single Source of Truth Yet:**
-   - As of the current HEAD (`b72885f`), the app writes bill data to **both** Firestore (via `PayRepository`) and Supabase (via the `postgrest-kt` path added in commit `c1f32619`), and reads user auth state from both Firebase Auth (session tokens) and Supabase GoTrue.
-   - **Risk:** Double-write divergence. If Supabase write succeeds but Firestore write fails (or vice versa), the two stores will show different settlement states for the same bill.
-   - **Supabase `profiles` is missing `stellar_public_key`:** `searchUsers` reads `stellarPublicKey` from Firestore. When Supabase becomes the primary user store, `profiles` must have `stellar_public_key TEXT` to allow recipient resolution without falling back to Firestore.
-   - **Supabase `group_bills.total_amount` is `DECIMAL(12,2)` (2 decimal places):** This stores fiat PHP amounts. It cannot represent Stellar amounts at 7-decimal stroop precision. A separate `stellar_amount NUMERIC(20,7)` or `amount_stroops BIGINT` column is needed in `bill_members` for the on-chain payment amount.
-   - *Decision required:* Choose one database as the canonical store for `group_bills` and `bill_members` for the settlement step, then deprecate the other. Recommend completing the Supabase migration (for relational integrity and RLS policies) before wiring Stellar settlement writes, to avoid three-way sync complexity.
+6. **✅ Resolved — Supabase Reverted; Firestore is Canonical Runtime Store:**
+   - Commit `c1f32619` (`yung pinaayus ni mark na may databased`) introduced Supabase (`SupabaseClient.kt`, `postgrest-kt`, `auth-kt`, and `supabase_schema.sql`), but commit `7c55a525` (`okay na login mag login kayo sa google`) reverted all runtime Supabase code and Gradle dependencies before `b72885f`.
+   - **Current State:** Firebase Firestore is the sole active remote database for registration/auth (`users`), group bills (`group_bills`, `bill_invitations`), QR tokens (`bill_qrs`, `qr_tokens`), transactions (`transactions`), and notifications (`users/{id}/notifications`).
+   - **Pay Persistence Boundary (Decision 11):** Phase C introduces `data/pay/BillStore.kt` implemented by `FirestoreBillStore` backed by Firestore.
+   - **Future Supabase Columns (Decision 15):** If `supabase_schema.sql` is ever re-activated in the future, it will require `profiles.stellar_public_key TEXT`, and on `bill_members`: `stellar_public_key TEXT`, `amount_stroops BIGINT`, `status TEXT`, and `settlement_tx_hash TEXT`.
 

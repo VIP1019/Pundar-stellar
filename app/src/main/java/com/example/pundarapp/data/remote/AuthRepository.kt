@@ -2,6 +2,7 @@ package com.example.pundarapp.data.remote
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
+import com.example.pundarapp.data.stellar.PayStellarClient
 import com.example.pundarapp.data.stellar.StellarWalletManager
 import com.example.pundarapp.ui.data.AppState
 import com.google.firebase.firestore.FirebaseFirestore
@@ -71,18 +72,24 @@ object AuthRepository {
             }
 
             // Generate Stellar Wallet
-            val keyPair = StellarWalletManager.generateKeyPair()
-            val publicKey = keyPair.accountId
-            val seed = keyPair.secretSeed
+            val keyPair = PayStellarClient.generateKeyPair()
+            val publicKey = keyPair.getAccountId()
+            val seed = keyPair.getSecretSeed() ?: throw IllegalStateException("Keypair has no seed")
 
-            // Fund account (do not block registration if Friendbot fails)
+            // Fund account on Testnet via Friendbot (20s timeout for mobile networks)
             try {
-                kotlinx.coroutines.withTimeout(5000) {
-                    StellarWalletManager.fundTestnetAccount(publicKey)
+                kotlinx.coroutines.withTimeout(20000) {
+                    PayStellarClient.fundTestnetAccount(publicKey)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Friendbot funding failed or timed out. Continuing registration.", e)
             }
+
+            // Fetch initial on-chain balance if funded
+            val initialBalance = try {
+                val bal = PayStellarClient.getXlmBalance(publicKey).getOrNull()
+                if (bal != null) bal.toDouble() / com.example.pundarapp.data.stellar.Stroops.PER_XLM else 0.0
+            } catch (_: Exception) { 0.0 }
 
             // Encrypt seed
             val encryptedSeed = StellarWalletManager.encryptSecretSeed(seed, mpin)
@@ -99,11 +106,11 @@ object AuthRepository {
                 "stellarPublicKey" to publicKey,
                 "encryptedStellarSeed" to encryptedSeed,
                 "isCustodial" to true,
-                "wallet_balance" to 0.0,
-                "walletBalance" to 0.0
+                "wallet_balance" to initialBalance,
+                "walletBalance" to initialBalance
             )
             kotlinx.coroutines.withTimeout(5000) { usersCollection.document(cleanPhone).set(userData).await() }
-            Log.d(TAG, "registerWithPhone: success")
+            Log.d(TAG, "registerWithPhone: success (initialBalance=$initialBalance)")
 
             // Auto-login: set session & load balance
             val user = UserData(
@@ -111,11 +118,11 @@ object AuthRepository {
                 name = fullName.trim(),
                 phone = cleanPhone,
                 stellarPublicKey = publicKey,
-                walletBalance = 0.0
+                walletBalance = initialBalance
             )
             currentUserState.value = user
             saveSession(user)
-            AppState.loadUserBalance(cleanPhone, 0.0)
+            AppState.loadUserBalance(cleanPhone, initialBalance)
 
             Result.success(true)
         } catch (e: Exception) {
