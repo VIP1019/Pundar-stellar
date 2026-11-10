@@ -2,20 +2,24 @@ package com.example.pundarapp.ui.screens.home
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
@@ -24,12 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.example.pundarapp.data.qr.QrScanHandler
 import com.example.pundarapp.data.qr.QrScanResult
@@ -78,6 +82,17 @@ fun ScanScreen(navController: NavController) {
             .build()
     }
     val barcodeScanner = remember { BarcodeScanning.getClient(scannerOptions) }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            cameraExecutor.shutdown()
+            barcodeScanner.close()
+        }
+    }
+
+    var cameraRef by remember { mutableStateOf<Camera?>(null) }
+    var torchEnabled by remember { mutableStateOf(false) }
 
     var scannedResult by remember { mutableStateOf<String?>(null) }
     var scanError by remember { mutableStateOf<String?>(null) }
@@ -92,20 +107,26 @@ fun ScanScreen(navController: NavController) {
     suspend fun handleRawQr(raw: String) {
         isProcessing = true
         scanError = null
-        when (val result = QrScanHandler.processRawQr(raw)) {
-            is QrScanResult.Success -> {
-                AppState.pendingQrPayload.value = result.payload
-                navController.navigate(Routes.QR_SEND_CONFIRM)
-                scannedResult = null
-                scanError = null
-                scanLocked.set(false)
+        try {
+            when (val result = QrScanHandler.processRawQr(raw)) {
+                is QrScanResult.Success -> {
+                    AppState.pendingQrPayload.value = result.payload
+                    navController.navigate(Routes.QR_SEND_CONFIRM)
+                    scannedResult = null
+                    scanError = null
+                    scanLocked.set(false)
+                }
+                is QrScanResult.Error -> {
+                    scanError = result.message
+                    scannedResult = "error"
+                }
             }
-            is QrScanResult.Error -> {
-                scanError = result.message
-                scannedResult = "error"
-            }
+        } catch (e: Exception) {
+            scanError = e.message ?: QrScanHandler.INVALID_QR
+            scannedResult = "error"
+        } finally {
+            isProcessing = false
         }
-        isProcessing = false
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -120,14 +141,13 @@ fun ScanScreen(navController: NavController) {
             val image = InputImage.fromFilePath(context, uri)
             barcodeScanner.process(image)
                 .addOnSuccessListener { barcodes ->
-                    val raw = barcodes.firstOrNull()?.rawValue
+                    val raw = barcodes.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue
                     if (raw == null) {
                         scanError = QrScanHandler.NO_QR_FOUND
                         scannedResult = "error"
                         isProcessing = false
                     } else {
                         scope.launch {
-                            scannedResult = raw
                             handleRawQr(raw)
                         }
                     }
@@ -174,9 +194,11 @@ fun ScanScreen(navController: NavController) {
                                 val preview = Preview.Builder().build().also {
                                     it.setSurfaceProvider(previewView.surfaceProvider)
                                 }
-                                val cameraExecutor = Executors.newSingleThreadExecutor()
+                                val resolutionSelector = ResolutionSelector.Builder()
+                                    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                                    .build()
                                 val imageAnalyzer = ImageAnalysis.Builder()
-                                    .setTargetResolution(Size(1280, 720))
+                                    .setResolutionSelector(resolutionSelector)
                                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                     .build()
                                 imageAnalyzer.setAnalyzer(cameraExecutor) { imageProxy ->
@@ -195,12 +217,14 @@ fun ScanScreen(navController: NavController) {
                                 }
                                 try {
                                     cameraProvider.unbindAll()
-                                    cameraProvider.bindToLifecycle(
+                                    val camera = cameraProvider.bindToLifecycle(
                                         lifecycleOwner,
                                         CameraSelector.DEFAULT_BACK_CAMERA,
                                         preview,
                                         imageAnalyzer
                                     )
+                                    cameraRef = camera
+                                    camera.cameraControl.enableTorch(torchEnabled)
                                 } catch (_: Exception) { }
                             }, ContextCompat.getMainExecutor(ctx))
                             previewView
@@ -218,6 +242,32 @@ fun ScanScreen(navController: NavController) {
                             shape = RoundedCornerShape(24.dp),
                             border = androidx.compose.foundation.BorderStroke(2.dp, PundarTheme.colors.brandPrimary)
                         ) {}
+                    }
+
+                    // Torch toggle button
+                    if (cameraRef?.cameraInfo?.hasFlashUnit() == true) {
+                        Surface(
+                            onClick = {
+                                val next = !torchEnabled
+                                torchEnabled = next
+                                cameraRef?.cameraControl?.enableTorch(next)
+                            },
+                            shape = CircleShape,
+                            color = Color.Black.copy(alpha = 0.55f),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(16.dp)
+                                .size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                                    contentDescription = "Toggle Flashlight",
+                                    tint = if (torchEnabled) Gold500 else Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
                     }
                 }
             } else {

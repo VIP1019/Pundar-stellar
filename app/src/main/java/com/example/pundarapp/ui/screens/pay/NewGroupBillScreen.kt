@@ -1,6 +1,21 @@
 package com.example.pundarapp.ui.screens.pay
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -28,19 +43,31 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.example.pundarapp.data.qr.QrCodeGenerator
+import com.example.pundarapp.data.qr.QrPayload
+import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -525,7 +552,8 @@ private fun Step1IdentifyRecipient(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF1E293B)),
+                                    .background(Color(0xFF1E293B))
+                                    .clickable { onOpenScanQr() },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Filled.FlashOn, contentDescription = "Flash", tint = Color.White, modifier = Modifier.size(16.dp))
@@ -534,7 +562,8 @@ private fun Step1IdentifyRecipient(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF1E293B)),
+                                    .background(Color(0xFF1E293B))
+                                    .clickable { onOpenScanQr() },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Filled.Image, contentDescription = "Gallery", tint = Color.White, modifier = Modifier.size(16.dp))
@@ -1563,9 +1592,86 @@ private fun ScanQrModalDialog(
     onDismiss: () -> Unit,
     onQrScanned: (String, String) -> Unit
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted -> hasCameraPermission = granted }
+    )
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    val scannerOptions = remember {
+        BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+    }
+    val barcodeScanner = remember { BarcodeScanning.getClient(scannerOptions) }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val scanLocked = remember { AtomicBoolean(false) }
+    var cameraRef by remember { mutableStateOf<Camera?>(null) }
+    var torchEnabled by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            cameraExecutor.shutdown()
+            barcodeScanner.close()
+        }
+    }
+
+    fun handleScannedRaw(raw: String) {
+        val decoded = QrPayload.decode(raw)
+        if (decoded != null) {
+            val name = decoded.displayName?.takeIf { it.isNotBlank() }
+                ?: decoded.billRef?.takeIf { it.isNotBlank() }
+                ?: decoded.userId
+            val ref = decoded.billRef?.takeIf { it.isNotBlank() }
+                ?: decoded.walletId?.takeIf { it.isNotBlank() }
+                ?: decoded.userId
+            onQrScanned(name, ref)
+        } else {
+            val clean = raw.trim()
+            val ref = clean.take(24)
+            onQrScanned("QR Merchant ($ref)", ref)
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        try {
+            val image = InputImage.fromFilePath(context, uri)
+            barcodeScanner.process(image)
+                .addOnSuccessListener { barcodes ->
+                    val raw = barcodes.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue
+                    if (raw != null) {
+                        handleScannedRaw(raw)
+                    } else {
+                        Toast.makeText(context, "No QR code found in image.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .addOnFailureListener {
+                    Toast.makeText(context, "Failed to scan image.", Toast.LENGTH_SHORT).show()
+                }
+        } catch (_: Exception) {
+            Toast.makeText(context, "Unable to open selected image.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier.fillMaxWidth(0.92f).padding(16.dp),
+            modifier = Modifier.fillMaxWidth(0.95f).padding(8.dp),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
@@ -1574,35 +1680,144 @@ private fun ScanQrModalDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Scan Receiver QR Code", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                Text("Point your camera at QR Ph or PUNDAR QR", fontSize = 12.sp, color = Color(0xFF64748B))
+                Text("Point your camera at QR Ph, Stellar, or PUNDAR QR", fontSize = 12.sp, color = Color(0xFF64748B), textAlign = TextAlign.Center)
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
 
                 Box(
-                    modifier = Modifier.size(200.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF0B192C)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF0B192C)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.QrCode2, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(72.dp))
+                    if (hasCameraPermission) {
+                        AndroidView(
+                            factory = { ctx ->
+                                val previewView = PreviewView(ctx)
+                                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                                cameraProviderFuture.addListener({
+                                    val cameraProvider = cameraProviderFuture.get()
+                                    val preview = Preview.Builder().build().also {
+                                        it.setSurfaceProvider(previewView.surfaceProvider)
+                                    }
+                                    val resolutionSelector = ResolutionSelector.Builder()
+                                        .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                                        .build()
+                                    val imageAnalyzer = ImageAnalysis.Builder()
+                                        .setResolutionSelector(resolutionSelector)
+                                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                        .build()
+                                    imageAnalyzer.setAnalyzer(cameraExecutor) { imageProxy ->
+                                        if (!scanLocked.get()) {
+                                            processGroupBillImageProxy(barcodeScanner, imageProxy) { barcode ->
+                                                if (scanLocked.compareAndSet(false, true)) {
+                                                    ContextCompat.getMainExecutor(ctx).execute {
+                                                        handleScannedRaw(barcode)
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            imageProxy.close()
+                                        }
+                                    }
+                                    try {
+                                        cameraProvider.unbindAll()
+                                        val camera = cameraProvider.bindToLifecycle(
+                                            lifecycleOwner,
+                                            CameraSelector.DEFAULT_BACK_CAMERA,
+                                            preview,
+                                            imageAnalyzer
+                                        )
+                                        cameraRef = camera
+                                        camera.cameraControl.enableTorch(torchEnabled)
+                                    } catch (_: Exception) { }
+                                }, ContextCompat.getMainExecutor(ctx))
+                                previewView
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        if (cameraRef?.cameraInfo?.hasFlashUnit() == true) {
+                            IconButton(
+                                onClick = {
+                                    val next = !torchEnabled
+                                    torchEnabled = next
+                                    cameraRef?.cameraControl?.enableTorch(next)
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = if (torchEnabled) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+                                    contentDescription = "Flash",
+                                    tint = if (torchEnabled) Color(0xFFFBBF24) else Color.White
+                                )
+                            }
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+                            Icon(Icons.Filled.QrCodeScanner, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(48.dp))
+                            Spacer(Modifier.height(8.dp))
+                            Text("Camera permission needed", color = Color.White, fontSize = 13.sp)
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                                Text("Grant Permission", color = Color(0xFF38BDF8))
+                            }
+                        }
+                    }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
 
-                Button(
-                    onClick = { onQrScanned("Balangay Cafe & Co.", "BAL-9021-PH") },
+                OutlinedButton(
+                    onClick = {
+                        galleryLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Select Balangay Cafe & Co.")
+                    Icon(Icons.Filled.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Upload QR from Gallery")
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
 
                 TextButton(onClick = onDismiss) {
                     Text("Cancel", color = Color(0xFF64748B))
                 }
             }
         }
+    }
+}
+
+@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+private fun processGroupBillImageProxy(
+    barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner,
+    imageProxy: ImageProxy,
+    onSuccess: (String) -> Unit
+) {
+    val mediaImage = imageProxy.image
+    if (mediaImage != null) {
+        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+        barcodeScanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                for (barcode in barcodes) {
+                    val rawValue = barcode.rawValue
+                    if (!rawValue.isNullOrBlank()) {
+                        onSuccess(rawValue)
+                        break
+                    }
+                }
+            }
+            .addOnCompleteListener { imageProxy.close() }
+    } else {
+        imageProxy.close()
     }
 }
 
@@ -1666,8 +1881,21 @@ private fun GenerateGroupQrModalDialog(
     expenseName: String,
     onDismiss: () -> Unit
 ) {
-    val qrBitmap = remember(expenseName) {
-        try { QrCodeGenerator.generateBitmap("PUNDAR_GROUP_BILL:$expenseName", 400) } catch (e: Exception) { null }
+    val context = LocalContext.current
+    val currentUser by AuthRepository.currentUserState
+    val qrBitmap = remember(expenseName, currentUser?.id) {
+        try {
+            val uid = currentUser?.id ?: "group_host"
+            val payload = QrCodeGenerator.createReceiveMoneyPayload(
+                userId = uid,
+                displayName = currentUser?.name ?: expenseName,
+                username = currentUser?.phone,
+                walletId = currentUser?.stellarPublicKey
+            ).copy(billRef = expenseName)
+            QrCodeGenerator.generateBitmap(payload, 512)
+        } catch (_: Exception) {
+            null
+        }
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -1681,7 +1909,7 @@ private fun GenerateGroupQrModalDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Group Join QR Code", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                Text("Friends can scan to join '$expenseName'", fontSize = 12.sp, color = Color(0xFF64748B), textAlign = TextAlign.Center)
+                Text("Friends can scan to pay or join '$expenseName'", fontSize = 12.sp, color = Color(0xFF64748B), textAlign = TextAlign.Center)
 
                 Spacer(Modifier.height(16.dp))
 
@@ -1694,6 +1922,51 @@ private fun GenerateGroupQrModalDialog(
                 }
 
                 Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val bmp = qrBitmap ?: return@OutlinedButton
+                            QrCodeGenerator.saveBitmapToGallery(
+                                context,
+                                bmp,
+                                "PUNDAR_GROUP_${System.currentTimeMillis()}.png"
+                            ).onSuccess {
+                                Toast.makeText(context, "Saved to Pictures/PUNDAR", Toast.LENGTH_SHORT).show()
+                            }.onFailure { e ->
+                                Toast.makeText(context, "Save failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Save")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val bmp = qrBitmap ?: return@OutlinedButton
+                            QrCodeGenerator.shareQrBitmap(
+                                context = context,
+                                bitmap = bmp,
+                                shareText = "Scan to join/pay '$expenseName' on PUNDAR.",
+                                chooserTitle = "Share Group QR"
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Share")
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
 
                 Button(
                     onClick = onDismiss,

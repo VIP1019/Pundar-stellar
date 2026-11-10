@@ -1,6 +1,5 @@
 package com.example.pundarapp.ui.screens.pay
 
-import android.content.Intent
 import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -8,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Timer
@@ -213,14 +213,31 @@ fun BillQrScreen(billId: String, navController: NavController) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     PundarOutlinedButton(
+                        text = "Save",
+                        onClick = {
+                            val bmp = qrBitmap ?: return@PundarOutlinedButton
+                            val fileName = "PUNDAR_BILL_${bill.id}_${System.currentTimeMillis()}.png"
+                            QrCodeGenerator.saveBitmapToGallery(context, bmp, fileName)
+                                .onSuccess {
+                                    Toast.makeText(context, "Bill QR saved to Pictures/PUNDAR", Toast.LENGTH_SHORT).show()
+                                }
+                                .onFailure { e ->
+                                    Toast.makeText(context, "Save failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Filled.Download
+                    )
+                    PundarOutlinedButton(
                         text = "Share",
                         onClick = {
-                            val encoded = QrPayload.encode(payload!!)
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "Pay ₱${String.format("%,.2f", bill.yourShare)} for '${bill.name}' on PUNDAR:\n$encoded")
-                            }
-                            context.startActivity(Intent.createChooser(intent, "Share Bill QR"))
+                            val bmp = qrBitmap ?: return@PundarOutlinedButton
+                            QrCodeGenerator.shareQrBitmap(
+                                context = context,
+                                bitmap = bmp,
+                                shareText = "Pay ₱${String.format("%,.2f", bill.yourShare)} for '${bill.name}' on PUNDAR.",
+                                chooserTitle = "Share Bill QR"
+                            )
                         },
                         modifier = Modifier.weight(1f),
                         icon = Icons.Filled.Share

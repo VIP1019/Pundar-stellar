@@ -20,8 +20,10 @@ import androidx.navigation.NavController
 import com.example.pundarapp.data.qr.QrPayload
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.BillQrRepository
+import com.example.pundarapp.data.remote.HomeRepository
 import com.example.pundarapp.data.remote.QrPaymentRepository
 import com.example.pundarapp.data.remote.TransactionPinRepository
+import com.example.pundarapp.data.stellar.StellarWalletManager
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.data.AppState
@@ -38,7 +40,7 @@ fun QrSendConfirmScreen(navController: NavController) {
     val payload = AppState.pendingQrPayload.value
 
     var amount by remember { mutableStateOf(payload?.amount?.toString() ?: "") }
-    var note by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf(if (payload?.type == QrPayload.TYPE_STELLAR_ADDRESS) payload.billRef.orEmpty() else "") }
     var pin by remember { mutableStateOf("") }
     var showPinDialog by remember { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
@@ -51,7 +53,7 @@ fun QrSendConfirmScreen(navController: NavController) {
         }
     }
 
-    if (payload?.type == QrPayload.TYPE_BILL_PAYMENT && payload.amount != null) {
+    if (payload?.amount != null) {
         LaunchedEffect(payload.amount) {
             amount = payload.amount.toString()
         }
@@ -117,14 +119,32 @@ fun QrSendConfirmScreen(navController: NavController) {
                                 return@launch
                             }
 
-                            val transfer = QrPaymentRepository.transferMoney(
-                                senderId = senderId,
-                                senderName = AuthRepository.getCurrentUserName(),
-                                recipient = recipient,
-                                amount = sendAmount,
-                                notes = note.ifBlank { null },
-                                qrPayload = payload
-                            )
+                            val isExternalStellar = recipient.userId.startsWith("G") && recipient.userId.length == 56
+                            val transfer: Result<String> = if (isExternalStellar) {
+                                val senderPk = AuthRepository.getCurrentUserStellarPublicKey().orEmpty()
+                                val senderSeed = AuthRepository.getCurrentUserEncryptedSeed().orEmpty()
+                                if (senderPk.isBlank() || senderSeed.isBlank()) {
+                                    Result.failure(Exception("Stellar wallet not initialized."))
+                                } else {
+                                    StellarWalletManager.sendPayment(
+                                        senderPublicKey = senderPk,
+                                        senderEncryptedSeed = senderSeed,
+                                        senderMpin = pin,
+                                        recipientPublicKey = recipient.userId,
+                                        amountXlm = sendAmount.toString(),
+                                        memo = note.ifBlank { "PUNDAR QR" }.take(28)
+                                    )
+                                }
+                            } else {
+                                QrPaymentRepository.transferMoney(
+                                    senderId = senderId,
+                                    senderName = AuthRepository.getCurrentUserName(),
+                                    recipient = recipient,
+                                    amount = sendAmount,
+                                    notes = note.ifBlank { null },
+                                    qrPayload = payload
+                                )
+                            }
 
                             isProcessing = false
                             showPinDialog = false
@@ -136,23 +156,22 @@ fun QrSendConfirmScreen(navController: NavController) {
                                     BillQrRepository.getRecord(payload.securityToken)?.billId?.let {
                                         AppState.markBillSettled(it)
                                     }
-                                    AppState.homeActivities.add(
-                                        0,
-                                        QrPaymentRepository.homeActivityForBillPayment(
-                                            payload.billRef ?: "Bill",
-                                            sendAmount
-                                        )
+                                    val activity = QrPaymentRepository.homeActivityForBillPayment(
+                                        payload.billRef ?: "Bill",
+                                        sendAmount
                                     )
+                                    AppState.homeActivities.add(0, activity)
                                 } else {
-                                    AppState.homeActivities.add(
-                                        0,
-                                        QrPaymentRepository.homeActivityForSend(recipient.displayName, sendAmount)
-                                    )
+                                    val activity = QrPaymentRepository.homeActivityForSend(recipient.displayName, sendAmount)
+                                    AppState.homeActivities.add(0, activity)
+                                    if (isExternalStellar) {
+                                        HomeRepository.createActivity(senderId, activity)
+                                    }
                                 }
                                 AppState.requestHomeRefresh()
                                 AppState.refreshNotifications()
                                 AppState.pendingQrPayload.value = null
-                                Toast.makeText(context, "Sent! Ref: $ref", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Sent! Ref: ${ref.take(12)}", Toast.LENGTH_LONG).show()
                                 navController.navigateUp()
                             }.onFailure {
                                 Toast.makeText(context, it.message ?: "Transfer failed", Toast.LENGTH_LONG).show()
@@ -198,7 +217,10 @@ fun QrSendConfirmScreen(navController: NavController) {
                             Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
                             return@PundarPrimaryButton
                         }
-                        if (payload.userId == AuthRepository.getCurrentUserId()) {
+                        val myPk = AuthRepository.getCurrentUserStellarPublicKey()
+                        if (payload.userId == AuthRepository.getCurrentUserId() ||
+                            (!myPk.isNullOrBlank() && (payload.userId == myPk || payload.walletId == myPk))
+                        ) {
                             Toast.makeText(context, "You cannot send to yourself.", Toast.LENGTH_SHORT).show()
                             return@PundarPrimaryButton
                         }
