@@ -40,7 +40,7 @@ private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CircleScreen(navController: NavController, openDrawer: () -> Unit = {}) {
+fun CircleScreen(navController: NavController) {
     val initials    = AuthRepository.getCurrentUserInitials().ifBlank { "PJ" }
     val invitations = AppState.pendingInvitations
     val singleInvite = AppState.pendingInvitation.value

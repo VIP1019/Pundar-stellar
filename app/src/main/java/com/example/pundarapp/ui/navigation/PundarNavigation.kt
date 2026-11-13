@@ -24,7 +24,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pundarapp.ui.components.PundarBottomBar
-import com.example.pundarapp.ui.components.PundarSidebar
 import com.example.pundarapp.ui.theme.PundarTheme
 import com.example.pundarapp.ui.screens.auth.LoginScreen
 import com.example.pundarapp.ui.screens.auth.RegisterScreen
@@ -112,26 +111,7 @@ fun PundarNavigation() {
 
     val showBottomBar = currentRoute in bottomBarRoutes
 
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
-    val closeDrawer: () -> Unit = { scope.launch { drawerState.close() } }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = currentRoute != Routes.SPLASH && currentRoute != Routes.LOGIN && currentRoute != Routes.REGISTER,
-        drawerContent = {
-            PundarSidebar(
-                currentRoute = currentRoute,
-                onNavigate = { route ->
-                    closeDrawer()
-                    navController.navigate(route)
-                },
-                onClose = { closeDrawer() }
-            )
-        }
-    ) {
-        Scaffold(
+    Scaffold(
         containerColor = PundarTheme.colors.bgPrimary,
         contentColor = PundarTheme.colors.textPrimary,
         bottomBar = {
@@ -173,7 +153,7 @@ fun PundarNavigation() {
                 RegisterScreen(navController = navController)
             }
             composable(Routes.HOME) {
-                HomeScreen(navController = navController, openDrawer = openDrawer)
+                HomeScreen(navController = navController)
             }
             composable(Routes.ALL_ACTIVITY) {
                 ActivityHistoryScreen(navController = navController)
@@ -194,7 +174,7 @@ fun PundarNavigation() {
                 com.example.pundarapp.ui.screens.home.RequestsScreen(navController = navController)
             }
             composable(Routes.PAY) {
-                PayScreen(navController = navController, openDrawer = openDrawer)
+                PayScreen(navController = navController)
             }
             composable(Routes.SCAN) {
                 ScanScreen(navController = navController)
@@ -229,7 +209,7 @@ fun PundarNavigation() {
                 BillQrScreen(billId = billId, navController = navController)
             }
             composable(Routes.CIRCLE) {
-                CircleScreen(navController = navController, openDrawer = openDrawer)
+                CircleScreen(navController = navController)
             }
             composable(Routes.CIRCLE_CREATE) {
                 CreateCircleScreen(navController = navController)
@@ -265,7 +245,7 @@ fun PundarNavigation() {
             }
 */
             composable(Routes.GROW) {
-                GrowScreen(navController = navController, openDrawer = openDrawer)
+                GrowScreen(navController = navController)
             }
             composable(Routes.ROUND_UP_SETTINGS) {
                 RoundUpSettingsScreen(navController = navController)
@@ -290,6 +270,5 @@ fun PundarNavigation() {
                 LinkCardScreen(navController = navController)
             }
         }
-    }
     }
 }

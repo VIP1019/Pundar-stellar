@@ -38,8 +38,7 @@ fun PundarMainTopBar(
     onScoreClick: () -> Unit = {},
     onRequestClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
-    onMenuClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -275,8 +274,7 @@ fun PundarGrowTopBar(
     profileImageUrl: String? = null,
     pundarScore: Int = 850,
     onNotificationClick: () -> Unit = {},
-    onBack: () -> Unit = {},
-    onMenuClick: () -> Unit = {}
+    onBack: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -301,21 +299,6 @@ fun PundarGrowTopBar(
                         fontSize = 17.sp,
                         color = Color.White
                     )
-                }
-            },
-            navigationIcon = {
-                IconButton(onClick = onMenuClick) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(36.dp).clip(CircleShape).background(HeroNavyButton)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Menu,
-                            contentDescription = "Menu",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
                 }
             },
             actions = {

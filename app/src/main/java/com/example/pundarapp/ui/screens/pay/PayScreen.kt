@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PayScreen(navController: NavController, openDrawer: () -> Unit = {}) {
+fun PayScreen(navController: NavController) {
     val bills         = AppState.bills
     val settledCount  = bills.count { it.status == BillStatus.SETTLED }
     val pendingCount  = bills.count { it.status == BillStatus.PENDING || it.status == BillStatus.PARTIAL }
