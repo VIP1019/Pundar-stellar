@@ -52,7 +52,7 @@ private val EaseOutExpo  = CubicBezierEasing(0.16f, 1f,    0.3f,  1f)
 // ═══════════════════════════════════════════════════════════════
 
 @Composable
-fun GrowScreen(navController: NavController, openDrawer: () -> Unit = {}) {
+fun GrowScreen(navController: NavController) {
     val portfolio by AppState.portfolio
     val favorites by AppState.favoriteStocks
     val userSession by AuthRepository.currentUserState
@@ -425,8 +425,7 @@ fun GrowScreen(navController: NavController, openDrawer: () -> Unit = {}) {
                 userInitials       = userInitials,
                 profileImageUrl    = userSession?.profileImageUrl,
                 pundarScore        = AppState.pundarScore.intValue,
-                onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) },
-                onMenuClick = openDrawer
+                onNotificationClick = { navController.navigate(Routes.NOTIFICATIONS) }
             )
         }
     ) { paddingValues ->

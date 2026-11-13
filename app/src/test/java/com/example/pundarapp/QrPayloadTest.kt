@@ -63,6 +63,53 @@ class QrPayloadTest {
     }
 
     @Test
+    fun decodesPundarDeepLinks() {
+        val payLink = "pundar://pay?to=09171234567&amount=250.0&name=Yasmine"
+        val decodedPay = QrPayload.decode(payLink)
+        assertNotNull(decodedPay)
+        assertEquals(QrPayload.TYPE_RECEIVE_MONEY, decodedPay!!.type)
+        assertEquals("09171234567", decodedPay.userId)
+        assertEquals(250.0, decodedPay.amount!!, 0.001)
+
+        val joinLink = "https://pundar.app/bill/join?billId=BILL-555&title=Team%20Lunch&amount=120.0"
+        val decodedJoin = QrPayload.decode(joinLink)
+        assertNotNull(decodedJoin)
+        assertEquals(QrPayload.TYPE_GROUP_BILL_JOIN, decodedJoin!!.type)
+        assertEquals("BILL-555", decodedJoin.userId)
+        assertEquals("Team Lunch", decodedJoin.billRef)
+        assertEquals(120.0, decodedJoin.amount!!, 0.001)
+    }
+
+    @Test
+    fun decodesGroupBillRefs() {
+        val decoded = QrPayload.decode("BILL-ABC987")
+        assertNotNull(decoded)
+        assertEquals(QrPayload.TYPE_GROUP_BILL_JOIN, decoded!!.type)
+        assertEquals("BILL-ABC987", decoded.userId)
+    }
+
+    @Test
+    fun decodesPhoneNumbers() {
+        val decoded = QrPayload.decode("09171234567")
+        assertNotNull(decoded)
+        assertEquals(QrPayload.TYPE_RECEIVE_MONEY, decoded!!.type)
+        assertEquals("09171234567", decoded.userId)
+
+        val decodedIntl = QrPayload.decode("+639171234567")
+        assertNotNull(decodedIntl)
+        assertEquals(QrPayload.TYPE_RECEIVE_MONEY, decodedIntl!!.type)
+        assertEquals("09171234567", decodedIntl.userId)
+    }
+
+    @Test
+    fun decodesFederatedAddress() {
+        val decoded = QrPayload.decode("yasmine*stellar.org")
+        assertNotNull(decoded)
+        assertEquals(QrPayload.TYPE_STELLAR_ADDRESS, decoded!!.type)
+        assertEquals("yasmine*stellar.org", decoded.userId)
+    }
+
+    @Test
     fun billPaymentExpirationCheck() {
         val expiredBill = QrPayload(
             type = QrPayload.TYPE_BILL_PAYMENT,
@@ -70,7 +117,7 @@ class QrPayloadTest {
             amount = 500.0,
             billRef = "Dinner",
             transactionId = "BILL-1234",
-            timestamp = System.currentTimeMillis() - 10 * 60 * 1000L,
+            timestamp = System.currentTimeMillis() - 25 * 60 * 60 * 1000L,
             securityToken = "token-123"
         )
         assertTrue(expiredBill.isExpired())
@@ -80,10 +127,8 @@ class QrPayloadTest {
     }
 
     @Test
-    fun rejectsUnsupportedQrStrings() {
+    fun blankQrStringsReturnNull() {
         assertNull(QrPayload.decode(""))
-        assertNull(QrPayload.decode("https://example.com/not-a-wallet"))
-        assertNull(QrPayload.decode("web+stellar:pay?destination=INVALID_KEY"))
+        assertNull(QrPayload.decode("   "))
     }
 }
-

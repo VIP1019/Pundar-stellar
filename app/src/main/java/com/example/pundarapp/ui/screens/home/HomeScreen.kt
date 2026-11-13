@@ -45,7 +45,7 @@ private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController, openDrawer: () -> Unit = {}) {
+fun HomeScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
 
     var selectedActivity by remember { mutableStateOf<HomeActivity?>(null) }

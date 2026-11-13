@@ -24,21 +24,27 @@ import java.util.UUID
  */
 object QrCodeGenerator {
 
-    /** Create a new "RECEIVE_MONEY" payload for the given user. */
+    /** Create a new "RECEIVE_MONEY" or "GROUP_BILL_JOIN" payload for the given user. */
     fun createReceiveMoneyPayload(
         userId: String,
         displayName: String?,
         username: String?,
         walletId: String?,
-        amount: Double? = null
+        amount: Double? = null,
+        totalBillAmount: Double? = null,
+        participantCount: Int? = null,
+        billRef: String? = null
     ): QrPayload = QrPayload(
-        type = QrPayload.TYPE_RECEIVE_MONEY,
+        type = if ((participantCount ?: 1) > 1) QrPayload.TYPE_GROUP_BILL_JOIN else QrPayload.TYPE_RECEIVE_MONEY,
         version = 1,
         userId = userId,
         username = username,
         displayName = displayName,
         walletId = walletId,
         amount = amount,
+        totalBillAmount = totalBillAmount,
+        participantCount = participantCount,
+        billRef = billRef,
         timestamp = System.currentTimeMillis(),
         securityToken = userId // Static token for personal receive money QR
     )

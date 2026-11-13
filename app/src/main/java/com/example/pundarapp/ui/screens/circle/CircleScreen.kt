@@ -40,7 +40,7 @@ private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CircleScreen(navController: NavController, openDrawer: () -> Unit = {}) {
+fun CircleScreen(navController: NavController) {
     val initials    = AuthRepository.getCurrentUserInitials().ifBlank { "PJ" }
     val invitations = AppState.pendingInvitations
     val singleInvite = AppState.pendingInvitation.value
@@ -641,7 +641,12 @@ private fun CircleEmptyState(onCreateClick: () -> Unit = {}) {
             modifier = Modifier.padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("🌀", fontSize = 36.sp)
+            Icon(
+                Icons.Filled.Groups,
+                contentDescription = null,
+                tint = PundarTheme.colors.brandPrimary,
+                modifier = Modifier.size(40.dp)
+            )
             Spacer(Modifier.height(10.dp))
             Text("No PUNDAR Circles yet.", fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textSecondary)
             Spacer(Modifier.height(4.dp))
