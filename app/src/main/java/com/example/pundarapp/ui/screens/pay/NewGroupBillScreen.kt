@@ -108,7 +108,6 @@ fun NewGroupBillScreen(navController: NavController) {
     val itemizedAmounts = remember { mutableStateMapOf<String, String>() }
 
     // Dialog state handlers
-    var showEnterNumberDialog by remember { mutableStateOf(false) }
     var showGenerateGroupQrDialog by remember { mutableStateOf(false) }
     var showAddPeopleDialog by remember { mutableStateOf(false) }
 
@@ -365,7 +364,14 @@ fun NewGroupBillScreen(navController: NavController) {
                                     }
                                 }
                             },
-                            onOpenEnterNumber = { showEnterNumberDialog = true },
+                            onRecipientVerified = { user ->
+                                merchantName = user.name
+                                merchantRef = user.phone
+                                merchantAddress = user.stellarPublicKey?.takeIf { it.isNotBlank() } ?: "${user.phone}*pundar.site"
+                                expenseNameInput = user.name
+                                recipientVerified = true
+                                currentStep = 2
+                            },
                             onNext = { currentStep = 2 }
                         )
 
@@ -511,21 +517,6 @@ fun NewGroupBillScreen(navController: NavController) {
         )
     }
 
-    if (showEnterNumberDialog) {
-        EnterNumberModalDialog(
-            onDismiss = { showEnterNumberDialog = false },
-            onVerified = { user ->
-                merchantName = user.name
-                merchantRef = user.phone
-                merchantAddress = user.stellarPublicKey?.takeIf { it.isNotBlank() } ?: "${user.phone}*pundar.site"
-                expenseNameInput = user.name
-                recipientVerified = true
-                showEnterNumberDialog = false
-                currentStep = 2
-            }
-        )
-    }
-
     if (showGenerateGroupQrDialog) {
         GenerateGroupQrModalDialog(
             expenseName = expenseNameInput.ifBlank { "Group Expense" },
@@ -557,7 +548,7 @@ private fun Step1IdentifyRecipient(
     merchantAddress: String,
     isRecipientVerified: Boolean,
     onSelectMerchant: (String, String, String, Double?) -> Unit,
-    onOpenEnterNumber: () -> Unit,
+    onRecipientVerified: (AuthRepository.UserData) -> Unit,
     onNext: () -> Unit
 ) {
     val context = LocalContext.current
@@ -802,7 +793,15 @@ private fun Step1IdentifyRecipient(
 
                     // Button 2: Stellar ID / Phone
                     Surface(
-                        onClick = { activeTab = 1; onOpenEnterNumber() },
+                        onClick = {
+                            activeTab = 1
+                            // Pause the scanner while the manual lookup panel is shown
+                            scanLocked.set(true)
+                            if (torchEnabled) {
+                                torchEnabled = false
+                                cameraRef?.cameraControl?.enableTorch(false)
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp),
                         color = if (activeTab == 1) Color(0xFF0B192C) else Color.Transparent
@@ -832,7 +831,17 @@ private fun Step1IdentifyRecipient(
         }
 
         // ── DARK BLUE QR SCANNER VIEWPORT BOX (DIRECT LIVE CAMERA) ─
-        item {
+        // When "Stellar ID / Phone" is selected, the Find Recipient panel replaces the scanner.
+        if (activeTab == 1) item {
+            FindRecipientPanel(
+                onCancel = {
+                    activeTab = 0
+                    scanLocked.set(false)
+                },
+                onVerified = { user -> onRecipientVerified(user) }
+            )
+        }
+        if (activeTab == 0) item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -910,11 +919,11 @@ private fun Step1IdentifyRecipient(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Live Camera Viewfinder Area with Corner Brackets & Laser Overlay
+                    // Live Camera Viewfinder Area (square) with Corner Brackets & Laser Overlay
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(230.dp)
+                            .fillMaxWidth(0.82f)
+                            .aspectRatio(1f)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color(0xFF020617)),
                         contentAlignment = Alignment.Center
@@ -932,7 +941,7 @@ private fun Step1IdentifyRecipient(
                                             it.setSurfaceProvider(previewView.surfaceProvider)
                                         }
                                         val resolutionSelector = ResolutionSelector.Builder()
-                                            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                                            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
                                             .build()
                                         val imageAnalyzer = ImageAnalysis.Builder()
                                             .setResolutionSelector(resolutionSelector)
@@ -2371,8 +2380,8 @@ private fun processGroupBillImageProxy(
 }
 
 @Composable
-private fun EnterNumberModalDialog(
-    onDismiss: () -> Unit,
+private fun FindRecipientPanel(
+    onCancel: () -> Unit,
     onVerified: (AuthRepository.UserData) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -2396,11 +2405,12 @@ private fun EnterNumberModalDialog(
         }
     }
 
-    Dialog(onDismissRequest = { if (!isVerifying) onDismiss() }) {
+    run {
         Card(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(22.dp),
@@ -2461,7 +2471,7 @@ private fun EnterNumberModalDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedButton(
-                        onClick = onDismiss,
+                        onClick = onCancel,
                         enabled = !isVerifying,
                         modifier = Modifier.weight(1f).height(48.dp),
                         shape = RoundedCornerShape(24.dp)
