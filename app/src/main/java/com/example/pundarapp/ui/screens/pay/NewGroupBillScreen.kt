@@ -520,6 +520,7 @@ fun NewGroupBillScreen(navController: NavController) {
     if (showGenerateGroupQrDialog) {
         GenerateGroupQrModalDialog(
             expenseName = expenseNameInput.ifBlank { "Group Expense" },
+            initialAmount = if (sharePerMemberPhp > 0.0) sharePerMemberPhp else if (totalInPhp > 0.0) totalInPhp else 0.0,
             onDismiss = { showGenerateGroupQrDialog = false }
         )
     }
@@ -527,10 +528,14 @@ fun NewGroupBillScreen(navController: NavController) {
     if (showAddPeopleDialog) {
         AddPeopleModalDialog(
             existingMembers = selectedMembers,
+            defaultShareAmount = if (sharePerMemberPhp > 0.0) sharePerMemberPhp else 0.0,
             onDismiss = { showAddPeopleDialog = false },
             onAddMember = { member ->
                 if (selectedMembers.none { it.name == member.name }) {
                     selectedMembers.add(member)
+                    if (member.amount > 0.0) {
+                        itemizedAmounts[member.name] = String.format(Locale.US, "%.2f", member.amount)
+                    }
                 }
                 showAddPeopleDialog = false
             }
@@ -1488,6 +1493,10 @@ private fun Step2AmountAndBillSplit(
 
         // ── INVITE RECIPIENTS SECTION ─────────────────────────────
         item {
+            val sharePerPerson = if (selectedMembers.isNotEmpty() && totalInPhp > 0.0) {
+                totalInPhp / selectedMembers.size
+            } else 0.0
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -1495,13 +1504,39 @@ private fun Step2AmountAndBillSplit(
                 border = BorderStroke(1.dp, Color(0xFFE2E8F0))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Invite Recipients to Split",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                        if (sharePerPerson > 0.0) {
+                            Surface(
+                                color = Color(0xFFE0E7FF),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    "₱${String.format(Locale.US, "%,.2f", sharePerPerson)} / person",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E3A8A),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "Invite Recipients to Split",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
+                        "Settle the amount needed from each user before generating the QR code or inviting.",
+                        fontSize = 12.sp,
+                        color = Color(0xFF64748B)
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -2503,102 +2538,213 @@ private fun FindRecipientPanel(
 @Composable
 private fun GenerateGroupQrModalDialog(
     expenseName: String,
+    initialAmount: Double = 0.0,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val currentUser by AuthRepository.currentUserState
-    val qrBitmap = remember(expenseName, currentUser?.id) {
-        try {
-            val uid = currentUser?.id ?: "group_host"
-            val payload = QrCodeGenerator.createReceiveMoneyPayload(
-                userId = uid,
-                displayName = currentUser?.name ?: expenseName,
-                username = currentUser?.phone,
-                walletId = currentUser?.stellarPublicKey
-            ).copy(billRef = expenseName)
-            QrCodeGenerator.generateBitmap(payload, 512)
-        } catch (_: Exception) {
-            null
+    var amountInput by remember {
+        mutableStateOf(if (initialAmount > 0.0) String.format(Locale.US, "%.2f", initialAmount) else "")
+    }
+
+    val settledAmount = amountInput.toDoubleOrNull() ?: 0.0
+
+    val qrBitmap = remember(expenseName, currentUser?.id, settledAmount) {
+        if (settledAmount <= 0.0) null
+        else {
+            try {
+                val uid = currentUser?.id ?: currentUser?.phone ?: "group_host"
+                val payload = QrPayload(
+                    type = QrPayload.TYPE_GROUP_BILL_JOIN,
+                    version = 1,
+                    userId = uid,
+                    displayName = currentUser?.name ?: expenseName,
+                    username = currentUser?.phone,
+                    walletId = currentUser?.stellarPublicKey,
+                    amount = settledAmount,
+                    billRef = expenseName,
+                    transactionId = "BILL-${UUID.randomUUID().toString().take(8).uppercase()}",
+                    timestamp = System.currentTimeMillis(),
+                    securityToken = UUID.randomUUID().toString()
+                )
+                QrCodeGenerator.generateBitmap(payload, 512)
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier.fillMaxWidth(0.92f).padding(16.dp),
-            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth(0.94f).padding(16.dp),
+            shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Group Join QR Code", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                Text("Friends can scan to pay or join '$expenseName'", fontSize = 12.sp, color = Color(0xFF64748B), textAlign = TextAlign.Center)
+                Box(
+                    modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFE0E7FF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.QrCode, contentDescription = null, tint = Color(0xFF1E3A8A), modifier = Modifier.size(24.dp))
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("Invite to Join Pay", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Settle the amount needed from the other user before generating the invite QR.",
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B),
+                    textAlign = TextAlign.Center
+                )
 
                 Spacer(Modifier.height(16.dp))
 
-                if (qrBitmap != null) {
+                // Settle Amount input
+                OutlinedTextField(
+                    value = amountInput,
+                    onValueChange = { amountInput = it },
+                    label = { Text("Amount Needed from User (₱)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedBorderColor = Color(0xFF0B192C),
+                        unfocusedBorderColor = Color(0xFFCBD5E1)
+                    )
+                )
+
+                // Quick Amount Chips
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val chips = if (initialAmount > 0.0) {
+                        listOf(String.format(Locale.US, "%.0f", initialAmount), "50", "100", "250", "500")
+                    } else {
+                        listOf("50", "100", "200", "500", "1000")
+                    }
+                    chips.distinct().take(4).forEach { chipVal ->
+                        OutlinedButton(
+                            onClick = { amountInput = chipVal },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (amountInput == chipVal) Color(0xFF0B192C) else Color(0xFFE2E8F0)
+                            )
+                        ) {
+                            Text("₱$chipVal", fontSize = 11.sp, color = Color(0xFF0F172A))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                if (settledAmount > 0.0 && qrBitmap != null) {
                     Image(
                         bitmap = qrBitmap.asImageBitmap(),
                         contentDescription = "Group QR Code",
-                        modifier = Modifier.size(200.dp).clip(RoundedCornerShape(12.dp))
+                        modifier = Modifier.size(190.dp).clip(RoundedCornerShape(12.dp))
                     )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            val bmp = qrBitmap ?: return@OutlinedButton
-                            QrCodeGenerator.saveBitmapToGallery(
-                                context,
-                                bmp,
-                                "PUNDAR_GROUP_${System.currentTimeMillis()}.png"
-                            ).onSuccess {
-                                Toast.makeText(context, "Saved to Pictures/PUNDAR", Toast.LENGTH_SHORT).show()
-                            }.onFailure { e ->
-                                Toast.makeText(context, "Save failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        color = Color(0xFFECFDF5),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFA7F3D0))
                     ) {
-                        Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Save")
+                        Text(
+                            "Requesting ₱${String.format(Locale.US, "%,.2f", settledAmount)} for '$expenseName'",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF065F46),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
                     }
-                    OutlinedButton(
-                        onClick = {
-                            val bmp = qrBitmap ?: return@OutlinedButton
-                            QrCodeGenerator.shareQrBitmap(
-                                context = context,
-                                bitmap = bmp,
-                                shareText = "Scan to join/pay '$expenseName' on PUNDAR.",
-                                chooserTitle = "Share Group QR"
+                    Spacer(Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val bmp = qrBitmap ?: return@OutlinedButton
+                                QrCodeGenerator.saveBitmapToGallery(
+                                    context,
+                                    bmp,
+                                    "PUNDAR_GROUP_${System.currentTimeMillis()}.png"
+                                ).onSuccess {
+                                    Toast.makeText(context, "Saved to Pictures/PUNDAR", Toast.LENGTH_SHORT).show()
+                                }.onFailure { e ->
+                                    Toast.makeText(context, "Save failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Save")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val bmp = qrBitmap ?: return@OutlinedButton
+                                QrCodeGenerator.shareQrBitmap(
+                                    context = context,
+                                    bitmap = bmp,
+                                    shareText = "Join my pay for '$expenseName' on PUNDAR. Amount requested: ₱${String.format(Locale.US, "%,.2f", settledAmount)}.",
+                                    chooserTitle = "Share Group QR"
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Share")
+                        }
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Filled.QrCode, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(36.dp))
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Please settle the amount needed from the other user above to generate the invite QR code.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B),
+                                textAlign = TextAlign.Center
                             )
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Share")
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(14.dp))
 
                 Button(
                     onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
                 ) {
-                    Text("Close")
+                    Text("Done", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2608,11 +2754,15 @@ private fun GenerateGroupQrModalDialog(
 @Composable
 private fun AddPeopleModalDialog(
     existingMembers: List<BillMember>,
+    defaultShareAmount: Double = 0.0,
     onDismiss: () -> Unit,
     onAddMember: (BillMember) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var phoneInput by remember { mutableStateOf("") }
+    var amountInput by remember {
+        mutableStateOf(if (defaultShareAmount > 0.0) String.format(Locale.US, "%.2f", defaultShareAmount) else "")
+    }
     var isVerifying by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     val avatarColors = listOf(0xFFEC4899, 0xFFF59E0B, 0xFF10B981, 0xFF8B5CF6, 0xFF0EA5E9)
@@ -2620,6 +2770,13 @@ private fun AddPeopleModalDialog(
     fun verifyAndAdd() {
         val query = phoneInput.trim()
         if (query.isBlank() || isVerifying) return
+
+        val neededAmount = amountInput.toDoubleOrNull() ?: 0.0
+        if (neededAmount <= 0.0) {
+            errorMsg = "Please settle the amount needed from this user first."
+            return
+        }
+
         scope.launch {
             isVerifying = true
             errorMsg = null
@@ -2641,7 +2798,7 @@ private fun AddPeopleModalDialog(
                             user.name,
                             "@${user.phone}",
                             initials,
-                            0.0,
+                            neededAmount,
                             avatarColors[existingMembers.size % avatarColors.size]
                         )
                     )
@@ -2657,7 +2814,10 @@ private fun AddPeopleModalDialog(
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(22.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(22.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -2670,7 +2830,7 @@ private fun AddPeopleModalDialog(
                 Text("Invite to Split", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Only verified PUNDAR accounts can be added. Enter their registered mobile number.",
+                    "Settle the amount you need and enter their registered PUNDAR number.",
                     fontSize = 13.sp,
                     color = Color(0xFF64748B),
                     textAlign = TextAlign.Center
@@ -2689,6 +2849,28 @@ private fun AddPeopleModalDialog(
                     supportingText = errorMsg?.let { msg -> { Text(msg) } },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Phone,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Next
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedBorderColor = Color(0xFF0B192C),
+                        unfocusedBorderColor = Color(0xFFCBD5E1)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = amountInput,
+                    onValueChange = { amountInput = it; errorMsg = null },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Amount Needed from User (₱)") },
+                    singleLine = true,
+                    enabled = !isVerifying,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
                         imeAction = androidx.compose.ui.text.input.ImeAction.Done
                     ),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { verifyAndAdd() }),
@@ -2700,6 +2882,32 @@ private fun AddPeopleModalDialog(
                     ),
                     shape = RoundedCornerShape(14.dp)
                 )
+
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val chips = if (defaultShareAmount > 0.0) {
+                        listOf(String.format(Locale.US, "%.0f", defaultShareAmount), "50", "100", "250", "500")
+                    } else {
+                        listOf("50", "100", "200", "500")
+                    }
+                    chips.distinct().take(4).forEach { chipVal ->
+                        OutlinedButton(
+                            onClick = { amountInput = chipVal; errorMsg = null },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (amountInput == chipVal) Color(0xFF0B192C) else Color(0xFFE2E8F0)
+                            )
+                        ) {
+                            Text("₱$chipVal", fontSize = 11.sp, color = Color(0xFF0F172A))
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(18.dp))
 
@@ -2717,7 +2925,7 @@ private fun AddPeopleModalDialog(
 
                     Button(
                         onClick = { verifyAndAdd() },
-                        enabled = phoneInput.isNotBlank() && !isVerifying,
+                        enabled = phoneInput.isNotBlank() && amountInput.isNotBlank() && !isVerifying,
                         modifier = Modifier.weight(1f).height(48.dp),
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
@@ -2725,7 +2933,7 @@ private fun AddPeopleModalDialog(
                         if (isVerifying) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                         } else {
-                            Text("Verify & Add", fontWeight = FontWeight.Bold)
+                            Text("Settle & Add", fontWeight = FontWeight.Bold)
                         }
                     }
                 }

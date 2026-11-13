@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -541,13 +542,20 @@ fun QrSendConfirmScreen(navController: NavController) {
                 }
             }
 
+            val isAmountLocked = payload.amount != null && payload.amount > 0.0
+            val isBillTitleLocked = !payload.billRef.isNullOrBlank()
+
             // Mode-Specific Form Fields
             if (activeMode == QrActionMode.JOIN_PAY) {
                 // Bill title field
                 OutlinedTextField(
                     value = billTitle,
-                    onValueChange = { billTitle = it },
+                    onValueChange = { if (!isBillTitleLocked) billTitle = it },
+                    readOnly = isBillTitleLocked,
                     label = { Text("Bill / Event Title") },
+                    trailingIcon = if (isBillTitleLocked) {
+                        { Icon(Icons.Filled.Lock, contentDescription = "Fixed Title", tint = PundarTheme.colors.brandPrimary, modifier = Modifier.size(16.dp)) }
+                    } else null,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -558,11 +566,31 @@ fun QrSendConfirmScreen(navController: NavController) {
                     )
                 )
 
-                // Share amount input
+                // Share amount input (Non-editable if settled by host)
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = { amount = it },
+                    onValueChange = { if (!isAmountLocked) amount = it },
+                    readOnly = isAmountLocked,
                     label = { Text("Your Share Amount (₱)") },
+                    trailingIcon = if (isAmountLocked) {
+                        {
+                            Icon(
+                                Icons.Filled.Lock,
+                                contentDescription = "Amount Settled by Host",
+                                tint = PundarTheme.colors.brandPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else null,
+                    supportingText = if (isAmountLocked) {
+                        {
+                            Text(
+                                "🔒 Amount settled by host: ₱${String.format(java.util.Locale.US, "%,.2f", payload.amount)} (not editable)",
+                                color = PundarTheme.colors.brandPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else null,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     shape = RoundedCornerShape(12.dp),
@@ -574,23 +602,25 @@ fun QrSendConfirmScreen(navController: NavController) {
                     )
                 )
 
-                // Quick Split Chips
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf("50", "100", "250", "500").forEach { quickVal ->
-                        OutlinedButton(
-                            onClick = { amount = quickVal },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (amount == quickVal) PundarTheme.colors.brandPrimary else PundarTheme.colors.surfaceSecondary
-                            )
-                        ) {
-                            Text("₱$quickVal", fontSize = 12.sp, color = PundarTheme.colors.textPrimary)
+                // Quick Split Chips (Only available if amount was not preset by host)
+                if (!isAmountLocked) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("50", "100", "250", "500").forEach { quickVal ->
+                            OutlinedButton(
+                                onClick = { amount = quickVal },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (amount == quickVal) PundarTheme.colors.brandPrimary else PundarTheme.colors.surfaceSecondary
+                                )
+                            ) {
+                                Text("₱$quickVal", fontSize = 12.sp, color = PundarTheme.colors.textPrimary)
+                            }
                         }
                     }
                 }
@@ -598,8 +628,28 @@ fun QrSendConfirmScreen(navController: NavController) {
                 // Direct Send Amount
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = { amount = it },
+                    onValueChange = { if (!isAmountLocked) amount = it },
+                    readOnly = isAmountLocked,
                     label = { Text("Amount to Send (₱)") },
+                    trailingIcon = if (isAmountLocked) {
+                        {
+                            Icon(
+                                Icons.Filled.Lock,
+                                contentDescription = "Fixed Amount",
+                                tint = PundarTheme.colors.brandPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else null,
+                    supportingText = if (isAmountLocked) {
+                        {
+                            Text(
+                                "🔒 Amount fixed by recipient: ₱${String.format(java.util.Locale.US, "%,.2f", payload.amount)}",
+                                color = PundarTheme.colors.brandPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else null,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     shape = RoundedCornerShape(12.dp),
@@ -611,23 +661,25 @@ fun QrSendConfirmScreen(navController: NavController) {
                     )
                 )
 
-                // Quick Amount Chips
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf("50", "100", "200", "500").forEach { quickVal ->
-                        OutlinedButton(
-                            onClick = { amount = quickVal },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (amount == quickVal) PundarTheme.colors.brandPrimary else PundarTheme.colors.surfaceSecondary
-                            )
-                        ) {
-                            Text("₱$quickVal", fontSize = 12.sp, color = PundarTheme.colors.textPrimary)
+                // Quick Amount Chips (Only available if amount was not preset)
+                if (!isAmountLocked) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("50", "100", "200", "500").forEach { quickVal ->
+                            OutlinedButton(
+                                onClick = { amount = quickVal },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (amount == quickVal) PundarTheme.colors.brandPrimary else PundarTheme.colors.surfaceSecondary
+                                )
+                            ) {
+                                Text("₱$quickVal", fontSize = 12.sp, color = PundarTheme.colors.textPrimary)
+                            }
                         }
                     }
                 }
