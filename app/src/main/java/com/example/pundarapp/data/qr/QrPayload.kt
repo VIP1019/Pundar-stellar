@@ -21,7 +21,9 @@ data class QrPayload(
     val username: String? = null,  // optional display
     val displayName: String? = null,
     val walletId: String? = null,  // Stellar public key (safe to share)
-    val amount: Double? = null,    // optional requested amount / bill-payment amount
+    val amount: Double? = null,    // fixed per-person requested amount / bill-payment amount
+    val totalBillAmount: Double? = null, // total bill amount before splitting
+    val participantCount: Int? = null,   // quantity of people joining the bill
     val billRef: String? = null,   // bill-payment / memo / group bill name
     val transactionId: String? = null, // bill-payment only
     val timestamp: Long = System.currentTimeMillis(), // epoch ms when QR was generated
@@ -75,6 +77,8 @@ data class QrPayload(
                     val params = parseQueryParams(queryPart)
                     val destination = params["destination"] ?: params["to"] ?: ""
                     val amount = params["amount"]?.toDoubleOrNull()
+                    val totalBillAmount = params["totalAmount"]?.toDoubleOrNull()
+                    val participantCount = params["participants"]?.toIntOrNull()
                     val memo = params["memo"] ?: params["msg"] ?: params["billRef"]
                     val targetId = if (STELLAR_KEY_REGEX.matches(destination)) destination else destination.ifBlank { trimmed }
                     return QrPayload(
@@ -83,6 +87,8 @@ data class QrPayload(
                         displayName = if (STELLAR_KEY_REGEX.matches(targetId)) "Stellar Wallet" else "Payment Target",
                         walletId = if (STELLAR_KEY_REGEX.matches(targetId)) targetId else null,
                         amount = amount,
+                        totalBillAmount = totalBillAmount,
+                        participantCount = participantCount,
                         billRef = memo,
                         timestamp = System.currentTimeMillis(),
                         securityToken = targetId

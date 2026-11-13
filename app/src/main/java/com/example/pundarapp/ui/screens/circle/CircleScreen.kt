@@ -641,7 +641,12 @@ private fun CircleEmptyState(onCreateClick: () -> Unit = {}) {
             modifier = Modifier.padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("🌀", fontSize = 36.sp)
+            Icon(
+                Icons.Filled.Groups,
+                contentDescription = null,
+                tint = PundarTheme.colors.brandPrimary,
+                modifier = Modifier.size(40.dp)
+            )
             Spacer(Modifier.height(10.dp))
             Text("No PUNDAR Circles yet.", fontWeight = FontWeight.SemiBold, color = PundarTheme.colors.textSecondary)
             Spacer(Modifier.height(4.dp))

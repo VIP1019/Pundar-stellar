@@ -237,11 +237,13 @@ fun QrSendConfirmScreen(navController: NavController) {
 
                                 if (isJoinSettleNow) {
                                     // Join bill and mark settled
+                                    val totalParticipants = (payload.participantCount ?: 2).coerceAtLeast(1)
+                                    val totalBillAmt = payload.totalBillAmount ?: (sendAmount * totalParticipants)
                                     val newBill = GroupBill(
                                         id = payload.transactionId ?: "BILL-${UUID.randomUUID().toString().take(8).uppercase()}",
                                         name = billTitle.ifBlank { "Group Bill (${recipient.displayName})" },
-                                        totalAmount = sendAmount * 2,
-                                        memberCount = 2,
+                                        totalAmount = totalBillAmt,
+                                        memberCount = totalParticipants,
                                         status = BillStatus.SETTLED,
                                         date = "Today",
                                         yourShare = sendAmount,
@@ -348,11 +350,13 @@ fun QrSendConfirmScreen(navController: NavController) {
                                 return@PundarSecondaryButton
                             }
                             isCompleted = true
+                            val totalParticipants = (payload.participantCount ?: 2).coerceAtLeast(1)
+                            val totalBillAmt = payload.totalBillAmount ?: (shareAmount * totalParticipants)
                             val newBill = GroupBill(
                                 id = payload.transactionId ?: "BILL-${UUID.randomUUID().toString().take(8).uppercase()}",
                                 name = billTitle.ifBlank { "Group Bill ($recipientName)" },
-                                totalAmount = shareAmount * 2,
-                                memberCount = 2,
+                                totalAmount = totalBillAmt,
+                                memberCount = totalParticipants,
                                 status = BillStatus.PENDING,
                                 date = "Today",
                                 yourShare = shareAmount,
@@ -584,8 +588,11 @@ fun QrSendConfirmScreen(navController: NavController) {
                     } else null,
                     supportingText = if (isAmountLocked) {
                         {
+                            val splitNote = if (payload.totalBillAmount != null && payload.participantCount != null) {
+                                " (Total ₱${String.format(java.util.Locale.US, "%,.2f", payload.totalBillAmount)} ÷ ${payload.participantCount} people)"
+                            } else ""
                             Text(
-                                "🔒 Amount settled by host: ₱${String.format(java.util.Locale.US, "%,.2f", payload.amount)} (not editable)",
+                                "Amount settled by host: ₱${String.format(java.util.Locale.US, "%,.2f", payload.amount)}$splitNote — not editable",
                                 color = PundarTheme.colors.brandPrimary,
                                 fontWeight = FontWeight.Bold
                             )
@@ -644,7 +651,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                     supportingText = if (isAmountLocked) {
                         {
                             Text(
-                                "🔒 Amount fixed by recipient: ₱${String.format(java.util.Locale.US, "%,.2f", payload.amount)}",
+                                "Amount fixed by recipient: ₱${String.format(java.util.Locale.US, "%,.2f", payload.amount)}",
                                 color = PundarTheme.colors.brandPrimary,
                                 fontWeight = FontWeight.Bold
                             )
