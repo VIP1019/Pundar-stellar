@@ -19,13 +19,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.navigation.NavController
+import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.stellar.PayStellarClient
+import com.example.pundarapp.data.stellar.PaymentResult
+import com.example.pundarapp.data.stellar.StellarWalletManager
+import com.example.pundarapp.data.stellar.Stroops
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.theme.PundarTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,11 +42,128 @@ fun BillDetailScreen(billId: String, navController: NavController) {
     val bill = AppState.bills.find { it.id == billId }
         ?: run { navController.navigateUp(); return }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val walletBalance = AppState.walletBalance.value
     val exchangeRate = AppState.getPhpRate()
     val totalXlm = bill.totalAmount / exchangeRate
     val yourShareXlm = bill.yourShare / exchangeRate
     val canAffordSettle = walletBalance >= yourShareXlm
+
+    var showPinDialog by remember { mutableStateOf(false) }
+    var mpinInput by remember { mutableStateOf("") }
+    var isSettling by remember { mutableStateOf(false) }
+
+    if (showPinDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSettling) { showPinDialog = false; mpinInput = "" } },
+            containerColor = PundarTheme.colors.surfacePrimary,
+            title = { Text("Confirm Bill Settlement", fontWeight = FontWeight.Bold, color = PundarTheme.colors.textPrimary) },
+            text = {
+                Column {
+                    Text(
+                        "Pay your share of ₱${String.format("%,.2f", bill.yourShare)} (≈ ${String.format("%,.4f", yourShareXlm)} XLM) for '${bill.name}'.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PundarTheme.colors.textSecondary
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    OutlinedTextField(
+                        value = mpinInput,
+                        onValueChange = { if (it.length <= 4) mpinInput = it },
+                        label = { Text("Enter 4-digit MPIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = mpinInput.length == 4 && !isSettling,
+                    colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.brandPrimary),
+                    onClick = {
+                        scope.launch {
+                            isSettling = true
+                            val senderSeed = AuthRepository.getCurrentUserEncryptedSeed().orEmpty()
+                            if (senderSeed.isNotBlank()) {
+                                val secret = try {
+                                    StellarWalletManager.decryptSecretSeed(senderSeed, mpinInput)
+                                } catch (_: Exception) {
+                                    Toast.makeText(context, "Incorrect PIN.", Toast.LENGTH_SHORT).show()
+                                    isSettling = false
+                                    mpinInput = ""
+                                    return@launch
+                                }
+                                val myPhone = AuthRepository.getCurrentUserPhone()
+                                val counterpartyUsername = bill.members
+                                    .firstOrNull { !it.name.equals("You", true) && it.username != myPhone && it.username.isNotBlank() }
+                                    ?.username
+                                val counterpartyKey = counterpartyUsername?.let { uname ->
+                                    if (uname.startsWith("G") && uname.length == 56) uname
+                                    else AuthRepository.findRegisteredUser(uname)?.stellarPublicKey
+                                }?.takeIf { it.startsWith("G") && it.length == 56 }
+                                    ?: StellarWalletManager.USDC_ISSUER
+
+                                val stroops = Stroops.fromXlmString(String.format(java.util.Locale.US, "%.7f", yourShareXlm))
+                                if (stroops == null || stroops <= 0) {
+                                    Toast.makeText(context, "Invalid settlement amount.", Toast.LENGTH_SHORT).show()
+                                    isSettling = false
+                                    return@launch
+                                }
+
+                                when (val res = PayStellarClient.sendPayment(
+                                    secret = secret,
+                                    destination = counterpartyKey,
+                                    amountStroops = stroops,
+                                    memo = "Settle: ${bill.name}".take(28)
+                                )) {
+                                    is PaymentResult.Success -> {
+                                        AppState.settleBill(bill.id)
+                                        AppState.refreshWalletBalance()
+                                        isSettling = false
+                                        showPinDialog = false
+                                        mpinInput = ""
+                                        Toast.makeText(
+                                            context,
+                                            "Bill settled on Stellar! Ref: ${res.hash.take(10).uppercase()}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        navController.navigateUp()
+                                    }
+                                    is PaymentResult.Failure -> {
+                                        isSettling = false
+                                        Toast.makeText(context, res.message, Toast.LENGTH_LONG).show()
+                                    }
+                                    is PaymentResult.Unknown -> {
+                                        isSettling = false
+                                        Toast.makeText(context, "Network timed out. Check your balance before retrying.", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } else {
+                                AppState.settleBill(bill.id)
+                                isSettling = false
+                                showPinDialog = false
+                                mpinInput = ""
+                                Toast.makeText(context, "Bill settled! ₱${String.format("%,.2f", bill.yourShare)} deducted.", Toast.LENGTH_SHORT).show()
+                                navController.navigateUp()
+                            }
+                        }
+                    }
+                ) {
+                    Text(if (isSettling) "Settling..." else "Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isSettling,
+                    onClick = { showPinDialog = false; mpinInput = "" }
+                ) {
+                    Text("Cancel", color = PundarTheme.colors.textSecondary)
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -201,12 +327,10 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         PundarPrimaryButton(
-                            text = "Settle My Share — ₱${String.format("%,.2f", bill.yourShare)} (≈ ${String.format("%,.2f", yourShareXlm)} XLM)",
-                            enabled = canAffordSettle,
+                            text = if (isSettling) "Settling..." else "Settle My Share — ₱${String.format("%,.2f", bill.yourShare)} (≈ ${String.format("%,.2f", yourShareXlm)} XLM)",
+                            enabled = canAffordSettle && !isSettling,
                             onClick = {
-                                AppState.settleBill(bill.id)
-                                Toast.makeText(context, "Bill settled! ₱${String.format("%,.2f", bill.yourShare)} deducted.", Toast.LENGTH_SHORT).show()
-                                navController.navigateUp()
+                                showPinDialog = true
                             }
                         )
                         if (!canAffordSettle) {
