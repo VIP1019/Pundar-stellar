@@ -59,7 +59,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.example.pundarapp.data.qr.QrCodeGenerator
 import com.example.pundarapp.data.qr.QrPayload
+import com.example.pundarapp.data.qr.QrScanHandler
+import com.example.pundarapp.data.qr.QrScanResult
 import com.example.pundarapp.data.remote.AuthRepository
+import com.example.pundarapp.data.remote.QrPaymentRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.*
 import com.example.pundarapp.ui.theme.*
@@ -94,12 +97,14 @@ fun NewGroupBillScreen(navController: NavController) {
 
     var totalAmountInput by remember { mutableStateOf("850") }
     var expenseNameInput by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("Utilities") }
+    var activeWizardBillId by remember { mutableStateOf("BILL-${UUID.randomUUID().toString().take(8).uppercase()}") }
     var isFiatMode by remember { mutableStateOf(true) } // PHP mode
 
     // ── Step 3 Split Mode ─────────────────────────────────────────
     var splitModeIndex by remember { mutableIntStateOf(0) } // 0 = Equal, 1 = Itemized
 
-    // Selected group members (starts with "You" + sample friends)
+    // Selected group members (starts with "You" + verified recipient)
     val selectedMembers = remember {
         mutableStateListOf(
             BillMember("You", "@currentuser", "YOU", 0.0, 0xFF0B192C)
@@ -110,7 +115,6 @@ fun NewGroupBillScreen(navController: NavController) {
 
     // Dialog state handlers
     var showGenerateGroupQrDialog by remember { mutableStateOf(false) }
-    var showAddPeopleDialog by remember { mutableStateOf(false) }
 
     // Real Stellar Testnet payment state
     val payScope = rememberCoroutineScope()
@@ -216,27 +220,60 @@ fun NewGroupBillScreen(navController: NavController) {
                         generatedRefNo = result.hash.take(12).uppercase()
                         completedTimestamp = System.currentTimeMillis()
 
+                        val cleanExpenseTitle = expenseNameInput.trim()
+                            .takeIf { it.isNotBlank() && !it.equals(merchantName, ignoreCase = true) }
+                            ?: "Split with $merchantName"
+                        val formattedBillName = if (cleanExpenseTitle.startsWith("[")) {
+                            cleanExpenseTitle
+                        } else {
+                            "[$selectedCategory] $cleanExpenseTitle"
+                        }
+
+                        // Find any existing pending bill from this wizard session or matching title so we update it instead of creating a duplicate
+                        val (parsedCleanTitle, _) = parseCategorizedTitle(formattedBillName)
+                        val existingPendingBill = AppState.bills.firstOrNull { b ->
+                            b.id == activeWizardBillId ||
+                                (b.status != BillStatus.SETTLED &&
+                                    parseCategorizedTitle(b.name).first.equals(parsedCleanTitle, ignoreCase = true))
+                        }
+                        val finalBillId = existingPendingBill?.id ?: activeWizardBillId
+
+                        // Remove any pending/duplicate bills for this transaction
+                        AppState.bills.removeAll { b ->
+                            b.id == finalBillId ||
+                                b.id == activeWizardBillId ||
+                                (b.status != BillStatus.SETTLED &&
+                                    parseCategorizedTitle(b.name).first.equals(parsedCleanTitle, ignoreCase = true))
+                        }
+
                         val newBill = GroupBill(
-                            id = "bill_$generatedRefNo",
-                            name = expenseNameInput.ifBlank { merchantName },
+                            id = finalBillId,
+                            name = formattedBillName,
                             totalAmount = totalInPhp,
-                            memberCount = computedMembers.size,
-                            status = BillStatus.PENDING,
+                            memberCount = computedMembers.size.coerceAtLeast(2),
+                            status = BillStatus.SETTLED,
                             date = "Today",
                             yourShare = yourSharePhp,
                             members = computedMembers
                         )
-                        AppState.addBill(newBill)
+                        AppState.addBill(newBill, recordActivity = false)
+                        AppState.markBillSettled(finalBillId)
+
+                        // Remove any pending activity for the same wizard bill ID so there is only 1 activity
+                        AppState.homeActivities.removeAll { act ->
+                            act.referenceId == finalBillId || act.referenceId == activeWizardBillId
+                        }
 
                         val activity = HomeActivity(
                             icon = "send",
-                            title = "Paid $merchantName",
-                            subtitle = "Split bill · ${expenseNameInput.ifBlank { merchantName }}",
+                            title = formattedBillName,
+                            subtitle = "Paid to $merchantName • Split settled",
                             amount = "-₱${String.format(Locale.US, "%,.2f", yourSharePhp)}",
                             isPositive = false,
-                            module = "Pay"
+                            module = "Pay",
+                            referenceId = result.hash
                         )
-                        AppState.homeActivities.add(0, activity)
+                        AppState.addHomeActivity(activity)
                         AuthRepository.getCurrentUserId()?.let { HomeRepository.createActivity(it, activity) }
                         AppState.refreshWalletBalance()
                         AppState.requestHomeRefresh()
@@ -351,17 +388,48 @@ fun NewGroupBillScreen(navController: NavController) {
                             merchantRef = merchantRef,
                             merchantAddress = merchantAddress,
                             isRecipientVerified = recipientVerified,
-                            onSelectMerchant = { name, ref, addr, scannedAmount ->
+                            onSelectMerchant = { name, ref, addr, scannedAmount, scannedTotal, scannedCount, scannedBillId, scannedBillRef ->
                                 merchantName = name
                                 merchantRef = ref
                                 merchantAddress = addr
-                                expenseNameInput = name
+                                if (!scannedBillId.isNullOrBlank()) {
+                                    activeWizardBillId = scannedBillId
+                                }
+                                if (!scannedBillRef.isNullOrBlank()) {
+                                    val (parsedTitle, parsedCat) = parseCategorizedTitle(scannedBillRef)
+                                    expenseNameInput = parsedTitle
+                                    if (!parsedCat.isNullOrBlank()) {
+                                        selectedCategory = parsedCat
+                                    }
+                                }
                                 recipientVerified = true
-                                if (scannedAmount != null && scannedAmount > 0.0) {
-                                    totalAmountInput = if (scannedAmount % 1.0 == 0.0) {
-                                        scannedAmount.toLong().toString()
+                                // Automatically include the verified recipient in selectedMembers
+                                val parts = name.trim().split(" ").filter { it.isNotBlank() }
+                                val initials = when {
+                                    parts.size >= 2 -> (parts.first().take(1) + parts.last().take(1)).uppercase()
+                                    parts.size == 1 -> parts[0].take(2).uppercase()
+                                    else -> "PU"
+                                }
+                                if (selectedMembers.none { it.name.equals(name, ignoreCase = true) }) {
+                                    selectedMembers.add(
+                                        BillMember(
+                                            name = name,
+                                            username = if (ref.startsWith("@")) ref else "@$ref",
+                                            initials = initials,
+                                            amount = scannedAmount ?: 0.0,
+                                            avatarColor = 0xFF2563EB
+                                        )
+                                    )
+                                }
+                                val targetTotal = scannedTotal?.takeIf { it > 0.0 }
+                                    ?: if (scannedAmount != null && scannedAmount > 0.0) {
+                                        scannedAmount * (scannedCount?.coerceAtLeast(2) ?: selectedMembers.size.coerceAtLeast(2))
+                                    } else null
+                                if (targetTotal != null && targetTotal > 0.0) {
+                                    totalAmountInput = if (targetTotal % 1.0 == 0.0) {
+                                        targetTotal.toLong().toString()
                                     } else {
-                                        String.format(Locale.US, "%.2f", scannedAmount)
+                                        String.format(Locale.US, "%.2f", targetTotal)
                                     }
                                 }
                             },
@@ -369,8 +437,24 @@ fun NewGroupBillScreen(navController: NavController) {
                                 merchantName = user.name
                                 merchantRef = user.phone
                                 merchantAddress = user.stellarPublicKey?.takeIf { it.isNotBlank() } ?: "${user.phone}*pundar.site"
-                                expenseNameInput = user.name
                                 recipientVerified = true
+                                val parts = user.name.trim().split(" ").filter { it.isNotBlank() }
+                                val initials = when {
+                                    parts.size >= 2 -> (parts.first().take(1) + parts.last().take(1)).uppercase()
+                                    parts.size == 1 -> parts[0].take(2).uppercase()
+                                    else -> "PU"
+                                }
+                                if (selectedMembers.none { it.name.equals(user.name, ignoreCase = true) }) {
+                                    selectedMembers.add(
+                                        BillMember(
+                                            name = user.name,
+                                            username = "@${user.phone}",
+                                            initials = initials,
+                                            amount = 0.0,
+                                            avatarColor = 0xFF2563EB
+                                        )
+                                    )
+                                }
                                 currentStep = 2
                             },
                             onNext = { currentStep = 2 }
@@ -380,13 +464,21 @@ fun NewGroupBillScreen(navController: NavController) {
                             merchantName = merchantName,
                             merchantRef = merchantRef,
                             merchantAddress = merchantAddress,
+                            expenseNameInput = expenseNameInput,
+                            onExpenseNameChange = { expenseNameInput = it },
+                            selectedCategory = selectedCategory,
+                            onCategoryChange = { selectedCategory = it },
                             totalAmountInput = totalAmountInput,
                             onAmountChange = { totalAmountInput = it },
                             totalInPhp = totalInPhp,
                             totalInXlm = totalInXlm,
                             selectedMembers = selectedMembers,
                             onOpenGenerateQr = { showGenerateGroupQrDialog = true },
-                            onOpenAddPeople = { showAddPeopleDialog = true },
+                            onAddMember = { member ->
+                                if (selectedMembers.none { it.name.equals(member.name, ignoreCase = true) }) {
+                                    selectedMembers.add(member)
+                                }
+                            },
                             onRemoveMember = { m ->
                                 if (m.name != "You") {
                                     selectedMembers.remove(m)
@@ -519,27 +611,39 @@ fun NewGroupBillScreen(navController: NavController) {
     }
 
     if (showGenerateGroupQrDialog) {
+        val joiningCount = (selectedMembers.size - 1).coerceAtLeast(1)
         GenerateGroupQrModalDialog(
-            expenseName = expenseNameInput.ifBlank { "Group Expense" },
-            initialAmount = if (sharePerMemberPhp > 0.0) sharePerMemberPhp else if (totalInPhp > 0.0) totalInPhp else 0.0,
-            onDismiss = { showGenerateGroupQrDialog = false }
-        )
-    }
-
-    if (showAddPeopleDialog) {
-        AddPeopleModalDialog(
-            existingMembers = selectedMembers,
-            defaultShareAmount = if (sharePerMemberPhp > 0.0) sharePerMemberPhp else 0.0,
-            onDismiss = { showAddPeopleDialog = false },
-            onAddMember = { member ->
-                if (selectedMembers.none { it.name == member.name }) {
-                    selectedMembers.add(member)
-                    if (member.amount > 0.0) {
-                        itemizedAmounts[member.name] = String.format(Locale.US, "%.2f", member.amount)
+            activeBillId = activeWizardBillId,
+            expenseName = expenseNameInput,
+            initialCategory = selectedCategory,
+            totalBillAmount = totalInPhp,
+            initialJoiningCount = joiningCount,
+            initialAmount = if (totalInPhp > 0.0) totalInPhp / (joiningCount + 1) else if (sharePerMemberPhp > 0.0) sharePerMemberPhp else 0.0,
+            onSyncBillConfig = { syncedTitle, syncedCat, syncedTotalPhp, syncedJoiningCount ->
+                expenseNameInput = syncedTitle
+                selectedCategory = syncedCat
+                if (syncedTotalPhp > 0.0) {
+                    totalAmountInput = if (syncedTotalPhp % 1.0 == 0.0) {
+                        syncedTotalPhp.toLong().toString()
+                    } else {
+                        String.format(Locale.US, "%.2f", syncedTotalPhp)
                     }
                 }
-                showAddPeopleDialog = false
-            }
+                val targetTotalMembers = syncedJoiningCount + 1
+                while (selectedMembers.size < targetTotalMembers) {
+                    val idx = selectedMembers.size
+                    selectedMembers.add(
+                        BillMember(
+                            name = "Participant $idx",
+                            username = "",
+                            initials = "P$idx",
+                            amount = 0.0,
+                            avatarColor = 0xFF10B981
+                        )
+                    )
+                }
+            },
+            onDismiss = { showGenerateGroupQrDialog = false }
         )
     }
 }
@@ -553,7 +657,16 @@ private fun Step1IdentifyRecipient(
     merchantRef: String,
     merchantAddress: String,
     isRecipientVerified: Boolean,
-    onSelectMerchant: (String, String, String, Double?) -> Unit,
+    onSelectMerchant: (
+        name: String,
+        ref: String,
+        addr: String,
+        scannedAmount: Double?,
+        scannedTotal: Double?,
+        scannedCount: Int?,
+        scannedBillId: String?,
+        scannedBillRef: String?
+    ) -> Unit,
     onRecipientVerified: (AuthRepository.UserData) -> Unit,
     onNext: () -> Unit
 ) {
@@ -594,6 +707,15 @@ private fun Step1IdentifyRecipient(
     var cameraRef by remember { mutableStateOf<Camera?>(null) }
     var torchEnabled by remember { mutableStateOf(false) }
 
+    var scannedResult by remember { mutableStateOf<String?>(null) }
+    var scanError by remember { mutableStateOf<String?>(null) }
+    var isProcessing by remember { mutableStateOf(false) }
+    var scanMode by remember { mutableStateOf("camera") }
+
+    LaunchedEffect(isProcessing, scannedResult) {
+        scanLocked.set(isProcessing || scannedResult != null)
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             cameraExecutor.shutdown()
@@ -601,38 +723,100 @@ private fun Step1IdentifyRecipient(
         }
     }
 
-    fun handleScannedRaw(raw: String) {
-        val decoded = QrPayload.decode(raw)
-        scope.launch {
-            val candidates = if (decoded != null) {
-                listOfNotNull(decoded.walletId, decoded.username, decoded.userId)
-            } else {
-                listOf(raw.trim())
-            }.filter { it.isNotBlank() }
+    suspend fun handleScannedRaw(raw: String) {
+        isProcessing = true
+        scanError = null
+        try {
+            when (val result = QrScanHandler.processRawQr(raw)) {
+                is QrScanResult.Success -> {
+                    val payload = result.payload
+                    val myId = AuthRepository.getCurrentUserId()
+                    val myPhone = AuthRepository.getCurrentUserPhone()
+                    val myPk = AuthRepository.getCurrentUserStellarPublicKey()
+                    if ((myPhone.isNotBlank() && payload.userId == myPhone) ||
+                        (myId != null && payload.userId == myId) ||
+                        (!myPk.isNullOrBlank() && (payload.userId == myPk || payload.walletId == myPk))
+                    ) {
+                        scanError = "You can't send to your own account."
+                        scannedResult = "error"
+                        return
+                    }
 
-            var user: AuthRepository.UserData? = null
-            for (candidate in candidates) {
-                user = AuthRepository.findRegisteredUser(candidate)
-                if (user != null) break
-            }
+                    val candidates = listOfNotNull(payload.walletId, payload.username, payload.userId)
+                        .filter { it.isNotBlank() }
+                    var matchedUser: AuthRepository.UserData? = null
+                    for (candidate in candidates) {
+                        matchedUser = AuthRepository.findRegisteredUser(candidate)
+                        if (matchedUser != null) break
+                    }
 
-            if (user == null) {
-                Toast.makeText(context, "This QR is not linked to a registered PUNDAR account.", Toast.LENGTH_LONG).show()
-                kotlinx.coroutines.delay(1500)
-                scanLocked.set(false)
-            } else if (user.id == AuthRepository.currentUserState.value?.id) {
-                Toast.makeText(context, "You can't send to your own account.", Toast.LENGTH_LONG).show()
-                kotlinx.coroutines.delay(1500)
-                scanLocked.set(false)
-            } else {
-                val ref = decoded?.billRef?.takeIf { it.isNotBlank() }
-                    ?: decoded?.transactionId?.takeIf { it.isNotBlank() }
-                    ?: user.phone
-                val addr = user.stellarPublicKey?.takeIf { it.isNotBlank() } ?: "${user.phone}*pundar.site"
-                onSelectMerchant(user.name, ref, addr, decoded?.amount)
-                Toast.makeText(context, "Recipient verified: ${user.name}", Toast.LENGTH_SHORT).show()
-                onNext()
+                    val recipientLookup = QrPaymentRepository.lookupRecipient(payload.userId).getOrNull()
+                    val resolvedName = matchedUser?.name?.takeIf { it.isNotBlank() }
+                        ?: recipientLookup?.displayName?.takeIf { it.isNotBlank() }
+                        ?: payload.displayName?.takeIf { it.isNotBlank() }
+                        ?: payload.username?.takeIf { it.isNotBlank() }
+                        ?: "PUNDAR User"
+                    val resolvedRef = payload.billRef?.takeIf { it.isNotBlank() }
+                        ?: payload.transactionId?.takeIf { it.isNotBlank() }
+                        ?: matchedUser?.phone?.takeIf { it.isNotBlank() }
+                        ?: payload.username?.takeIf { it.isNotBlank() }
+                        ?: payload.userId
+                    val resolvedAddr = listOfNotNull(
+                        matchedUser?.stellarPublicKey,
+                        recipientLookup?.walletId,
+                        payload.walletId,
+                        payload.userId
+                    ).firstOrNull { it.startsWith("G") && it.length == 56 }
+                        ?: "${matchedUser?.phone ?: payload.userId}*pundar.site"
+
+                    val amountPhp = payload.amount?.takeIf { it > 0.0 }?.let { rawAmt ->
+                        if (payload.currency.equals("XLM", ignoreCase = true)) AppState.xlmToPhp(rawAmt) else rawAmt
+                    }
+
+                    onSelectMerchant(
+                        resolvedName,
+                        resolvedRef,
+                        resolvedAddr,
+                        amountPhp,
+                        payload.totalBillAmount,
+                        payload.participantCount,
+                        payload.transactionId,
+                        payload.billRef
+                    )
+                    scannedResult = null
+                    scanError = null
+                    scanLocked.set(false)
+                    Toast.makeText(context, "Recipient verified: $resolvedName", Toast.LENGTH_SHORT).show()
+                    onNext()
+                }
+                is QrScanResult.Error -> {
+                    // Fallback if QR encodes a direct phone number or Stellar public key
+                    val directUser = AuthRepository.findRegisteredUser(raw.trim())
+                    if (directUser != null) {
+                        if (directUser.id == AuthRepository.currentUserState.value?.id) {
+                            scanError = "You can't send to your own account."
+                            scannedResult = "error"
+                        } else {
+                            val addr = directUser.stellarPublicKey?.takeIf { it.isNotBlank() }
+                                ?: "${directUser.phone}*pundar.site"
+                            onSelectMerchant(directUser.name, directUser.phone, addr, null, null, null, null, null)
+                            scannedResult = null
+                            scanError = null
+                            scanLocked.set(false)
+                            Toast.makeText(context, "Recipient verified: ${directUser.name}", Toast.LENGTH_SHORT).show()
+                            onNext()
+                        }
+                    } else {
+                        scanError = result.message
+                        scannedResult = "error"
+                    }
+                }
             }
+        } catch (e: Exception) {
+            scanError = e.message ?: QrScanHandler.INVALID_QR
+            scannedResult = "error"
+        } finally {
+            isProcessing = false
         }
     }
 
@@ -649,7 +833,7 @@ private fun Step1IdentifyRecipient(
                 user.id == AuthRepository.currentUserState.value?.id -> lookupError = "You can't send to your own account."
                 else -> {
                     val addr = user.stellarPublicKey?.takeIf { it.isNotBlank() } ?: "${user.phone}*pundar.site"
-                    onSelectMerchant(user.name, user.phone, addr, null)
+                    onSelectMerchant(user.name, user.phone, addr, null, null, null, null, null)
                     onNext()
                 }
             }
@@ -660,36 +844,36 @@ private fun Step1IdentifyRecipient(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
+        scanMode = "gallery"
+        isProcessing = true
+        scanError = null
+        scannedResult = "processing"
         try {
             val image = InputImage.fromFilePath(context, uri)
             barcodeScanner.process(image)
                 .addOnSuccessListener { barcodes ->
                     val raw = barcodes.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue
-                    if (raw != null) {
-                        handleScannedRaw(raw)
+                    if (raw == null) {
+                        scanError = QrScanHandler.NO_QR_FOUND
+                        scannedResult = "error"
+                        isProcessing = false
                     } else {
-                        Toast.makeText(context, "No QR code found in image.", Toast.LENGTH_SHORT).show()
+                        scope.launch {
+                            handleScannedRaw(raw)
+                        }
                     }
                 }
                 .addOnFailureListener {
-                    Toast.makeText(context, "Failed to scan image.", Toast.LENGTH_SHORT).show()
+                    scanError = QrScanHandler.NO_QR_FOUND
+                    scannedResult = "error"
+                    isProcessing = false
                 }
         } catch (_: Exception) {
-            Toast.makeText(context, "Unable to open selected image.", Toast.LENGTH_SHORT).show()
+            scanError = QrScanHandler.NO_QR_FOUND
+            scannedResult = "error"
+            isProcessing = false
         }
     }
-
-    // Reticle laser animation
-    val infiniteTransition = rememberInfiniteTransition(label = "laser")
-    val laserY by infiniteTransition.animateFloat(
-        initialValue = 0.1f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "laserLine"
-    )
 
     LazyColumn(
         modifier = Modifier
@@ -850,94 +1034,26 @@ private fun Step1IdentifyRecipient(
         if (activeTab == 0) item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0B192C))
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Top Bar inside Scanner Box
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    if (hasCameraPermission) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF1E293B))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .fillMaxWidth()
+                                .height(320.dp)
+                                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                                .background(Color.Black)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(if (hasCameraPermission) Color(0xFF10B981) else Color(0xFF38BDF8))
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    if (hasCameraPermission) "LIVE CAMERA ACTIVE" else "AUTO-DETECT READY",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
-                                    .background(if (torchEnabled) Color(0xFFF59E0B) else Color(0xFF1E293B))
-                                    .clickable {
-                                        val next = !torchEnabled
-                                        torchEnabled = next
-                                        cameraRef?.cameraControl?.enableTorch(next)
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    if (torchEnabled) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
-                                    contentDescription = "Flash",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF1E293B))
-                                    .clickable {
-                                        galleryLauncher.launch(
-                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                        )
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Filled.Image, contentDescription = "Gallery", tint = Color.White, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // Live Camera Viewfinder Area (square) with Corner Brackets & Laser Overlay
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.82f)
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF020617)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (hasCameraPermission) {
                             AndroidView(
                                 factory = { ctx ->
                                     val previewView = PreviewView(ctx).apply {
+                                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                                         scaleType = PreviewView.ScaleType.FILL_CENTER
                                     }
                                     val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
@@ -947,7 +1063,7 @@ private fun Step1IdentifyRecipient(
                                             it.setSurfaceProvider(previewView.surfaceProvider)
                                         }
                                         val resolutionSelector = ResolutionSelector.Builder()
-                                            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+                                            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
                                             .build()
                                         val imageAnalyzer = ImageAnalysis.Builder()
                                             .setResolutionSelector(resolutionSelector)
@@ -958,7 +1074,8 @@ private fun Step1IdentifyRecipient(
                                                 processGroupBillImageProxy(barcodeScanner, imageProxy) { barcode ->
                                                     if (scanLocked.compareAndSet(false, true)) {
                                                         ContextCompat.getMainExecutor(ctx).execute {
-                                                            handleScannedRaw(barcode)
+                                                            scannedResult = barcode
+                                                            scanMode = "camera"
                                                         }
                                                     }
                                                 }
@@ -982,104 +1099,207 @@ private fun Step1IdentifyRecipient(
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
-                        } else {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(16.dp)
+
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(230.dp)
                             ) {
-                                Icon(
-                                    Icons.Filled.PhotoCamera,
-                                    contentDescription = null,
-                                    tint = Color(0xFF38BDF8),
-                                    modifier = Modifier.size(36.dp)
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    "Camera permission required for live QR scan",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFFCBD5E1),
-                                    textAlign = TextAlign.Center
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Button(
-                                    onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                                Surface(
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = Color.Transparent,
+                                    shape = RoundedCornerShape(24.dp),
+                                    border = BorderStroke(2.dp, PundarTheme.colors.brandPrimary)
+                                ) {}
+                            }
+
+                            // Torch toggle button (matches ScanScreen)
+                            if (cameraRef?.cameraInfo?.hasFlashUnit() == true) {
+                                Surface(
+                                    onClick = {
+                                        val next = !torchEnabled
+                                        torchEnabled = next
+                                        cameraRef?.cameraControl?.enableTorch(next)
+                                    },
+                                    shape = CircleShape,
+                                    color = Color.Black.copy(alpha = 0.55f),
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(16.dp)
+                                        .size(44.dp)
                                 ) {
-                                    Text("Allow Camera", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                                            contentDescription = "Toggle Flashlight",
+                                            tint = if (torchEnabled) Gold500 else Color.White,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
-
-                        // Drawing corner brackets & laser beam line over the live camera preview
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val stroke = 4.dp.toPx()
-                            val bracketLen = 24.dp.toPx()
-                            val pad = 26.dp.toPx()
-                            val cornerColor = Color(0xFF38BDF8)
-
-                            // Top-Left
-                            drawLine(cornerColor, Offset(pad, pad), Offset(pad + bracketLen, pad), stroke)
-                            drawLine(cornerColor, Offset(pad, pad), Offset(pad, pad + bracketLen), stroke)
-
-                            // Top-Right
-                            drawLine(cornerColor, Offset(size.width - pad, pad), Offset(size.width - pad - bracketLen, pad), stroke)
-                            drawLine(cornerColor, Offset(size.width - pad, pad), Offset(size.width - pad, pad + bracketLen), stroke)
-
-                            // Bottom-Left
-                            drawLine(cornerColor, Offset(pad, size.height - pad), Offset(pad + bracketLen, size.height - pad), stroke)
-                            drawLine(cornerColor, Offset(pad, size.height - pad), Offset(pad, size.height - pad - bracketLen), stroke)
-
-                            // Bottom-Right
-                            drawLine(cornerColor, Offset(size.width - pad, size.height - pad), Offset(size.width - pad - bracketLen, size.height - pad), stroke)
-                            drawLine(cornerColor, Offset(size.width - pad, size.height - pad), Offset(size.width - pad, size.height - pad - bracketLen), stroke)
-
-                            // Horizontal laser beam
-                            val beamY = pad + (size.height - 2 * pad) * laserY
-                            drawLine(
-                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                    listOf(Color.Transparent, Color(0xFF38BDF8), Color.Transparent)
-                                ),
-                                start = Offset(pad, beamY),
-                                end = Offset(size.width - pad, beamY),
-                                strokeWidth = 3.dp.toPx()
-                            )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(260.dp)
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.QrCodeScanner,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = PundarTheme.colors.textSecondary
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    "Camera permission is required to scan QR codes.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = PundarTheme.colors.textSecondary,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                                    Text("Grant Permission")
+                                }
+                            }
                         }
                     }
 
-                    Spacer(Modifier.height(14.dp))
-
-                    Text(
-                        "Point at any QR Ph, PUNDAR Tag, or Stellar SEP-0007 code.",
-                        fontSize = 12.sp,
-                        color = Color(0xFF94A3B8),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    // Bottom Action Section (matches ScanScreen)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF1E293B))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        Column(
+                            modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("✓ QR Ph Ready", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF60A5FA))
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF1E293B))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text("⚡ Near-Instant", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF93C5FD))
+                            when {
+                                isProcessing -> {
+                                    CircularProgressIndicator(
+                                        color = PundarTheme.colors.brandPrimary,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        if (scanMode == "gallery") "Processing image..." else "Validating QR...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = PundarTheme.colors.textSecondary
+                                    )
+                                }
+                                scanError != null -> {
+                                    Text(
+                                        scanError!!,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.error,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(Modifier.height(12.dp))
+                                    Button(onClick = {
+                                        scannedResult = null
+                                        scanError = null
+                                        isProcessing = false
+                                        scanLocked.set(false)
+                                    }) { Text("Try Again") }
+                                }
+                                scannedResult != null && scanError == null -> {
+                                    LaunchedEffect(scannedResult) {
+                                        val raw = scannedResult ?: return@LaunchedEffect
+                                        if (raw == "processing" || raw == "error") return@LaunchedEffect
+                                        handleScannedRaw(raw)
+                                    }
+                                    Text(
+                                        "QR detected",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PundarTheme.colors.textPrimary
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "Validating recipient...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = PundarTheme.colors.textSecondary
+                                    )
+                                }
+                                else -> {
+                                    Text(
+                                        "Scan or Upload QR",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PundarTheme.colors.textPrimary
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "Supports Receive Money, Bill Payment, and Merchant QR codes.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = PundarTheme.colors.textSecondary,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(Modifier.height(20.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                if (!hasCameraPermission) {
+                                                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                                                } else {
+                                                    scannedResult = null
+                                                    scanError = null
+                                                    isProcessing = false
+                                                    scanLocked.set(false)
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f).height(72.dp),
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricBlue),
+                                            border = BorderStroke(1.dp, ElectricBlue.copy(0.5f))
+                                        ) {
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                FuturisticIcon(
+                                                    icon = Icons.Default.QrCodeScanner,
+                                                    tint = ElectricBlue,
+                                                    size = 36.dp,
+                                                    iconSize = 18.dp,
+                                                    shape = RoundedCornerShape(10.dp)
+                                                )
+                                                Spacer(Modifier.height(6.dp))
+                                                Text("Scan QR", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                galleryLauncher.launch(
+                                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                                )
+                                            },
+                                            modifier = Modifier.weight(1f).height(72.dp),
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyan),
+                                            border = BorderStroke(1.dp, NeonCyan.copy(0.5f))
+                                        ) {
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                FuturisticIcon(
+                                                    icon = Icons.Default.Image,
+                                                    tint = NeonCyan,
+                                                    size = 36.dp,
+                                                    iconSize = 18.dp,
+                                                    shape = RoundedCornerShape(10.dp)
+                                                )
+                                                Spacer(Modifier.height(6.dp))
+                                                Text("Upload Image", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1204,16 +1424,60 @@ private fun Step2AmountAndBillSplit(
     merchantName: String,
     merchantRef: String,
     merchantAddress: String,
+    expenseNameInput: String,
+    onExpenseNameChange: (String) -> Unit,
+    selectedCategory: String,
+    onCategoryChange: (String) -> Unit,
     totalAmountInput: String,
     onAmountChange: (String) -> Unit,
     totalInPhp: Double,
     totalInXlm: Double,
     selectedMembers: List<BillMember>,
     onOpenGenerateQr: () -> Unit,
-    onOpenAddPeople: () -> Unit,
+    onAddMember: (BillMember) -> Unit,
     onRemoveMember: (BillMember) -> Unit,
     onNext: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var friendPhoneInput by remember { mutableStateOf("") }
+    var isAddingFriend by remember { mutableStateOf(false) }
+    var addFriendError by remember { mutableStateOf<String?>(null) }
+    val avatarColors = remember { listOf(0xFFEC4899, 0xFFF59E0B, 0xFF10B981, 0xFF8B5CF6, 0xFF0EA5E9) }
+
+    fun addParticipantByPhone() {
+        val query = friendPhoneInput.trim()
+        if (query.isBlank() || isAddingFriend) return
+        scope.launch {
+            isAddingFriend = true
+            addFriendError = null
+            val user = AuthRepository.findRegisteredUser(query)
+            isAddingFriend = false
+            when {
+                user == null -> addFriendError = "No registered PUNDAR account found for this number."
+                user.id == AuthRepository.currentUserState.value?.id -> addFriendError = "You're already included in this split."
+                selectedMembers.any { it.name.equals(user.name, ignoreCase = true) } -> addFriendError = "${user.name} is already in this split."
+                else -> {
+                    val parts = user.name.trim().split(" ").filter { it.isNotBlank() }
+                    val initials = when {
+                        parts.size >= 2 -> (parts.first().take(1) + parts.last().take(1)).uppercase()
+                        parts.size == 1 -> parts[0].take(2).uppercase()
+                        else -> "PU"
+                    }
+                    onAddMember(
+                        BillMember(
+                            name = user.name,
+                            username = "@${user.phone}",
+                            initials = initials,
+                            amount = 0.0,
+                            avatarColor = avatarColors[selectedMembers.size % avatarColors.size]
+                        )
+                    )
+                    friendPhoneInput = ""
+                }
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -1406,6 +1670,57 @@ private fun Step2AmountAndBillSplit(
 
                     Spacer(Modifier.height(14.dp))
 
+                    // Bill / Expense Title input field
+                    OutlinedTextField(
+                        value = expenseNameInput,
+                        onValueChange = onExpenseNameChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Bill / Expense Title (e.g. WiFi, Dinner)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color(0xFF0B192C),
+                            unfocusedBorderColor = Color(0xFFCBD5E1)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Category selector chips
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("Food & Dining", "Utilities", "Rent", "Travel", "Other").forEach { cat ->
+                            val isSelected = selectedCategory == cat
+                            OutlinedButton(
+                                onClick = { onCategoryChange(cat) },
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) Color(0xFF0B192C) else Color(0xFFE2E8F0)
+                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isSelected) Color(0xFFE0E7FF) else Color.White
+                                )
+                            ) {
+                                Text(
+                                    cat,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF0F172A),
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
                     // Custom bill amount input field
                     OutlinedTextField(
                         value = totalAmountInput,
@@ -1539,35 +1854,60 @@ private fun Step2AmountAndBillSplit(
                     )
                     Spacer(Modifier.height(12.dp))
 
-                    Row(
+                    // Inline add participant by mobile number (replaces the Invite to Split modal pop-up)
+                    OutlinedTextField(
+                        value = friendPhoneInput,
+                        onValueChange = {
+                            friendPhoneInput = it
+                            addFriendError = null
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = onOpenGenerateQr,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, Color(0xFF0B192C))
-                        ) {
-                            Icon(Icons.Filled.QrCode, contentDescription = null, tint = Color(0xFF0B192C), modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Generate QR", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0B192C))
-                        }
+                        label = { Text("Add Participant (Registered Mobile Number)") },
+                        singleLine = true,
+                        enabled = !isAddingFriend,
+                        isError = addFriendError != null,
+                        supportingText = addFriendError?.let { msg -> { Text(msg) } },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Phone,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onDone = { addParticipantByPhone() }
+                        ),
+                        trailingIcon = {
+                            if (isAddingFriend) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                TextButton(
+                                    onClick = { addParticipantByPhone() },
+                                    enabled = friendPhoneInput.isNotBlank()
+                                ) {
+                                    Text("Add", fontWeight = FontWeight.Bold, color = Color(0xFF0B192C))
+                                }
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color(0xFF0B192C),
+                            unfocusedBorderColor = Color(0xFFCBD5E1)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
 
-                        Button(
-                            onClick = onOpenAddPeople,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
-                        ) {
-                            Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Add Friends", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
+                    Spacer(Modifier.height(10.dp))
+
+                    OutlinedButton(
+                        onClick = onOpenGenerateQr,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Color(0xFF0B192C))
+                    ) {
+                        Icon(Icons.Filled.QrCode, contentDescription = null, tint = Color(0xFF0B192C), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Generate Invite QR", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0B192C))
                     }
                 }
             }
@@ -1575,12 +1915,21 @@ private fun Step2AmountAndBillSplit(
 
         // Current Members List
         item {
-            Text(
-                "Group Members (${selectedMembers.size})",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A)
-            )
+            val joiningCount = (selectedMembers.size - 1).coerceAtLeast(0)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "People Joining (Excluding You): $joiningCount • Total Splitting Bill: ${selectedMembers.size}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
+                )
+                Text(
+                    "Note: You (the creator) are excluded from the joining count, but included in splitting the bill (+1).",
+                    fontSize = 11.sp,
+                    color = Color(0xFF2563EB),
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
 
         items(selectedMembers) { m ->
@@ -2538,15 +2887,21 @@ private fun FindRecipientPanel(
 
 @Composable
 private fun GenerateGroupQrModalDialog(
+    activeBillId: String,
     expenseName: String,
+    initialCategory: String = "Utilities",
+    totalBillAmount: Double = 0.0,
+    initialJoiningCount: Int = 1,
     initialAmount: Double = 0.0,
+    onSyncBillConfig: (title: String, category: String, totalAmountPhp: Double, joiningCount: Int) -> Unit = { _, _, _, _ -> },
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val currentUser by AuthRepository.currentUserState
     var titleInput by remember { mutableStateOf(expenseName.ifBlank { "Group Bill Split" }) }
-    var categoryInput by remember { mutableStateOf("Food & Dining") }
-    var peopleCountInput by remember { mutableStateOf("2") }
+    var categoryInput by remember { mutableStateOf(initialCategory.ifBlank { "Utilities" }) }
+    var peopleCountInput by remember { mutableStateOf(initialJoiningCount.coerceAtLeast(1).toString()) }
     var notesInput by remember { mutableStateOf("") }
     var amountInput by remember {
         mutableStateOf(if (initialAmount > 0.0) String.format(Locale.US, "%.2f", initialAmount) else "")
@@ -2554,14 +2909,16 @@ private fun GenerateGroupQrModalDialog(
     var isQrGenerated by remember { mutableStateOf(false) }
 
     val settledAmount = amountInput.toDoubleOrNull() ?: 0.0
-    val peopleCount = (peopleCountInput.toIntOrNull() ?: 2).coerceAtLeast(1)
+    // Quantity of people joining excludes the creator; total splitting the bill includes the creator (+1)
+    val peopleJoiningCount = (peopleCountInput.toIntOrNull() ?: 1).coerceAtLeast(1)
+    val totalSplitCount = peopleJoiningCount + 1
     val effectiveTitle = remember(titleInput, categoryInput, notesInput) {
         val base = titleInput.trim().ifBlank { expenseName.ifBlank { "Group Split" } }
         val withCat = "[$categoryInput] $base"
         if (notesInput.trim().isNotEmpty()) "$withCat - ${notesInput.trim()}" else withCat
     }
 
-    val qrBitmap = remember(effectiveTitle, currentUser?.id, settledAmount, peopleCount, isQrGenerated) {
+    val qrBitmap = remember(effectiveTitle, currentUser?.id, settledAmount, totalSplitCount, isQrGenerated, activeBillId) {
         if (!isQrGenerated || settledAmount <= 0.0) null
         else {
             try {
@@ -2574,10 +2931,10 @@ private fun GenerateGroupQrModalDialog(
                     username = currentUser?.phone,
                     walletId = currentUser?.stellarPublicKey,
                     amount = settledAmount,
-                    totalBillAmount = settledAmount * peopleCount,
-                    participantCount = peopleCount,
+                    totalBillAmount = if (totalBillAmount > 0.0) totalBillAmount else settledAmount * totalSplitCount,
+                    participantCount = totalSplitCount,
                     billRef = effectiveTitle,
-                    transactionId = "BILL-${UUID.randomUUID().toString().take(8).uppercase()}",
+                    transactionId = activeBillId,
                     timestamp = System.currentTimeMillis(),
                     securityToken = UUID.randomUUID().toString()
                 )
@@ -2673,11 +3030,25 @@ private fun GenerateGroupQrModalDialog(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // 3. Number of Participants
+                    // 3. Quantity of People Joining (Excluding Creator)
                     OutlinedTextField(
                         value = peopleCountInput,
-                        onValueChange = { peopleCountInput = it.filter { ch -> ch.isDigit() }.take(2) },
-                        label = { Text("Number of Participants *") },
+                        onValueChange = { raw ->
+                            val cleaned = raw.filter { ch -> ch.isDigit() }.take(2)
+                            peopleCountInput = cleaned
+                            val joining = cleaned.toIntOrNull()?.coerceAtLeast(1) ?: 1
+                            if (totalBillAmount > 0.0) {
+                                amountInput = String.format(Locale.US, "%.2f", totalBillAmount / (joining + 1))
+                            }
+                        },
+                        label = { Text("Quantity of People Joining (Excluding You) *") },
+                        supportingText = {
+                            Text(
+                                "Excludes you (the creator). You are included in splitting the bill (+1) → Total splitting: $totalSplitCount people ($peopleJoiningCount joining + You).",
+                                fontSize = 11.sp,
+                                color = Color(0xFF1E3A8A)
+                            )
+                        },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
@@ -2689,6 +3060,43 @@ private fun GenerateGroupQrModalDialog(
                             unfocusedBorderColor = Color(0xFFCBD5E1)
                         )
                     )
+
+                    // Quick Select Chips for Quantity of People Joining (Plain Numbers, No "p")
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("1", "2", "3", "4", "5", "6").forEach { qty ->
+                            val isSelected = peopleCountInput == qty
+                            OutlinedButton(
+                                onClick = {
+                                    peopleCountInput = qty
+                                    val joining = qty.toIntOrNull()?.coerceAtLeast(1) ?: 1
+                                    if (totalBillAmount > 0.0) {
+                                        amountInput = String.format(Locale.US, "%.2f", totalBillAmount / (joining + 1))
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) Color(0xFF0B192C) else Color(0xFFE2E8F0)
+                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isSelected) Color(0xFFE0E7FF) else Color.White
+                                )
+                            ) {
+                                Text(
+                                    text = qty,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = Color(0xFF0F172A)
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(Modifier.height(10.dp))
 
@@ -2769,7 +3177,55 @@ private fun GenerateGroupQrModalDialog(
                             Text("Cancel", fontWeight = FontWeight.SemiBold)
                         }
                         Button(
-                            onClick = { isQrGenerated = true },
+                            onClick = {
+                                val currentPhone = currentUser?.phone?.takeIf { it.isNotBlank() } ?: currentUser?.id.orEmpty()
+                                val currentName = currentUser?.name?.takeIf { it.isNotBlank() } ?: "You"
+                                val currentInitials = AuthRepository.getCurrentUserInitials().ifBlank { "YO" }
+                                val computedTotal = settledAmount * totalSplitCount
+                                onSyncBillConfig(
+                                    titleInput.trim().ifBlank { "Group Split" },
+                                    categoryInput,
+                                    computedTotal,
+                                    peopleJoiningCount
+                                )
+                                val membersList = buildList {
+                                    add(BillMember(name = "You ($currentName)", username = currentPhone, initials = currentInitials, amount = settledAmount))
+                                    for (i in 1..peopleJoiningCount) {
+                                        add(BillMember(name = "Participant $i", username = "", initials = "P$i", amount = settledAmount))
+                                    }
+                                }
+                                AppState.bills.removeAll { it.id == activeBillId }
+                                val createdBill = GroupBill(
+                                    id = activeBillId,
+                                    name = effectiveTitle,
+                                    totalAmount = computedTotal,
+                                    memberCount = totalSplitCount,
+                                    status = BillStatus.PENDING,
+                                    date = "Today",
+                                    yourShare = settledAmount,
+                                    members = membersList
+                                )
+                                AppState.addBill(createdBill, recordActivity = false)
+                                AppState.homeActivities.removeAll { it.referenceId == activeBillId }
+                                val activity = HomeActivity(
+                                    icon = "payment",
+                                    title = effectiveTitle,
+                                    subtitle = "Pending • $peopleJoiningCount joining + You ($totalSplitCount splitting)",
+                                    amount = "₱ ${String.format(Locale.US, "%,.2f", settledAmount)}",
+                                    isPositive = false,
+                                    module = "Pay",
+                                    referenceId = activeBillId
+                                )
+                                AppState.addHomeActivity(activity)
+                                scope.launch {
+                                    val uid = AuthRepository.getCurrentUserId() ?: currentPhone
+                                    if (uid.isNotBlank()) {
+                                        HomeRepository.createActivity(uid, activity)
+                                    }
+                                    AppState.requestHomeRefresh()
+                                }
+                                isQrGenerated = true
+                            },
                             enabled = settledAmount > 0.0 && titleInput.trim().isNotEmpty(),
                             modifier = Modifier.weight(1.3f).height(48.dp),
                             shape = RoundedCornerShape(24.dp),
@@ -2791,7 +3247,7 @@ private fun GenerateGroupQrModalDialog(
                         border = BorderStroke(1.dp, Color(0xFFA7F3D0))
                     ) {
                         Text(
-                            "Locked Share: ₱${String.format(Locale.US, "%,.2f", settledAmount)} • $peopleCount people\n$effectiveTitle",
+                            "Locked Share: ₱${String.format(Locale.US, "%,.2f", settledAmount)} • $peopleJoiningCount joining + You ($totalSplitCount splitting)\n${titleInput.trim().ifBlank { expenseName }} · $categoryInput",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF065F46),
@@ -2859,197 +3315,6 @@ private fun GenerateGroupQrModalDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
                     ) {
                         Text("Done", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AddPeopleModalDialog(
-    existingMembers: List<BillMember>,
-    defaultShareAmount: Double = 0.0,
-    onDismiss: () -> Unit,
-    onAddMember: (BillMember) -> Unit
-) {
-    val scope = rememberCoroutineScope()
-    var phoneInput by remember { mutableStateOf("") }
-    var amountInput by remember {
-        mutableStateOf(if (defaultShareAmount > 0.0) String.format(Locale.US, "%.2f", defaultShareAmount) else "")
-    }
-    var isVerifying by remember { mutableStateOf(false) }
-    var errorMsg by remember { mutableStateOf<String?>(null) }
-    val avatarColors = listOf(0xFFEC4899, 0xFFF59E0B, 0xFF10B981, 0xFF8B5CF6, 0xFF0EA5E9)
-
-    fun verifyAndAdd() {
-        val query = phoneInput.trim()
-        if (query.isBlank() || isVerifying) return
-
-        val neededAmount = amountInput.toDoubleOrNull() ?: 0.0
-        if (neededAmount <= 0.0) {
-            errorMsg = "Please settle the amount needed from this user first."
-            return
-        }
-
-        scope.launch {
-            isVerifying = true
-            errorMsg = null
-            val user = AuthRepository.findRegisteredUser(query)
-            isVerifying = false
-            when {
-                user == null -> errorMsg = "No registered PUNDAR account found. Only verified accounts can join a split."
-                user.id == AuthRepository.currentUserState.value?.id -> errorMsg = "You're already in this split."
-                existingMembers.any { it.name == user.name } -> errorMsg = "${user.name} is already in this split."
-                else -> {
-                    val parts = user.name.trim().split(" ").filter { it.isNotBlank() }
-                    val initials = when {
-                        parts.size >= 2 -> (parts.first().take(1) + parts.last().take(1)).uppercase()
-                        parts.size == 1 -> parts[0].take(2).uppercase()
-                        else -> "PU"
-                    }
-                    onAddMember(
-                        BillMember(
-                            user.name,
-                            "@${user.phone}",
-                            initials,
-                            neededAmount,
-                            avatarColors[existingMembers.size % avatarColors.size]
-                        )
-                    )
-                }
-            }
-        }
-    }
-
-    Dialog(onDismissRequest = { if (!isVerifying) onDismiss() }) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(22.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier.size(52.dp).clip(CircleShape).background(Color(0xFFE0E7FF)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = Color(0xFF1E3A8A), modifier = Modifier.size(26.dp))
-                }
-                Spacer(Modifier.height(12.dp))
-                Text("Invite to Split", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Settle the amount you need and enter their registered PUNDAR number.",
-                    fontSize = 13.sp,
-                    color = Color(0xFF64748B),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(Modifier.height(18.dp))
-
-                OutlinedTextField(
-                    value = phoneInput,
-                    onValueChange = { phoneInput = it; errorMsg = null },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Registered Mobile Number") },
-                    singleLine = true,
-                    enabled = !isVerifying,
-                    isError = errorMsg != null,
-                    supportingText = errorMsg?.let { msg -> { Text(msg) } },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Phone,
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Next
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color(0xFF0F172A),
-                        unfocusedTextColor = Color(0xFF0F172A),
-                        focusedBorderColor = Color(0xFF0B192C),
-                        unfocusedBorderColor = Color(0xFFCBD5E1)
-                    ),
-                    shape = RoundedCornerShape(14.dp)
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = amountInput,
-                    onValueChange = { amountInput = it; errorMsg = null },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Amount Needed from User (₱)") },
-                    singleLine = true,
-                    enabled = !isVerifying,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Decimal,
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
-                    ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { verifyAndAdd() }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color(0xFF0F172A),
-                        unfocusedTextColor = Color(0xFF0F172A),
-                        focusedBorderColor = Color(0xFF0B192C),
-                        unfocusedBorderColor = Color(0xFFCBD5E1)
-                    ),
-                    shape = RoundedCornerShape(14.dp)
-                )
-
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    val chips = if (defaultShareAmount > 0.0) {
-                        listOf(String.format(Locale.US, "%.0f", defaultShareAmount), "50", "100", "250", "500")
-                    } else {
-                        listOf("50", "100", "200", "500")
-                    }
-                    chips.distinct().take(4).forEach { chipVal ->
-                        OutlinedButton(
-                            onClick = { amountInput = chipVal; errorMsg = null },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
-                            border = BorderStroke(
-                                1.dp,
-                                if (amountInput == chipVal) Color(0xFF0B192C) else Color(0xFFE2E8F0)
-                            )
-                        ) {
-                            Text("₱$chipVal", fontSize = 11.sp, color = Color(0xFF0F172A))
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(18.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        enabled = !isVerifying,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(24.dp)
-                    ) { Text("Cancel", fontWeight = FontWeight.SemiBold) }
-
-                    Button(
-                        onClick = { verifyAndAdd() },
-                        enabled = phoneInput.isNotBlank() && amountInput.isNotBlank() && !isVerifying,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B192C))
-                    ) {
-                        if (isVerifying) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
-                        } else {
-                            Text("Settle & Add", fontWeight = FontWeight.Bold)
-                        }
                     }
                 }
             }

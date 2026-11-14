@@ -34,6 +34,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.data.HomeActivity
+import com.example.pundarapp.ui.data.parseCategorizedTitle
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -188,17 +189,27 @@ fun ReceiptDialog(
                                 modifier = Modifier.size(22.dp)
                             )
                         }
+                        val (cleanTitle, category) = parseCategorizedTitle(activity.title)
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                activity.title,
-                                fontSize = 14.sp,
+                                cleanTitle,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0F172A)
                             )
+                            if (!category.isNullOrBlank()) {
+                                Spacer(Modifier.height(1.dp))
+                                Text(
+                                    category,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF475569)
+                                )
+                            }
                             Text(
                                 "Ref: ${activity.referenceId.ifBlank { "BLNGY-MKT-99210" }}",
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 color = Color(0xFF64748B)
                             )
                         }

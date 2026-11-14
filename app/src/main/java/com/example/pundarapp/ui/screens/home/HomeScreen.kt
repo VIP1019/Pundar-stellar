@@ -46,6 +46,7 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.data.HomeActivity
 import com.example.pundarapp.ui.data.SampleData
+import com.example.pundarapp.ui.data.parseCategorizedTitle
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.launch
@@ -63,15 +64,27 @@ fun HomeScreen(navController: NavController) {
     val pullState = rememberPullToRefreshState()
     val refreshTrigger = AppState.homeRefreshTrigger.intValue
 
+    var isRefreshingModels by remember { mutableStateOf(false) }
+
     suspend fun refreshData() {
-        val uid = AuthRepository.getCurrentUserId()
-        if (uid != null) {
-            AppState.homeActivities.clear()
-            HomeRepository.getRecentActivities(uid).getOrNull()
-                ?.let { AppState.homeActivities.addAll(it) }
+        if (isRefreshingModels) return
+        isRefreshingModels = true
+        try {
+            val uid = AuthRepository.getCurrentUserId()
+            if (uid != null) {
+                val fetched = HomeRepository.getRecentActivities(uid).getOrNull()
+                if (fetched != null) {
+                    AppState.homeActivities.clear()
+                    AppState.homeActivities.addAll(fetched)
+                    AppState.reconcileSettledBillsFromActivities(fetched)
+                }
+            }
+            AppState.refreshBills()
+            AppState.refreshWalletBalance()
+            AppState.refreshCircles()
+        } finally {
+            isRefreshingModels = false
         }
-        AppState.refreshWalletBalance()
-        AppState.refreshCircles()
     }
 
     LaunchedEffect(Unit, refreshTrigger) {
@@ -79,10 +92,17 @@ fun HomeScreen(navController: NavController) {
         isLoadingActivities = false
     }
 
+    var hasResumedOnce by remember { mutableStateOf(false) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycle) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
-            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) scope.launch { refreshData() }
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                if (hasResumedOnce) {
+                    scope.launch { refreshData() }
+                } else {
+                    hasResumedOnce = true
+                }
+            }
         }
         lifecycle.lifecycle.addObserver(obs)
         onDispose { lifecycle.lifecycle.removeObserver(obs) }
@@ -97,28 +117,28 @@ fun HomeScreen(navController: NavController) {
     val fiatBalanceStr = if (isBalanceHidden) "₱ •••••" else "₱ ${String.format("%,.2f", walletBalance * exchangeRate)}"
     val xlmBalanceStr = if (isBalanceHidden) "••••• XLM" else "≈ ${String.format("%,.2f", walletBalance)} XLM"
 
-    // Dashboard Filter State
-    var selectedFilter by remember { mutableStateOf("All") }
+    // Dashboard Search State
     var searchQuery by remember { mutableStateOf("") }
-    var showSearchField by remember { mutableStateOf(false) }
-    val dashboardFilters = remember { listOf("All", "Received", "Sent", "Pay", "Circle", "Wallet") }
 
-    val filteredActivities = remember(AppState.homeActivities.toList(), selectedFilter, searchQuery) {
-        AppState.homeActivities.filter { act ->
-            val matchesCategory = when (selectedFilter) {
-                "All" -> true
-                "Received" -> act.isPositive || act.amount.trim().startsWith("+")
-                "Sent" -> !act.isPositive || act.amount.trim().startsWith("-")
-                "Pay" -> act.module.equals("Pay", ignoreCase = true)
-                "Circle" -> act.module.equals("Circle", ignoreCase = true)
-                "Wallet" -> act.module.equals("Wallet", ignoreCase = true)
-                else -> true
+    val filteredActivities = remember(AppState.homeActivities.toList(), searchQuery) {
+        val uniqueActivities = mutableListOf<HomeActivity>()
+        for (act in AppState.homeActivities) {
+            val normAmt = act.amount.replace(" ", "")
+            val isDup = uniqueActivities.any { existing ->
+                (act.referenceId.isNotBlank() && existing.referenceId == act.referenceId) ||
+                    (existing.title == act.title &&
+                        existing.amount.replace(" ", "") == normAmt &&
+                        existing.isPositive == act.isPositive &&
+                        kotlin.math.abs(existing.timestamp - act.timestamp) < 15_000L)
             }
-            val matchesSearch = searchQuery.isBlank() ||
+            if (!isDup) uniqueActivities.add(act)
+        }
+        uniqueActivities.filter { act ->
+            searchQuery.isBlank() ||
                 act.title.contains(searchQuery, ignoreCase = true) ||
                 act.subtitle.contains(searchQuery, ignoreCase = true) ||
-                act.module.contains(searchQuery, ignoreCase = true)
-            matchesCategory && matchesSearch
+                act.module.contains(searchQuery, ignoreCase = true) ||
+                act.amount.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -260,68 +280,38 @@ fun HomeScreen(navController: NavController) {
 
                             Spacer(Modifier.height(24.dp))
 
-                            // Available Balance Section with Hide/Show Amount Toggle
+                            // Available Balance Section with Single Clean Eye Toggle
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                // Pill Badge + Hide Balance Toggle
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                // Pill Badge: • Available Balance • Stellar Live
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(Color(0xFF1E2E5C))
+                                        .padding(horizontal = 14.dp, vertical = 5.dp)
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(20.dp))
-                                            .background(Color(0xFF1E2E5C))
-                                            .padding(horizontal = 14.dp, vertical = 5.dp)
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(6.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color(0xFF10B981))
-                                            )
-                                            Spacer(Modifier.width(6.dp))
-                                            Text(
-                                                "Available Balance • Stellar Live",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color(0xFFCBD5E1)
-                                            )
-                                        }
-                                    }
-
-                                    // Hide / Show Amount Pill Button
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(20.dp))
-                                            .background(Color(0xFF1E2E5C))
-                                            .clickable { AppState.toggleBalanceVisibility() }
-                                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = if (isBalanceHidden) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                                contentDescription = if (isBalanceHidden) "Show Amount" else "Hide Amount",
-                                                tint = Color(0xFF60A5FA),
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(
-                                                text = if (isBalanceHidden) "Show" else "Hide",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF60A5FA)
-                                            )
-                                        }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF10B981))
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            "Available Balance • Stellar Live",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFFCBD5E1)
+                                        )
                                     }
                                 }
 
                                 Spacer(Modifier.height(10.dp))
 
-                                // Animated Main Amount with Eye Toggle
+                                // Animated Main Amount with Single Eye Toggle
                                 AnimatedContent(
                                     targetState = fiatBalanceStr,
                                     transitionSpec = {
@@ -331,7 +321,10 @@ fun HomeScreen(navController: NavController) {
                                 ) { targetBalance ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.clickable { AppState.toggleBalanceVisibility() }
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable { AppState.toggleBalanceVisibility() }
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
                                     ) {
                                         Text(
                                             targetBalance,
@@ -339,12 +332,12 @@ fun HomeScreen(navController: NavController) {
                                             fontWeight = FontWeight.Black,
                                             color = Color.White
                                         )
-                                        Spacer(Modifier.width(8.dp))
+                                        Spacer(Modifier.width(10.dp))
                                         Icon(
                                             imageVector = if (isBalanceHidden) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                            contentDescription = "Toggle Balance Visibility",
+                                            contentDescription = if (isBalanceHidden) "Show Balance" else "Hide Balance",
                                             tint = Color(0xFF94A3B8),
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(22.dp)
                                         )
                                     }
                                 }
@@ -471,9 +464,13 @@ fun HomeScreen(navController: NavController) {
                     }
                 }
 
-                // ── UPCOMING OBLIGATIONS SECTION (Dynamic Only, No Hardcoded Splits) ──
+                // ── UPCOMING OBLIGATIONS SECTION (Dynamic Only, Deduplicated) ──
                 item {
-                    val pendingBills = AppState.bills.filter { it.status != BillStatus.SETTLED }
+                    val pendingBills = remember(AppState.bills.toList()) {
+                        AppState.bills
+                            .filter { it.status != BillStatus.SETTLED }
+                            .distinctBy { it.id }
+                    }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -578,7 +575,7 @@ fun HomeScreen(navController: NavController) {
                     }
                 }
 
-                // ── RECENT ACTIVITY SECTION WITH DASHBOARD FILTER ─────────
+                // ── RECENT ACTIVITY SECTION WITH SEARCH BAR ─────────
                 item {
                     Column(
                         modifier = Modifier
@@ -597,106 +594,44 @@ fun HomeScreen(navController: NavController) {
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0F172A)
                             )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { showSearchField = !showSearchField }
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.FilterList,
-                                        contentDescription = "Search & Filter",
-                                        tint = Color(0xFF2563EB),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        "Filter",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF2563EB)
-                                    )
-                                }
-                                Text(
-                                    "View All",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF2563EB),
-                                    modifier = Modifier.clickable { navController.navigate(Routes.ALL_ACTIVITY) }
-                                )
-                            }
+                            Text(
+                                "View All",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2563EB),
+                                modifier = Modifier.clickable { navController.navigate(Routes.ALL_ACTIVITY) }
+                            )
                         }
 
                         Spacer(Modifier.height(10.dp))
 
-                        // Filter Chips Row (All, Received, Sent, Pay, Circle, Wallet)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            dashboardFilters.forEach { filterName ->
-                                val isSelected = selectedFilter == filterName
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = if (isSelected) Color(0xFF0B1B3D) else Color.White,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (isSelected) Color(0xFF0B1B3D) else Color(0xFFE2E8F0)
-                                    ),
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
-                                        .clickable { selectedFilter = filterName }
-                                ) {
-                                    Text(
-                                        text = filterName,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color.White else Color(0xFF475569),
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
-                                    )
+                        // Always-visible Search Bar
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Search activity by name, type, or amount...", fontSize = 13.sp) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Search, contentDescription = null, tint = Color(0xFF64748B))
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Filled.Close, contentDescription = "Clear", tint = Color(0xFF64748B))
+                                    }
                                 }
-                            }
-                        }
-
-                        // Expandable Search / Keyword Filter Box
-                        AnimatedVisibility(visible = showSearchField) {
-                            Column {
-                                Spacer(Modifier.height(10.dp))
-                                OutlinedTextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    placeholder = { Text("Search activity by name or type...", fontSize = 13.sp) },
-                                    leadingIcon = {
-                                        Icon(Icons.Filled.Search, contentDescription = null, tint = Color(0xFF64748B))
-                                    },
-                                    trailingIcon = {
-                                        if (searchQuery.isNotEmpty()) {
-                                            IconButton(onClick = { searchQuery = "" }) {
-                                                Icon(Icons.Filled.Close, contentDescription = "Clear", tint = Color(0xFF64748B))
-                                            }
-                                        }
-                                    },
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(14.dp),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedContainerColor = Color.White,
-                                        unfocusedContainerColor = Color.White,
-                                        focusedBorderColor = Color(0xFF2563EB),
-                                        unfocusedBorderColor = Color(0xFFE2E8F0),
-                                        focusedTextColor = Color(0xFF0F172A),
-                                        unfocusedTextColor = Color(0xFF0F172A)
-                                    )
-                                )
-                            }
-                        }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF2563EB),
+                                unfocusedBorderColor = Color(0xFFE2E8F0),
+                                focusedTextColor = Color(0xFF0F172A),
+                                unfocusedTextColor = Color(0xFF0F172A)
+                            )
+                        )
                     }
                 }
 
@@ -704,7 +639,7 @@ fun HomeScreen(navController: NavController) {
                     item { ActivityShimmer() }
                 } else if (filteredActivities.isEmpty()) {
                     item {
-                        if (selectedFilter != "All" || searchQuery.isNotBlank()) {
+                        if (searchQuery.isNotBlank()) {
                             Box(
                                 Modifier
                                     .fillMaxWidth()
@@ -713,24 +648,21 @@ fun HomeScreen(navController: NavController) {
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
-                                        Icons.Filled.FilterAltOff,
+                                        Icons.Filled.SearchOff,
                                         contentDescription = null,
                                         tint = Color(0xFF94A3B8),
                                         modifier = Modifier.size(40.dp)
                                     )
                                     Spacer(Modifier.height(8.dp))
                                     Text(
-                                        "No activities match filter \"$selectedFilter\"${if (searchQuery.isNotBlank()) " • \"$searchQuery\"" else ""}.",
+                                        "No activities match \"$searchQuery\".",
                                         fontSize = 13.sp,
                                         color = Color(0xFF64748B),
                                         textAlign = TextAlign.Center
                                     )
                                     Spacer(Modifier.height(6.dp))
-                                    TextButton(onClick = {
-                                        selectedFilter = "All"
-                                        searchQuery = ""
-                                    }) {
-                                        Text("Reset Filter", fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                                    TextButton(onClick = { searchQuery = "" }) {
+                                        Text("Clear Search", fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
                                     }
                                 }
                             }
@@ -829,6 +761,10 @@ private fun ObligationCard(
     iconColor: Color,
     onClick: () -> Unit
 ) {
+    val (cleanTitle, category) = remember(title) {
+        parseCategorizedTitle(title)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -857,16 +793,25 @@ private fun ObligationCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    title,
-                    fontSize = 14.sp,
+                    cleanTitle,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF0F172A)
                 )
+                if (!category.isNullOrBlank()) {
+                    Spacer(Modifier.height(1.dp))
+                    Text(
+                        category,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF475569)
+                    )
+                }
                 Spacer(Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(subtitle, fontSize = 12.sp, color = Color(0xFF64748B))
+                    Text(subtitle, fontSize = 11.sp, color = Color(0xFF64748B))
                     if (highlightedText.isNotEmpty()) {
-                        Text(highlightedText, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF97316))
+                        Text(highlightedText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF97316))
                     }
                 }
             }
@@ -909,6 +854,9 @@ private fun ActivityRow(
         "Wallet" -> Icons.Filled.AccountBalanceWallet
         else -> Icons.Filled.Info
     }
+    val (cleanTitle, category) = remember(activity.title) {
+        parseCategorizedTitle(activity.title)
+    }
 
     Card(
         modifier = Modifier
@@ -936,12 +884,26 @@ private fun ActivityRow(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    activity.title,
-                    fontSize = 14.sp,
+                    cleanTitle,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF0F172A)
                 )
-                Text(activity.subtitle, fontSize = 12.sp, color = Color(0xFF64748B))
+                if (!category.isNullOrBlank()) {
+                    Spacer(Modifier.height(1.dp))
+                    Text(
+                        category,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF475569)
+                    )
+                }
+                Spacer(Modifier.height(1.dp))
+                Text(
+                    activity.subtitle.replace("[", "").replace("]", ""),
+                    fontSize = if (category != null) 11.sp else 12.sp,
+                    color = Color(0xFF64748B)
+                )
             }
             Text(
                 if (isHidden) "₱ •••••" else activity.amount,

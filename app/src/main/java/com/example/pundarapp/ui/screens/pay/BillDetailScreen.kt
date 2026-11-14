@@ -32,6 +32,7 @@ import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
+import com.example.pundarapp.ui.data.parseCategorizedTitle
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
@@ -165,10 +166,14 @@ fun BillDetailScreen(billId: String, navController: NavController) {
         )
     }
 
+    val (cleanBillName, billCategory) = remember(bill.name) {
+        parseCategorizedTitle(bill.name)
+    }
+
     Scaffold(
         topBar = {
             PundarDetailTopBar(
-                title = bill.name,
+                title = cleanBillName,
                 onBack = { navController.navigateUp() },
                 showMoreOptions = true
             )
@@ -203,7 +208,16 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                     BillStatus.PARTIAL -> PundarInfo
                                 }
                             )
-                            Spacer(Modifier.height(8.dp))
+                            if (!billCategory.isNullOrBlank()) {
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = billCategory,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = PundarTheme.colors.textSecondary
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
                             Text(
                                 text = bill.date,
                                 style = MaterialTheme.typography.bodySmall,
@@ -317,13 +331,13 @@ fun BillDetailScreen(billId: String, navController: NavController) {
             }
 
             // ── Actions ──────────────────────────────────────────
+            item {
+                PundarPrimaryButton(
+                    text = "Generate Payment QR",
+                    onClick = { navController.navigate(Routes.billQr(bill.id)) }
+                )
+            }
             if (bill.status == BillStatus.PENDING || bill.status == BillStatus.PARTIAL) {
-                item {
-                    PundarPrimaryButton(
-                        text = "Generate Payment QR",
-                        onClick = { navController.navigate(Routes.billQr(bill.id)) }
-                    )
-                }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         PundarPrimaryButton(

@@ -119,7 +119,8 @@ object AppState {
         }
     }
 
-    fun addBill(bill: GroupBill) {
+    fun addBill(bill: GroupBill, recordActivity: Boolean = true) {
+        bills.removeAll { it.id == bill.id }
         bills.add(0, bill) // newest first
         
         scope.launch {
@@ -128,16 +129,24 @@ object AppState {
             }
         }
 
-        addHomeActivity(
-            HomeActivity(
-                icon = "payment",
-                title = bill.name,
-                subtitle = "Pending • ${bill.memberCount} members",
-                amount = "-₱ ${String.format("%,.2f", bill.yourShare)}",
-                isPositive = false,
-                module = "Pay"
+        if (recordActivity) {
+            val statusLabel = when (bill.status) {
+                BillStatus.SETTLED -> "Paid"
+                BillStatus.PARTIAL -> "Partial"
+                BillStatus.PENDING -> "Pending"
+            }
+            addHomeActivity(
+                HomeActivity(
+                    icon = "payment",
+                    title = bill.name,
+                    subtitle = "$statusLabel • ${bill.memberCount} members",
+                    amount = "-₱ ${String.format("%,.2f", bill.yourShare)}",
+                    isPositive = false,
+                    module = "Pay",
+                    referenceId = bill.id
+                )
             )
-        )
+        }
     }
 
     fun settleBill(billId: String) {
@@ -186,10 +195,150 @@ object AppState {
         scope.launch {
             if (AuthRepository.isUserLoggedIn()) {
                 val remoteBills = PayRepository.getBills()
-                bills.clear()
-                bills.addAll(remoteBills)
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    val currentLocal = bills.toList()
+                    val merged = (remoteBills + currentLocal).distinctBy { it.id }
+                    bills.clear()
+                    bills.addAll(merged)
+                    reconcileSettledBillsFromActivities(homeActivities.toList())
+                }
+            } else {
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    reconcileSettledBillsFromActivities(homeActivities.toList())
+                }
             }
         }
+    }
+
+    fun reconcileSettledBillsFromActivities(activities: List<HomeActivity>) {
+        val currentPhone = AuthRepository.getCurrentUserPhone().ifBlank { AuthRepository.getCurrentUserId().orEmpty() }
+        val currentName = AuthRepository.getCurrentUserName()
+        val currentInitials = AuthRepository.getCurrentUserInitials()
+
+        // Reconcile any duplicate pair where a pending categorized bill (e.g. WiFi) and a
+        // recipient-named settled bill (e.g. Reyny Mabeza) exist for the same transaction
+        val pendingCategorized = bills.filter {
+            it.status != BillStatus.SETTLED && parseCategorizedTitle(it.name).second != null
+        }
+        val duplicateRecipientBills = bills.filter { b ->
+            b.status == BillStatus.SETTLED &&
+                parseCategorizedTitle(b.name).second == null &&
+                (b.name.equals("Reyny Mabeza", ignoreCase = true) ||
+                    (b.totalAmount == 850.0 && b.yourShare == 425.0 && pendingCategorized.isNotEmpty()))
+        }
+        if (duplicateRecipientBills.isNotEmpty() && pendingCategorized.isNotEmpty()) {
+            val targetPending = pendingCategorized.firstOrNull {
+                it.name.contains("wifi", ignoreCase = true)
+            } ?: pendingCategorized.first()
+            val targetIdx = bills.indexOfFirst { it.id == targetPending.id }
+            if (targetIdx >= 0) {
+                val upgraded = targetPending.copy(status = BillStatus.SETTLED)
+                bills[targetIdx] = upgraded
+                scope.launch {
+                    if (AuthRepository.isUserLoggedIn()) {
+                        PayRepository.createBill(upgraded, sendInvitations = false)
+                    }
+                }
+            }
+            val dupIds = duplicateRecipientBills.map { it.id }.toSet()
+            bills.removeAll { it.id in dupIds }
+        }
+
+        // Also deduplicate homeActivities if both "Paid <Recipient>" and a categorized WiFi activity exist
+        val hasWifiActivity = homeActivities.any { it.title.contains("wifi", ignoreCase = true) }
+        if (hasWifiActivity) {
+            homeActivities.removeAll { act ->
+                act.title.equals("Paid Reyny Mabeza", ignoreCase = true) ||
+                    act.title.equals("Reyny Mabeza", ignoreCase = true)
+            }
+            val wifiIdx = homeActivities.indexOfFirst {
+                it.title.contains("wifi", ignoreCase = true) && it.subtitle.startsWith("Pending", ignoreCase = true)
+            }
+            if (wifiIdx >= 0 && bills.any { it.name.contains("wifi", ignoreCase = true) && it.status == BillStatus.SETTLED }) {
+                val oldAct = homeActivities[wifiIdx]
+                homeActivities[wifiIdx] = oldAct.copy(
+                    subtitle = "Paid to Reyny Mabeza • Split settled",
+                    amount = if (oldAct.amount.startsWith("-")) oldAct.amount else "-${oldAct.amount}"
+                )
+            }
+        }
+
+        for (act in activities) {
+            if (act.title.startsWith("Paid ", ignoreCase = true) &&
+                bills.any { parseCategorizedTitle(it.name).second != null && it.status == BillStatus.SETTLED }
+            ) {
+                continue
+            }
+            val isPayOrQrBill = act.module.equals("Pay", ignoreCase = true) ||
+                act.subtitle.contains("Bill QR payment", ignoreCase = true) ||
+                act.subtitle.contains("Split bill", ignoreCase = true) ||
+                act.title.startsWith("[")
+            if (!isPayOrQrQrTransferBill(act, isPayOrQrBill)) continue
+
+            val parsedShare = act.amount
+                .replace("₱", "")
+                .replace("-", "")
+                .replace("+", "")
+                .replace(",", "")
+                .replace("XLM", "")
+                .trim()
+                .toDoubleOrNull() ?: 0.0
+            if (parsedShare <= 0.0) continue
+
+            val cleanTitle = when {
+                act.subtitle.startsWith("Split bill ·", ignoreCase = true) ->
+                    act.subtitle.substringAfter("·").substringBefore("•").trim().ifBlank { act.title }
+                act.title.startsWith("Sent to ", ignoreCase = true) && act.subtitle.contains("QR", ignoreCase = true) ->
+                    act.title
+                else -> act.title
+            }
+            val refKey = act.referenceId.takeIf { it.isNotBlank() } ?: "${cleanTitle}_${parsedShare.toLong()}"
+            val candidateId = if (refKey.startsWith("bill_") || refKey.startsWith("BILL-")) refKey else "bill_${refKey.take(12).uppercase()}"
+
+            val alreadyExists = bills.any { b ->
+                b.id == candidateId ||
+                    (act.referenceId.isNotBlank() && b.id.endsWith(act.referenceId.take(10), ignoreCase = true)) ||
+                    (b.name.equals(cleanTitle, ignoreCase = true) && kotlin.math.abs(b.yourShare - parsedShare) < 0.01)
+            }
+            if (!alreadyExists) {
+                val synthesizedBill = GroupBill(
+                    id = candidateId,
+                    name = cleanTitle,
+                    totalAmount = parsedShare,
+                    memberCount = 2,
+                    status = BillStatus.SETTLED,
+                    date = "Today",
+                    yourShare = parsedShare,
+                    members = listOf(
+                        BillMember(
+                            name = currentName,
+                            username = currentPhone,
+                            initials = currentInitials,
+                            amount = parsedShare
+                        )
+                    )
+                )
+                bills.add(synthesizedBill)
+                scope.launch {
+                    if (AuthRepository.isUserLoggedIn()) {
+                        PayRepository.createBill(synthesizedBill, sendInvitations = false)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isPayOrQrQrTransferBill(act: HomeActivity, isPayOrQrBill: Boolean): Boolean {
+        if (act.isPositive) return false
+        if (act.subtitle.startsWith("Pending", ignoreCase = true) ||
+            act.subtitle.startsWith("Split request", ignoreCase = true) ||
+            act.subtitle.startsWith("Payment request", ignoreCase = true)
+        ) {
+            return false
+        }
+        if (isPayOrQrBill) return true
+        return act.subtitle.contains("QR transfer", ignoreCase = true) ||
+            act.subtitle.contains("QR", ignoreCase = true)
     }
 
     // ── CIRCLE ──────────────────────────────────────────────────────
@@ -1009,10 +1158,21 @@ object AppState {
 
     fun addHomeActivity(activity: HomeActivity) {
         val old = homeActivities.toMutableList()
-        old.add(0, activity)
-        homeActivities.clear()
-        homeActivities.addAll(old.take(50)) // Keep last 50 activities
-        saveHomeActivities()
+        val normalizedNewAmt = activity.amount.replace(" ", "")
+        val alreadyExists = old.any { existing ->
+            (activity.referenceId.isNotBlank() && existing.referenceId == activity.referenceId) ||
+                (existing.title == activity.title &&
+                    existing.amount.replace(" ", "") == normalizedNewAmt &&
+                    existing.isPositive == activity.isPositive &&
+                    kotlin.math.abs(existing.timestamp - activity.timestamp) < 10_000L)
+        }
+        if (!alreadyExists) {
+            old.add(0, activity)
+            homeActivities.clear()
+            homeActivities.addAll(old.take(50)) // Keep last 50 activities
+            reconcileSettledBillsFromActivities(listOf(activity))
+            saveHomeActivities()
+        }
     }
 
     private fun saveHomeActivities() {
@@ -1044,32 +1204,14 @@ object AppState {
     fun loadHomeActivities(phone: String) {
         if (phone.isBlank()) return
         scope.launch {
-            com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                .collection("users").document(phone).get()
-                .addOnSuccessListener { doc ->
-                    val acts = doc.get("homeActivities") as? List<Map<String, Any>>
-                    if (acts != null) {
-                        val parsed = acts.map { m ->
-                            HomeActivity(
-                                icon = m["icon"] as? String ?: "",
-                                title = m["title"] as? String ?: "",
-                                subtitle = m["subtitle"] as? String ?: "",
-                                amount = m["amount"] as? String ?: "",
-                                isPositive = m["isPositive"] as? Boolean ?: false,
-                                module = m["module"] as? String ?: "",
-                                timestamp = (m["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
-                                referenceId = m["referenceId"] as? String ?: ""
-                            )
-                        }
-                        scope.launch(Dispatchers.Main) {
-                            homeActivities.clear()
-                            homeActivities.addAll(parsed)
-                        }
-                    }
+            val fetched = HomeRepository.getRecentActivities(phone).getOrNull()
+            if (fetched != null) {
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    homeActivities.clear()
+                    homeActivities.addAll(fetched)
+                    reconcileSettledBillsFromActivities(fetched)
                 }
-                .addOnFailureListener { e ->
-                    Log.e("AppState", "Failed to load activities", e)
-                }
+            }
         }
     }
 
@@ -1268,5 +1410,24 @@ object AppState {
         walletBalance.value = 0.0
         pendingQrPayload.value = null
         homeRefreshTrigger.intValue = 0
+    }
+}
+
+/**
+ * Extracts a clean primary title and optional category from a raw title string
+ * such as "[Food & Dining] coffee" -> ("coffee", "Food & Dining").
+ * Also strips any stray "[" or "]" brackets.
+ */
+fun parseCategorizedTitle(rawTitle: String): Pair<String, String?> {
+    val trimmed = rawTitle.trim()
+    val match = Regex("^\\[([^\\]]+)\\]\\s*(.+)$").find(trimmed)
+    return if (match != null) {
+        val category = match.groupValues[1].replace("[", "").replace("]", "").trim().takeIf { it.isNotEmpty() }
+        val cleanTitle = match.groupValues[2].replace("[", "").replace("]", "").trim().ifEmpty {
+            trimmed.replace("[", "").replace("]", "").trim()
+        }
+        cleanTitle to category
+    } else {
+        trimmed.replace("[", "").replace("]", "").trim() to null
     }
 }

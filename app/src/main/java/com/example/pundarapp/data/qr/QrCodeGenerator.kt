@@ -33,7 +33,8 @@ object QrCodeGenerator {
         amount: Double? = null,
         totalBillAmount: Double? = null,
         participantCount: Int? = null,
-        billRef: String? = null
+        billRef: String? = null,
+        transactionId: String? = null
     ): QrPayload = QrPayload(
         type = if ((participantCount ?: 1) > 1) QrPayload.TYPE_GROUP_BILL_JOIN else QrPayload.TYPE_RECEIVE_MONEY,
         version = 1,
@@ -45,6 +46,7 @@ object QrCodeGenerator {
         totalBillAmount = totalBillAmount,
         participantCount = participantCount,
         billRef = billRef,
+        transactionId = transactionId,
         timestamp = System.currentTimeMillis(),
         securityToken = userId // Static token for personal receive money QR
     )

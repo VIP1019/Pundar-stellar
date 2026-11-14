@@ -201,7 +201,7 @@ fun SendMoneyScreen(navController: NavController) {
                                         isPositive = false,
                                         module    = "Wallet"
                                     )
-                                    AppState.homeActivities.add(0, activity)
+                                    AppState.addHomeActivity(activity)
                                     val uid = AuthRepository.getCurrentUserId()
                                     if (uid != null) HomeRepository.createActivity(uid, activity)
                                     AppState.incrementPundarScore(2) // +2 points for sending money

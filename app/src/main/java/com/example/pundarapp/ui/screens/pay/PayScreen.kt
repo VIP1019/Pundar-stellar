@@ -29,6 +29,7 @@ import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
+import com.example.pundarapp.ui.data.parseCategorizedTitle
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
@@ -36,7 +37,11 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayScreen(navController: NavController) {
-    val bills         = AppState.bills
+    LaunchedEffect(Unit) {
+        AppState.reconcileSettledBillsFromActivities(AppState.homeActivities.toList())
+        AppState.refreshBills()
+    }
+    val bills         = AppState.bills.distinctBy { it.id }
     val settledCount  = bills.count { it.status == BillStatus.SETTLED }
     val pendingCount  = bills.count { it.status == BillStatus.PENDING || it.status == BillStatus.PARTIAL }
     val monthTotal    = bills.sumOf { it.yourShare }
@@ -56,11 +61,7 @@ fun PayScreen(navController: NavController) {
             onRefresh = {
                 isRefreshing = true
                 scope.launch {
-                    if (AuthRepository.isUserLoggedIn()) {
-                        val remoteBills = com.example.pundarapp.data.remote.PayRepository.getBills()
-                        bills.clear()
-                        bills.addAll(remoteBills)
-                    }
+                    AppState.refreshBills()
                     isRefreshing = false
                 }
             },
@@ -276,12 +277,6 @@ fun PayScreen(navController: NavController) {
                                     onClick = { navController.navigate(Routes.PAY_NEW_BILL) }
                                 )
                                 PayFloatingActionItem(
-                                    icon = Icons.Filled.FlashOn,
-                                    label = "Instant Settle",
-                                    tint = Color(0xFFF59E0B),
-                                    onClick = { navController.navigate(Routes.INSTANT_SETTLE) }
-                                )
-                                PayFloatingActionItem(
                                     icon = Icons.Filled.QrCodeScanner,
                                     label = "Scan QR",
                                     tint = Color(0xFF10B981),
@@ -440,6 +435,9 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, onClick: () 
         BillStatus.PENDING -> "Pending"
         BillStatus.PARTIAL -> "Partial"
     }
+    val (cleanTitle, category) = remember(bill.name) {
+        parseCategorizedTitle(bill.name)
+    }
 
     Surface(
         modifier = Modifier
@@ -465,11 +463,20 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, onClick: () 
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    bill.name,
-                    style = MaterialTheme.typography.titleSmall,
+                    cleanTitle,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = PundarTheme.colors.textPrimary
                 )
+                if (!category.isNullOrBlank()) {
+                    Spacer(Modifier.height(1.dp))
+                    Text(
+                        category,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = PundarTheme.colors.textSecondary
+                    )
+                }
                 Spacer(Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(

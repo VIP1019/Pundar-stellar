@@ -25,6 +25,7 @@ import androidx.navigation.NavController
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.HomeActivity
+import com.example.pundarapp.ui.data.parseCategorizedTitle
 import com.example.pundarapp.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +44,22 @@ fun ActivityHistoryScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (AppState.homeActivities.isEmpty()) {
+            val uniqueActivities = remember(AppState.homeActivities.toList()) {
+                val list = mutableListOf<HomeActivity>()
+                for (act in AppState.homeActivities) {
+                    val normAmt = act.amount.replace(" ", "")
+                    val isDup = list.any { existing ->
+                        (act.referenceId.isNotBlank() && existing.referenceId == act.referenceId) ||
+                            (existing.title == act.title &&
+                                existing.amount.replace(" ", "") == normAmt &&
+                                existing.isPositive == act.isPositive &&
+                                kotlin.math.abs(existing.timestamp - act.timestamp) < 15_000L)
+                    }
+                    if (!isDup) list.add(act)
+                }
+                list
+            }
+            if (uniqueActivities.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No recent activities.", color = PundarTheme.colors.textMuted)
                 }
@@ -52,7 +68,7 @@ fun ActivityHistoryScreen(navController: NavController) {
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)
                 ) {
-                    itemsIndexed(AppState.homeActivities) { _, activity ->
+                    itemsIndexed(uniqueActivities) { _, activity ->
                         ActivityRowClickable(
                             activity = activity,
                             onClick = { selectedActivity = activity }
@@ -88,6 +104,9 @@ private fun ActivityRowClickable(activity: HomeActivity, onClick: () -> Unit) {
         "Wallet" -> Icons.Filled.AccountBalanceWallet
         else     -> Icons.Filled.Info
     }
+    val (cleanTitle, category) = remember(activity.title) {
+        parseCategorizedTitle(activity.title)
+    }
 
     Row(
         modifier = Modifier
@@ -109,17 +128,27 @@ private fun ActivityRowClickable(activity: HomeActivity, onClick: () -> Unit) {
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = activity.title,
+                text = cleanTitle,
                 color = PundarTheme.colors.textPrimary,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
                 maxLines = 1
             )
+            if (!category.isNullOrBlank()) {
+                Spacer(Modifier.height(1.dp))
+                Text(
+                    text = category,
+                    color = PundarTheme.colors.textSecondary,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 12.sp,
+                    maxLines = 1
+                )
+            }
             Spacer(Modifier.height(2.dp))
             Text(
-                text = activity.subtitle,
+                text = activity.subtitle.replace("[", "").replace("]", ""),
                 color = PundarTheme.colors.textMuted,
-                fontSize = 12.sp,
+                fontSize = if (category != null) 11.sp else 12.sp,
                 maxLines = 1
             )
         }

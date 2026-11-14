@@ -312,6 +312,14 @@ object QrPaymentRepository {
                             com.google.firebase.firestore.SetOptions.merge()
                         )
                     }
+                    if (!payload.transactionId.isNullOrBlank()) {
+                        try {
+                            db.collection("group_bills").document(payload.transactionId)
+                                .update("status", BillStatus.SETTLED.name)
+                                .await()
+                        } catch (_: Exception) {
+                        }
+                    }
                     if (payload.type == QrPayload.TYPE_BILL_PAYMENT && billQrRecord != null) {
                         batch.update(
                             db.collection("group_bills").document(billQrRecord.billId),

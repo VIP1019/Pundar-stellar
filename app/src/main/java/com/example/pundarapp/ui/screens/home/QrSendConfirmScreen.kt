@@ -47,6 +47,7 @@ import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillMember
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.data.GroupBill
+import com.example.pundarapp.ui.data.parseCategorizedTitle
 import com.example.pundarapp.ui.theme.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -314,8 +315,10 @@ fun QrSendConfirmScreen(navController: NavController) {
                                     // Join bill and mark settled
                                     val totalParticipants = (payload.participantCount ?: 2).coerceAtLeast(1)
                                     val totalBillAmt = payload.totalBillAmount ?: (sendAmount * totalParticipants)
+                                    val billDocId = payload.transactionId?.takeIf { it.isNotBlank() }
+                                        ?: "bill_${ref.take(10).uppercase()}"
                                     val newBill = GroupBill(
-                                        id = payload.transactionId ?: "BILL-${UUID.randomUUID().toString().take(8).uppercase()}",
+                                        id = billDocId,
                                         name = billTitle.ifBlank { "Group Bill (${recipient.displayName})" },
                                         totalAmount = totalBillAmt,
                                         memberCount = totalParticipants,
@@ -327,28 +330,80 @@ fun QrSendConfirmScreen(navController: NavController) {
                                             BillMember(name = AuthRepository.getCurrentUserName(), username = AuthRepository.getCurrentUserPhone(), initials = AuthRepository.getCurrentUserInitials(), amount = sendAmount)
                                         )
                                     )
+                                    AppState.bills.removeAll { it.id == newBill.id }
                                     AppState.bills.add(0, newBill)
+                                    com.example.pundarapp.data.remote.PayRepository.createBill(newBill, sendInvitations = false)
                                     val activity = QrPaymentRepository.homeActivityForBillPayment(
                                         billTitle.ifBlank { "Group Pay" },
                                         sendAmount
-                                    )
-                                    AppState.homeActivities.add(0, activity)
+                                    ).copy(referenceId = ref)
+                                    AppState.addHomeActivity(activity)
                                     HomeRepository.createActivity(senderId, activity)
                                     Toast.makeText(context, "Joined & Paid! Ref: ${ref.take(10)}", Toast.LENGTH_LONG).show()
                                 } else if (payload.type == QrPayload.TYPE_BILL_PAYMENT) {
-                                    BillQrRepository.getRecord(payload.securityToken)?.billId?.let {
-                                        AppState.markBillSettled(it)
+                                    val linkedBillId = BillQrRepository.getRecord(payload.securityToken)?.billId
+                                        ?: payload.transactionId?.takeIf { it.isNotBlank() }
+                                        ?: "bill_${ref.take(10).uppercase()}"
+                                    if (AppState.bills.any { it.id == linkedBillId }) {
+                                        AppState.markBillSettled(linkedBillId)
+                                    } else {
+                                        val totalParticipants = (payload.participantCount ?: 2).coerceAtLeast(1)
+                                        val totalBillAmt = payload.totalBillAmount ?: (sendAmount * totalParticipants)
+                                        val settledBill = GroupBill(
+                                            id = linkedBillId,
+                                            name = payload.billRef?.takeIf { it.isNotBlank() } ?: "Bill (${recipient.displayName})",
+                                            totalAmount = totalBillAmt,
+                                            memberCount = totalParticipants,
+                                            status = BillStatus.SETTLED,
+                                            date = "Today",
+                                            yourShare = sendAmount,
+                                            members = listOf(
+                                                BillMember(name = recipient.displayName, username = recipient.userId, initials = recipient.displayName.take(2).uppercase(), amount = sendAmount),
+                                                BillMember(name = AuthRepository.getCurrentUserName(), username = AuthRepository.getCurrentUserPhone(), initials = AuthRepository.getCurrentUserInitials(), amount = sendAmount)
+                                            )
+                                        )
+                                        AppState.bills.removeAll { it.id == settledBill.id }
+                                        AppState.bills.add(0, settledBill)
+                                        com.example.pundarapp.data.remote.PayRepository.createBill(settledBill, sendInvitations = false)
                                     }
                                     val activity = QrPaymentRepository.homeActivityForBillPayment(
                                         payload.billRef ?: "Bill",
                                         sendAmount
-                                    )
-                                    AppState.homeActivities.add(0, activity)
+                                    ).copy(referenceId = ref)
+                                    AppState.addHomeActivity(activity)
                                     HomeRepository.createActivity(senderId, activity)
                                     Toast.makeText(context, "Bill Paid! Ref: ${ref.take(10)}", Toast.LENGTH_LONG).show()
                                 } else {
-                                    val activity = QrPaymentRepository.homeActivityForSend(recipient.displayName, sendAmount)
-                                    AppState.homeActivities.add(0, activity)
+                                    val totalParticipants = (payload.participantCount ?: 2).coerceAtLeast(1)
+                                    val totalBillAmt = payload.totalBillAmount ?: sendAmount
+                                    val resolvedBillTitle = payload.billRef?.takeIf { it.isNotBlank() }
+                                        ?: note.takeIf { it.isNotBlank() }
+                                        ?: "QR Payment (${recipient.displayName})"
+                                    val settledBill = GroupBill(
+                                        id = payload.transactionId?.takeIf { it.isNotBlank() } ?: "bill_${ref.take(10).uppercase()}",
+                                        name = resolvedBillTitle,
+                                        totalAmount = totalBillAmt,
+                                        memberCount = totalParticipants,
+                                        status = BillStatus.SETTLED,
+                                        date = "Today",
+                                        yourShare = sendAmount,
+                                        members = listOf(
+                                            BillMember(name = recipient.displayName, username = recipient.userId, initials = recipient.displayName.take(2).uppercase(), amount = sendAmount),
+                                            BillMember(name = AuthRepository.getCurrentUserName(), username = AuthRepository.getCurrentUserPhone(), initials = AuthRepository.getCurrentUserInitials(), amount = sendAmount)
+                                        )
+                                    )
+                                    AppState.bills.removeAll { it.id == settledBill.id }
+                                    AppState.bills.add(0, settledBill)
+                                    com.example.pundarapp.data.remote.PayRepository.createBill(settledBill, sendInvitations = false)
+
+                                    val activity = if (isBillDetected) {
+                                        QrPaymentRepository.homeActivityForBillPayment(resolvedBillTitle, sendAmount)
+                                            .copy(referenceId = ref)
+                                    } else {
+                                        QrPaymentRepository.homeActivityForSend(recipient.displayName, sendAmount)
+                                            .copy(referenceId = ref)
+                                    }
+                                    AppState.addHomeActivity(activity)
                                     HomeRepository.createActivity(senderId, activity)
                                     Toast.makeText(context, "Payment Sent! Ref: ${ref.take(10)}", Toast.LENGTH_LONG).show()
                                 }
@@ -448,7 +503,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                                     BillMember(name = AuthRepository.getCurrentUserName(), username = AuthRepository.getCurrentUserPhone(), initials = AuthRepository.getCurrentUserInitials(), amount = shareAmount)
                                 )
                             )
-                            AppState.bills.add(0, newBill)
+                            AppState.addBill(newBill, recordActivity = false)
                             Toast.makeText(context, "Joined bill! Added to Upcoming Obligations.", Toast.LENGTH_LONG).show()
                             AppState.requestHomeRefresh()
                             navController.navigateUp()
@@ -634,12 +689,24 @@ fun QrSendConfirmScreen(navController: NavController) {
 
             // Mode-Specific Form Fields
             if (activeMode == QrActionMode.JOIN_PAY) {
+                val (displayBillTitle, displayCategory) = remember(billTitle) {
+                    parseCategorizedTitle(billTitle)
+                }
                 // Bill title field
                 OutlinedTextField(
-                    value = billTitle,
+                    value = displayBillTitle,
                     onValueChange = { if (!isBillTitleLocked) billTitle = it },
                     readOnly = isBillTitleLocked,
                     label = { Text("Bill / Event Title") },
+                    supportingText = if (!displayCategory.isNullOrBlank()) {
+                        {
+                            Text(
+                                text = displayCategory,
+                                fontSize = 12.sp,
+                                color = PundarTheme.colors.textSecondary
+                            )
+                        }
+                    } else null,
                     trailingIcon = if (isBillTitleLocked) {
                         { Icon(Icons.Filled.Lock, contentDescription = "Fixed Title", tint = PundarTheme.colors.brandPrimary, modifier = Modifier.size(16.dp)) }
                     } else null,

@@ -341,12 +341,6 @@ fun UserSettingsScreen(navController: NavController) {
                 SettingsRow(Icons.Filled.Lock,        "Change MPIN",       PundarTheme.colors.accentOrange) {
                     navController.navigate(Routes.CHANGE_MPIN)
                 }
-                RowDivider()
-                SettingsRow(Icons.Filled.Password,    "Change Password",   PundarTheme.colors.accentOrange) {}
-                RowDivider()
-                SettingsRow(Icons.Filled.Fingerprint, "Biometrics",        PundarTheme.colors.accentOrange, sub = "Coming soon") {}
-                RowDivider()
-                SettingsRow(Icons.Filled.Devices,     "Device Management", PundarTheme.colors.accentOrange) {}
             }
 
             Spacer(Modifier.height(16.dp))
