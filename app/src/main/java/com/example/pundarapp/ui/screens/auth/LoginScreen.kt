@@ -33,6 +33,7 @@ import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.Icon3DWarning
 import com.example.pundarapp.ui.components.PundarPrimaryButton
+import com.example.pundarapp.ui.components.PundarStatusDialog
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
@@ -51,15 +52,25 @@ fun LoginScreen(navController: NavController) {
     var mpinVisible  by remember { mutableStateOf(false) }
     var isLoading    by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var errorDialogMessage by remember { mutableStateOf<String?>(null) }
     val scope        = rememberCoroutineScope()
 
     val headerAlpha   = remember { Animatable(0f) }
     val formAlpha     = remember { Animatable(0f) }
     val formSlide     = remember { Animatable(28f) }
     LaunchedEffect(Unit) {
-        headerAlpha.animateTo(1f, tween(520, easing = EaseOutExpo))
-        formAlpha.animateTo(1f, tween(480, delayMillis = 160, easing = EaseOutExpo))
-        formSlide.animateTo(0f, tween(480, delayMillis = 160, easing = EaseOutExpo))
+        launch { headerAlpha.animateTo(1f, tween(420, easing = EaseOutExpo)) }
+        launch { formAlpha.animateTo(1f, tween(420, delayMillis = 80, easing = EaseOutExpo)) }
+        launch { formSlide.animateTo(0f, tween(420, delayMillis = 80, easing = EaseOutExpo)) }
+    }
+
+    errorDialogMessage?.let { msg ->
+        PundarStatusDialog(
+            title = "Sign In Failed",
+            message = msg,
+            isError = true,
+            onDismiss = { errorDialogMessage = null }
+        )
     }
 
     val inf   = rememberInfiniteTransition(label = "loginBg")
@@ -215,14 +226,17 @@ fun LoginScreen(navController: NavController) {
                                     AppState.refreshWalletBalance()
                                     AppState.refreshNotifications()
                                     AppState.loadFavorites()
+                                    AppState.checkAndTriggerProductTour(phone)
                                     navController.navigate(Routes.HOME) {
                                         popUpTo(Routes.LOGIN) { inclusive = true }
                                     }
                                 } else {
                                     val msg = result.exceptionOrNull()?.message ?: "Unknown error"
-                                    errorMessage = if (msg.contains("Invalid login credentials"))
+                                    val friendly = if (msg.contains("Invalid login credentials"))
                                         "Invalid Mobile Number or MPIN."
                                     else "Error: $msg"
+                                    errorMessage = friendly
+                                    errorDialogMessage = friendly
                                 }
                             }
                         }

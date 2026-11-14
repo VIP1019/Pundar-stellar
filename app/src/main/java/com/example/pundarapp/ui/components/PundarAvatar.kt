@@ -51,8 +51,13 @@ fun PundarAvatar(
                 .background(innerBackground)
         ) {
             if (!imageUrl.isNullOrBlank()) {
+                val modelData: Any = if (imageUrl.startsWith("/")) {
+                    java.io.File(imageUrl)
+                } else {
+                    imageUrl
+                }
                 AsyncImage(
-                    model              = imageUrl,
+                    model              = modelData,
                     contentDescription = "Profile photo",
                     modifier           = Modifier.fillMaxSize().clip(CircleShape),
                     contentScale       = ContentScale.Crop

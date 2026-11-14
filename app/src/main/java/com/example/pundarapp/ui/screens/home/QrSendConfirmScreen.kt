@@ -35,9 +35,11 @@ import com.example.pundarapp.data.remote.QrPaymentRepository
 import com.example.pundarapp.data.remote.TransactionPinRepository
 import com.example.pundarapp.data.stellar.StellarWalletManager
 import com.example.pundarapp.ui.components.FuturisticIcon
+import com.example.pundarapp.ui.components.PundarConfirmDialog
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.components.PundarSecondaryButton
+import com.example.pundarapp.ui.components.PundarStatusDialog
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillMember
 import com.example.pundarapp.ui.data.BillStatus
@@ -104,6 +106,23 @@ fun QrSendConfirmScreen(navController: NavController) {
     var isProcessing by remember { mutableStateOf(false) }
     var recipientName by remember { mutableStateOf(payload.displayName ?: "PUNDAR User") }
     var isJoinSettleNow by remember { mutableStateOf(false) }
+    var statusDialogState by remember { mutableStateOf<Triple<String, String, Boolean>?>(null) }
+
+    statusDialogState?.let { (title, msg, isErr) ->
+        PundarStatusDialog(
+            title = title,
+            message = msg,
+            isError = isErr,
+            buttonText = if (isErr) "Try Again" else "Done",
+            onDismiss = {
+                val shouldExit = !isErr && isCompleted
+                statusDialogState = null
+                if (shouldExit) {
+                    navController.navigateUp()
+                }
+            }
+        )
+    }
 
     LaunchedEffect(payload.userId) {
         QrPaymentRepository.lookupRecipient(payload.userId).onSuccess {
@@ -282,9 +301,17 @@ fun QrSendConfirmScreen(navController: NavController) {
 
                                 AppState.requestHomeRefresh()
                                 AppState.refreshNotifications()
-                                navController.navigateUp()
+                                statusDialogState = Triple(
+                                    if (isJoinSettleNow) "Joined & Paid!" else "Payment Sent!",
+                                    "Your payment of ₱${String.format("%,.2f", sendAmount)} to ${recipient.displayName} has been settled. Reference: ${ref.take(10)}",
+                                    false
+                                )
                             }.onFailure { err ->
-                                Toast.makeText(context, err.message ?: "Transfer failed", Toast.LENGTH_LONG).show()
+                                statusDialogState = Triple(
+                                    "Transaction Failed",
+                                    err.message ?: "Unable to complete QR transfer. Please verify your balance and try again.",
+                                    true
+                                )
                             }
                         }
                     }

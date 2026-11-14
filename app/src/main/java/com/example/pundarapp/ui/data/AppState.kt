@@ -1085,8 +1085,9 @@ object AppState {
         }
     }
 
-    // ── SETTINGS ─────────────────────────────────────────────────────────────
+    // ── SETTINGS & ONBOARDING TOUR ───────────────────────────────────────────
     val isBalanceHidden = mutableStateOf(false)
+    val showProductTour = mutableStateOf(false)
     val preferredCurrency = mutableStateOf("PHP")
     val currentExchangeRate = mutableDoubleStateOf(CurrencyRepository.DEFAULT_PHP_PER_XLM)
     val phpExchangeRate = mutableDoubleStateOf(CurrencyRepository.DEFAULT_PHP_PER_XLM)
@@ -1210,6 +1211,25 @@ object AppState {
         val newState = !isBalanceHidden.value
         isBalanceHidden.value = newState
         prefs?.edit()?.putBoolean("hide_balance", newState)?.apply()
+    }
+
+    fun checkAndTriggerProductTour(userId: String, forceNewOnboarding: Boolean = false) {
+        val cleanId = userId.trim().ifBlank { "default" }
+        val key = "has_seen_product_tour_$cleanId"
+        val hasSeen = prefs?.getBoolean(key, false) ?: false
+        if (forceNewOnboarding || !hasSeen) {
+            showProductTour.value = true
+        }
+    }
+
+    fun markProductTourCompleted() {
+        showProductTour.value = false
+        val cleanId = AuthRepository.getCurrentUserPhone().trim().ifBlank { "default" }
+        prefs?.edit()?.putBoolean("has_seen_product_tour_$cleanId", true)?.apply()
+    }
+
+    fun replayProductTour() {
+        showProductTour.value = true
     }
 
     fun getDisplayBalance(): String {

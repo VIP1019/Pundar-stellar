@@ -50,7 +50,7 @@ fun PundarMainTopBar(
             title = {
                 Column {
                     Text(
-                        text = "Kamusta,",
+                        text = "Hello,",
                         fontSize = 11.sp,
                         color = HeroNavySub
                     )
@@ -66,17 +66,16 @@ fun PundarMainTopBar(
                 Box(
                     modifier = Modifier
                         .padding(start = 12.dp, end = 6.dp)
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(HeroNavyButton)
-                        .border(1.5.dp, Color(0xFF3B82F6), CircleShape),
+                        .clickable { onSettingsClick() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        userInitials,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                    PundarAvatar(
+                        initials = userInitials,
+                        imageUrl = profileImageUrl,
+                        size = 42.dp,
+                        showRing = true,
+                        initialsFontSize = 15.sp,
+                        innerBackground = HeroNavyButton
                     )
                 }
             },

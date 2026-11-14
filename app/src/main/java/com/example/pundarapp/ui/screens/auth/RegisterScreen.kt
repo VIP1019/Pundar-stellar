@@ -34,7 +34,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.Icon3DWarning
+import com.example.pundarapp.ui.components.PundarConfirmDialog
 import com.example.pundarapp.ui.components.PundarPrimaryButton
+import com.example.pundarapp.ui.components.PundarStatusDialog
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
@@ -56,13 +58,66 @@ fun RegisterScreen(navController: NavController) {
     var confirmMpinVisible by remember { mutableStateOf(false) }
     var isLoading          by remember { mutableStateOf(false) }
     var errorMessage       by remember { mutableStateOf<String?>(null) }
+    var showRegisterConfirmDialog by remember { mutableStateOf(false) }
+    var errorDialogMessage by remember { mutableStateOf<String?>(null) }
     val scope              = rememberCoroutineScope()
 
     val formAlpha = remember { Animatable(0f) }
     val formSlide = remember { Animatable(24f) }
     LaunchedEffect(Unit) {
-        formAlpha.animateTo(1f, tween(500, easing = EaseOutExpo))
-        formSlide.animateTo(0f, tween(500, easing = EaseOutExpo))
+        launch { formAlpha.animateTo(1f, tween(420, easing = EaseOutExpo)) }
+        launch { formSlide.animateTo(0f, tween(420, easing = EaseOutExpo)) }
+    }
+
+    if (showRegisterConfirmDialog) {
+        PundarConfirmDialog(
+            title = "Confirm Account Registration",
+            message = "Create your PUNDAR wallet account and initialize your Stellar Testnet keypair?",
+            confirmText = "Create Account",
+            dismissText = "Review",
+            details = listOf(
+                "Full Name" to fullName.trim(),
+                "Mobile Number" to phone.trim(),
+                "Security" to "4-Digit Encrypted MPIN"
+            ),
+            onConfirm = {
+                showRegisterConfirmDialog = false
+                isLoading = true
+                errorMessage = null
+                scope.launch {
+                    val result = AuthRepository.registerWithPhone(phone, fullName, mpin)
+                    isLoading = false
+                    if (result.isSuccess) {
+                        AuthRepository.loginWithPhone(phone, mpin)
+                        AppState.refreshWalletBalance()
+                        AppState.refreshNotifications()
+                        AppState.loadFavorites()
+                        AppState.checkAndTriggerProductTour(phone, forceNewOnboarding = true)
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.LOGIN)  { inclusive = true }
+                            popUpTo(Routes.REGISTER) { inclusive = true }
+                        }
+                    } else {
+                        val msg = result.exceptionOrNull()?.message ?: "Unknown error"
+                        val friendly = if (msg.contains("already registered"))
+                            "This mobile number is already registered."
+                        else "Error: $msg"
+                        errorMessage = friendly
+                        errorDialogMessage = friendly
+                    }
+                }
+            },
+            onDismiss = { showRegisterConfirmDialog = false }
+        )
+    }
+
+    errorDialogMessage?.let { errMsg ->
+        PundarStatusDialog(
+            title = "Registration Error",
+            message = errMsg,
+            isError = true,
+            onDismiss = { errorDialogMessage = null }
+        )
     }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
@@ -241,29 +296,10 @@ fun RegisterScreen(navController: NavController) {
                         onClick = {
                             if (mpin != confirmMpin) {
                                 errorMessage = "MPINs do not match."
+                                errorDialogMessage = "Your 4-digit MPIN and Confirm MPIN do not match. Please re-enter them."
                                 return@PundarPrimaryButton
                             }
-                            isLoading    = true
-                            errorMessage = null
-                            scope.launch {
-                                val result = AuthRepository.registerWithPhone(phone, fullName, mpin)
-                                isLoading  = false
-                                if (result.isSuccess) {
-                                    AuthRepository.loginWithPhone(phone, mpin)
-                                    AppState.refreshWalletBalance()
-                                    AppState.refreshNotifications()
-                                    AppState.loadFavorites()
-                                    navController.navigate(Routes.HOME) {
-                                        popUpTo(Routes.LOGIN)  { inclusive = true }
-                                        popUpTo(Routes.REGISTER) { inclusive = true }
-                                    }
-                                } else {
-                                    val msg = result.exceptionOrNull()?.message ?: "Unknown error"
-                                    errorMessage = if (msg.contains("already registered"))
-                                        "This mobile number is already registered."
-                                    else "Error: $msg"
-                                }
-                            }
+                            showRegisterConfirmDialog = true
                         }
                     )
                 }

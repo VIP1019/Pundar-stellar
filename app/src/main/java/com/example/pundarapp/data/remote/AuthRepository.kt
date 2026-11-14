@@ -27,12 +27,14 @@ object AuthRepository {
         val pi = prefs?.getString("user_pi", null)
         
         if (id != null && name != null && phone != null) {
+            val effectivePi = pi?.takeIf { it.isNotBlank() }
+                ?: prefs?.getString("profile_image_$phone", null)?.takeIf { it.isNotBlank() }
             currentUserState.value = UserData(
                 id = id,
                 name = name,
                 phone = phone,
                 stellarPublicKey = pk,
-                profileImageUrl = pi
+                profileImageUrl = effectivePi
             )
         }
     }
@@ -156,7 +158,9 @@ object AuthRepository {
             // Set session
             val name = doc.getString("full_name") ?: "User"
             val publicKey = doc.getString("stellarPublicKey")
-            val profileImage = doc.getString("profile_image_url")
+            val remoteProfileImage = doc.getString("profile_image_url")?.takeIf { it.isNotBlank() }
+            val localProfileImage = prefs?.getString("profile_image_$cleanPhone", null)?.takeIf { it.isNotBlank() }
+            val profileImage = localProfileImage ?: remoteProfileImage
             val balance = doc.getDouble("wallet_balance")
                 ?: doc.getDouble("walletBalance")
                 ?: 0.0
@@ -292,7 +296,14 @@ object AuthRepository {
     fun logout() {
         currentUserState.value = null
         AppState.clearSession()
-        prefs?.edit()?.clear()?.apply()
+        prefs?.edit()?.apply {
+            remove("user_id")
+            remove("user_name")
+            remove("user_phone")
+            remove("user_pk")
+            remove("user_pi")
+            apply()
+        }
     }
 
     suspend fun updateProfileImageUrl(imageUrl: String): Result<Boolean> {
@@ -300,13 +311,101 @@ object AuthRepository {
             val phone = getCurrentUserPhone()
             if (phone.isBlank()) return Result.failure(Exception("User not logged in."))
             val trimmed = imageUrl.trim()
-            usersCollection.document(phone).update("profile_image_url", trimmed).await()
-            currentUserState.value = currentUserState.value?.copy(profileImageUrl = trimmed.ifBlank { null })
+            val updatedVal = trimmed.ifBlank { null }
+            val current = currentUserState.value
+            if (current != null) {
+                val updatedUser = current.copy(profileImageUrl = updatedVal)
+                currentUserState.value = updatedUser
+                saveSession(updatedUser)
+            }
+            prefs?.edit()?.apply {
+                if (updatedVal != null) {
+                    putString("profile_image_$phone", updatedVal)
+                } else {
+                    remove("profile_image_$phone")
+                }
+                apply()
+            }
+            try {
+                kotlinx.coroutines.withTimeout(5000) {
+                    usersCollection.document(phone).update("profile_image_url", trimmed).await()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Remote profile_image_url update skipped/failed, kept in local account storage", e)
+            }
             Result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "updateProfileImageUrl failed", e)
             Result.failure(e)
         }
+    }
+
+    suspend fun saveProfilePictureFromUri(context: android.content.Context, sourceUri: android.net.Uri): Result<String> {
+        return try {
+            val phone = getCurrentUserPhone().ifBlank { "user" }
+            val savedPath = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val inputStream = context.contentResolver.openInputStream(sourceUri)
+                    ?: throw IllegalStateException("Unable to read selected image.")
+                val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                inputStream.close()
+                if (originalBitmap == null) {
+                    throw IllegalStateException("Selected file is not a valid image.")
+                }
+                saveBitmapToAccountFile(context, phone, originalBitmap)
+            }
+            updateProfileImageUrl(savedPath)
+            Result.success(savedPath)
+        } catch (e: Exception) {
+            Log.e(TAG, "saveProfilePictureFromUri failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun saveProfilePictureFromBitmap(context: android.content.Context, bitmap: android.graphics.Bitmap): Result<String> {
+        return try {
+            val phone = getCurrentUserPhone().ifBlank { "user" }
+            val savedPath = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                saveBitmapToAccountFile(context, phone, bitmap)
+            }
+            updateProfileImageUrl(savedPath)
+            Result.success(savedPath)
+        } catch (e: Exception) {
+            Log.e(TAG, "saveProfilePictureFromBitmap failed", e)
+            Result.failure(e)
+        }
+    }
+
+    private fun saveBitmapToAccountFile(
+        context: android.content.Context,
+        phone: String,
+        bitmap: android.graphics.Bitmap
+    ): String {
+        val maxDim = 512
+        val width = bitmap.width
+        val height = bitmap.height
+        val scaled = if (width > maxDim || height > maxDim) {
+            val ratio = width.toFloat() / height.toFloat()
+            val (targetW, targetH) = if (ratio > 1f) {
+                maxDim to (maxDim / ratio).toInt().coerceAtLeast(1)
+            } else {
+                (maxDim * ratio).toInt().coerceAtLeast(1) to maxDim
+            }
+            android.graphics.Bitmap.createScaledBitmap(bitmap, targetW, targetH, true)
+        } else {
+            bitmap
+        }
+
+        val dir = java.io.File(context.filesDir, "profile_photos").apply { mkdirs() }
+        // Clean up older profile photos for this user to avoid stale files
+        dir.listFiles()?.filter { it.name.startsWith("profile_${phone}_") }?.forEach {
+            try { it.delete() } catch (_: Exception) {}
+        }
+        val destFile = java.io.File(dir, "profile_${phone}_${System.currentTimeMillis()}.jpg")
+        java.io.FileOutputStream(destFile).use { out ->
+            scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, out)
+            out.flush()
+        }
+        return destFile.absolutePath
     }
 
     suspend fun searchUsers(query: String): List<UserData> {

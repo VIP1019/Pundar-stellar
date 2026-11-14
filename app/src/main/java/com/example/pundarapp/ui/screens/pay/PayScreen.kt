@@ -88,22 +88,20 @@ fun PayScreen(navController: NavController) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(46.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF1E2E5C))
-                                            .border(1.5.dp, Color(0xFF3B82F6), CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            initials,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp
-                                        )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable {
+                                        navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
                                     }
+                                ) {
+                                    PundarAvatar(
+                                        initials = initials,
+                                        imageUrl = userSession?.profileImageUrl,
+                                        size = 46.dp,
+                                        showRing = true,
+                                        initialsFontSize = 16.sp,
+                                        innerBackground = Color(0xFF1E2E5C)
+                                    )
                                     Spacer(Modifier.width(12.dp))
                                     Column {
                                         Text(
@@ -157,42 +155,72 @@ fun PayScreen(navController: NavController) {
                             Spacer(Modifier.height(22.dp))
 
                             // Monthly Spend Center Display
+                            val isHidden = AppState.isBalanceHidden.value
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(50.dp))
-                                        .background(Color(0xFF1E2E5C))
-                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(6.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(0xFF10B981))
-                                        )
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            "Monthly Group Spend",
-                                            fontSize = 11.sp,
-                                            color = Color(0xFFCBD5E1),
-                                            fontWeight = FontWeight.Medium
-                                        )
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50.dp))
+                                            .background(Color(0xFF1E2E5C))
+                                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFF10B981))
+                                            )
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                "Monthly Group Spend",
+                                                fontSize = 11.sp,
+                                                color = Color(0xFFCBD5E1),
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50.dp))
+                                            .background(Color(0xFF1E2E5C))
+                                            .clickable { AppState.toggleBalanceVisibility() }
+                                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = if (isHidden) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                                contentDescription = "Toggle Amount Visibility",
+                                                tint = Color(0xFF60A5FA),
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(
+                                                text = if (isHidden) "Show" else "Hide",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF60A5FA)
+                                            )
+                                        }
                                     }
                                 }
                                 Spacer(Modifier.height(10.dp))
                                 Text(
-                                    text = "₱ ${String.format("%,.2f", monthTotal)}",
+                                    text = if (isHidden) "₱ •••••" else "₱ ${String.format("%,.2f", monthTotal)}",
                                     fontSize = 34.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White
+                                    color = Color.White,
+                                    modifier = Modifier.clickable { AppState.toggleBalanceVisibility() }
                                 )
                                 val rate = AppState.getPhpRate()
                                 Text(
-                                    text = "≈ ${String.format("%,.2f", monthTotal / rate)} XLM · Stellar Rail",
+                                    text = if (isHidden) "••••• XLM · Stellar Rail" else "≈ ${String.format("%,.2f", monthTotal / rate)} XLM · Stellar Rail",
                                     fontSize = 12.sp,
                                     color = Color(0xFF94A3B8)
                                 )
@@ -465,15 +493,16 @@ private fun BillCard(bill: com.example.pundarapp.ui.data.GroupBill, onClick: () 
                 }
             }
             Spacer(Modifier.width(8.dp))
+            val isHidden = AppState.isBalanceHidden.value
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "₱${String.format("%,.2f", bill.totalAmount)}",
+                    if (isHidden) "₱ •••••" else "₱${String.format("%,.2f", bill.totalAmount)}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = PundarTheme.colors.textPrimary
                 )
                 Text(
-                    "Your: ₱${String.format("%,.2f", bill.yourShare)}",
+                    if (isHidden) "Your: ₱ •••••" else "Your: ₱${String.format("%,.2f", bill.yourShare)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = PundarTheme.colors.textMuted
                 )

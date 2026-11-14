@@ -1,5 +1,10 @@
 package com.example.pundarapp.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -134,7 +139,22 @@ fun PundarNavigation() {
         NavHost(
             navController = navController,
             startDestination = Routes.SPLASH,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
+            enterTransition = {
+                fadeIn(animationSpec = tween(220)) +
+                    slideInHorizontally(initialOffsetX = { it / 12 }, animationSpec = tween(220))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(180))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(220)) +
+                    slideInHorizontally(initialOffsetX = { -it / 12 }, animationSpec = tween(220))
+            },
+            popExitTransition = {
+                fadeOut(animationSpec = tween(180)) +
+                    slideOutHorizontally(targetOffsetX = { it / 12 }, animationSpec = tween(180))
+            }
         ) {
             composable(Routes.SPLASH) {
                 SplashScreen(

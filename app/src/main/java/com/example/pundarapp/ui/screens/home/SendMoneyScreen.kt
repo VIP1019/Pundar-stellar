@@ -55,9 +55,39 @@ fun SendMoneyScreen(navController: NavController) {
     var showPinDialog  by remember { mutableStateOf(false) }
     var mpinInput      by remember { mutableStateOf("") }
     var errorMsg       by remember { mutableStateOf<String?>(null) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var successRefMsg  by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
+
+    LaunchedEffect(errorMsg) {
+        if (!errorMsg.isNullOrBlank()) {
+            showErrorDialog = true
+        }
+    }
+
+    if (showErrorDialog && !errorMsg.isNullOrBlank()) {
+        PundarStatusDialog(
+            title = "Transfer Error",
+            message = errorMsg!!,
+            isError = true,
+            onDismiss = { showErrorDialog = false }
+        )
+    }
+
+    if (successRefMsg != null) {
+        PundarStatusDialog(
+            title = "Transfer Completed",
+            message = successRefMsg!!,
+            isError = false,
+            buttonText = "Done",
+            onDismiss = {
+                successRefMsg = null
+                navController.navigateUp()
+            }
+        )
+    }
 
     LaunchedEffect(Unit) {
         AppState.fetchExchangeRate()
@@ -176,8 +206,8 @@ fun SendMoneyScreen(navController: NavController) {
                                     if (uid != null) HomeRepository.createActivity(uid, activity)
                                     AppState.incrementPundarScore(2) // +2 points for sending money
                                     AppState.requestHomeRefresh()
-                                    Toast.makeText(context, "Money sent successfully!", Toast.LENGTH_SHORT).show()
-                                    navController.navigateUp()
+                                    isSending = false
+                                    successRefMsg = "Successfully sent ₱${String.format("%,.2f", sendAmountPhp)} (≈ ${String.format("%,.4f", sendAmountXlm)} XLM) to $recipientDisplayName."
                                 } else {
                                     errorMsg = when (result) {
                                         is PaymentResult.Failure -> result.message

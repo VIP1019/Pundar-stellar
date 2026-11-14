@@ -275,37 +275,7 @@ object SampleData {
     )
 
     // ── Pay ─────────────────────────────────────────────
-    val recentBills = listOf(
-        GroupBill(
-            id = "bill_sample_1",
-            name = "Dinner at BGC",
-            totalAmount = 1500.00,
-            memberCount = 3,
-            status = BillStatus.PENDING,
-            date = "Today",
-            yourShare = 500.00,
-            members = listOf(
-                BillMember("You", "", "You", 500.00),
-                BillMember("Maria Santos", "09171234567", "MS", 500.00),
-                BillMember("Mark Cruz", "09189876543", "MC", 500.00)
-            )
-        ),
-        GroupBill(
-            id = "bill_sample_2",
-            name = "Weekend Groceries",
-            totalAmount = 2400.00,
-            memberCount = 4,
-            status = BillStatus.SETTLED,
-            date = "Yesterday",
-            yourShare = 600.00,
-            members = listOf(
-                BillMember("You", "", "You", 600.00),
-                BillMember("Anna Reyes", "09191112233", "AR", 600.00),
-                BillMember("Leo Garcia", "09204445566", "LG", 600.00),
-                BillMember("Sarah Tan", "09217778899", "ST", 600.00)
-            )
-        )
-    )
+    val recentBills = emptyList<GroupBill>()
     val recentContacts = listOf(
         BillMember("Maria Santos", "09171234567", "MS", 0.0),
         BillMember("Mark Cruz", "09189876543", "MC", 0.0),
@@ -466,12 +436,7 @@ object SampleData {
     )
 
     // ── Home Activities ─────────────────────────────────
-    val homeActivities = listOf(
-        HomeActivity("payment", "Dinner at BGC", "Pending • 3 members", "-500.00 XLM", false, "Pay"),
-        HomeActivity("savings", "Emergency Fund 2026", "Contribution sent", "-5,000.00 XLM", false, "Circle"),
-        HomeActivity("trending_up", "Spare Change Swept", "Placed in Pundar Grow", "-5.00 XLM", false, "Grow"),
-        HomeActivity("payment", "Weekend Groceries", "Settled", "-600.00 XLM", false, "Pay")
-    )
+    val homeActivities = emptyList<HomeActivity>()
 
     // ── Chart Data ──────────────────────────────────────
 

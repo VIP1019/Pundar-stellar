@@ -40,7 +40,10 @@ import com.example.pundarapp.data.remote.supportedCurrencies
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import com.example.pundarapp.ui.components.PundarAvatar
+import com.example.pundarapp.ui.components.PundarConfirmDialog
 import com.example.pundarapp.ui.components.PundarDetailTopBar
+import com.example.pundarapp.ui.components.PundarStatusDialog
+import com.example.pundarapp.ui.components.ProductTourDialog
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
@@ -59,26 +62,122 @@ fun UserSettingsScreen(navController: NavController) {
     val initials       = AuthRepository.getCurrentUserInitials()
     var profileUri     by remember { mutableStateOf<Uri?>(null) }
     var isLoggingOut by remember { mutableStateOf(false) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+    var showRemovePhotoConfirmDialog by remember { mutableStateOf(false) }
+    var statusDialogState by remember { mutableStateOf<Triple<String, String, Boolean>?>(null) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showPhotoSheet by remember { mutableStateOf(false) }
 
-    // Gallery picker
+    // Gallery picker — permanently saves photo to account & Firestore
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
             profileUri = uri
-            Toast.makeText(context, "Photo updated!", Toast.LENGTH_SHORT).show()
+            scope.launch {
+                val res = AuthRepository.saveProfilePictureFromUri(context, uri)
+                if (res.isSuccess) {
+                    statusDialogState = Triple(
+                        "Profile Picture Saved",
+                        "Your profile picture has been permanently saved to your PUNDAR account.",
+                        false
+                    )
+                } else {
+                    statusDialogState = Triple(
+                        "Photo Update Failed",
+                        res.exceptionOrNull()?.message ?: "Could not save profile picture.",
+                        true
+                    )
+                }
+            }
         }
     }
 
-    // Camera
+    // Camera — permanently saves captured photo to account & Firestore
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
         if (bitmap != null) {
-            Toast.makeText(context, "Photo captured!", Toast.LENGTH_SHORT).show()
+            scope.launch {
+                val res = AuthRepository.saveProfilePictureFromBitmap(context, bitmap)
+                if (res.isSuccess) {
+                    profileUri = null
+                    statusDialogState = Triple(
+                        "Profile Picture Saved",
+                        "Your captured photo has been permanently saved to your PUNDAR account.",
+                        false
+                    )
+                } else {
+                    statusDialogState = Triple(
+                        "Photo Capture Failed",
+                        res.exceptionOrNull()?.message ?: "Could not save captured photo.",
+                        true
+                    )
+                }
+            }
         }
+    }
+
+    if (AppState.showProductTour.value) {
+        ProductTourDialog(
+            userName = userName,
+            onFinish = { AppState.markProductTourCompleted() }
+        )
+    }
+
+    if (showRemovePhotoConfirmDialog) {
+        PundarConfirmDialog(
+            title = "Remove Profile Photo?",
+            message = "Are you sure you want to remove your saved profile photo and revert to your initials?",
+            confirmText = "Remove",
+            dismissText = "Keep Photo",
+            icon = Icons.Filled.Delete,
+            isDestructive = true,
+            onConfirm = {
+                showRemovePhotoConfirmDialog = false
+                profileUri = null
+                scope.launch {
+                    AuthRepository.updateProfileImageUrl("")
+                    statusDialogState = Triple(
+                        "Photo Removed",
+                        "Your profile photo has been removed from your account.",
+                        false
+                    )
+                }
+            },
+            onDismiss = { showRemovePhotoConfirmDialog = false }
+        )
+    }
+
+    if (showLogoutConfirmDialog) {
+        PundarConfirmDialog(
+            title = "Log Out of PUNDAR?",
+            message = "Are you sure you want to sign out of your account ($userPhone)? Your profile photo and wallet remain safely stored.",
+            confirmText = "Log Out",
+            dismissText = "Cancel",
+            icon = Icons.AutoMirrored.Filled.Logout,
+            isDestructive = true,
+            onConfirm = {
+                showLogoutConfirmDialog = false
+                scope.launch {
+                    AuthRepository.logout()
+                    AppState.clearSession()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            },
+            onDismiss = { showLogoutConfirmDialog = false }
+        )
+    }
+
+    statusDialogState?.let { (title, msg, isErr) ->
+        PundarStatusDialog(
+            title = title,
+            message = msg,
+            isError = isErr,
+            onDismiss = { statusDialogState = null }
+        )
     }
 
     if (showPhotoSheet) {
@@ -102,8 +201,7 @@ fun UserSettingsScreen(navController: NavController) {
                 Spacer(Modifier.height(8.dp))
                 PhotoOption(Icons.Filled.Delete, "Remove Photo", PundarTheme.colors.accentRed) {
                     showPhotoSheet = false
-                    profileUri = null
-                    Toast.makeText(context, "Profile photo removed.", Toast.LENGTH_SHORT).show()
+                    showRemovePhotoConfirmDialog = true
                 }
                 Spacer(Modifier.height(28.dp))
             }
@@ -321,6 +419,10 @@ fun UserSettingsScreen(navController: NavController) {
                 SettingsRow(Icons.Filled.CurrencyExchange, "Preferred Currency", Blue400, sub = AppState.preferredCurrency.value) {
                     showCurrencyDialog = true
                 }
+                RowDivider()
+                SettingsRow(Icons.Filled.HelpOutline, "Product Tour & Walkthrough", Blue400, sub = "Replay onboarding guide") {
+                    AppState.replayProductTour()
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -386,15 +488,7 @@ fun UserSettingsScreen(navController: NavController) {
                         .clip(RoundedCornerShape(16.dp))
                         .background(RedBg)
                         .border(1.dp, PundarTheme.colors.accentRed.copy(0.28f), RoundedCornerShape(16.dp))
-                        .clickable {
-                            scope.launch {
-                                AuthRepository.logout()
-                                AppState.clearSession()
-                                navController.navigate(Routes.LOGIN) {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
-                        }
+                        .clickable { showLogoutConfirmDialog = true }
                         .padding(16.dp),
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
