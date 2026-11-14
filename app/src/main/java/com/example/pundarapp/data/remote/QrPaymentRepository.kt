@@ -161,6 +161,32 @@ object QrPaymentRepository {
         }
     }
 
+    suspend fun validateTransferPreconditions(
+        senderId: String,
+        recipient: QrRecipient,
+        amount: Double,
+        qrPayload: QrPayload?
+    ): Result<Unit> {
+        if (senderId == recipient.userId) {
+            return Result.failure(Exception("You cannot send money to yourself."))
+        }
+        if (amount <= 0) {
+            return Result.failure(Exception("Enter a valid amount."))
+        }
+        qrPayload?.let {
+            validatePayload(it).onFailure { err -> return Result.failure(err) }
+            if (it.type == QrPayload.TYPE_BILL_PAYMENT) {
+                validateBillPayment(it, amount).onFailure { err -> return Result.failure(err) }
+            }
+        }
+        val amountXlm = com.example.pundarapp.ui.data.AppState.phpToXlm(amount)
+        val availableLocalBalance = com.example.pundarapp.ui.data.AppState.walletBalance.value
+        if (amountXlm > availableLocalBalance) {
+            return Result.failure(Exception("Insufficient wallet balance."))
+        }
+        return Result.success(Unit)
+    }
+
     /**
      * Transfer money from sender to recipient after PIN verification.
      * Uses a Firestore batch for wallet + transaction + token + notifications.
@@ -171,7 +197,8 @@ object QrPaymentRepository {
         recipient: QrRecipient,
         amount: Double,
         notes: String?,
-        qrPayload: QrPayload?
+        qrPayload: QrPayload?,
+        onChainTxHash: String? = null
     ): Result<String> {
         if (senderId == recipient.userId) {
             return Result.failure(Exception("You cannot send money to yourself."))
@@ -180,20 +207,24 @@ object QrPaymentRepository {
             return Result.failure(Exception("Enter a valid amount."))
         }
 
-        qrPayload?.let {
-            validatePayload(it).onFailure { return Result.failure(it) }
-            if (it.type == QrPayload.TYPE_BILL_PAYMENT) {
-                validateBillPayment(it, amount).onFailure { return Result.failure(it) }
+        if (onChainTxHash == null) {
+            qrPayload?.let {
+                validatePayload(it).onFailure { return Result.failure(it) }
+                if (it.type == QrPayload.TYPE_BILL_PAYMENT) {
+                    validateBillPayment(it, amount).onFailure { return Result.failure(it) }
+                }
             }
         }
 
         return try {
+            val amountXlm = com.example.pundarapp.ui.data.AppState.phpToXlm(amount)
             val availableLocalBalance = com.example.pundarapp.ui.data.AppState.walletBalance.value
-            if (amount > availableLocalBalance) {
+            if (onChainTxHash == null && amountXlm > availableLocalBalance) {
                 return Result.failure(Exception("Insufficient wallet balance."))
             }
 
-            val reference = "TXN-${UUID.randomUUID().toString().take(8).uppercase()}"
+            val reference = onChainTxHash?.take(12)?.uppercase()
+                ?: "TXN-${UUID.randomUUID().toString().take(8).uppercase()}"
             val now = System.currentTimeMillis()
 
             try {
@@ -215,22 +246,22 @@ object QrPaymentRepository {
                 val batch = db.batch()
 
                 if (senderDoc.exists()) {
-                    batch.update(senderDoc.reference, "wallet_balance", (senderBalance - amount).coerceAtLeast(0.0))
+                    batch.update(senderDoc.reference, "wallet_balance", (senderBalance - amountXlm).coerceAtLeast(0.0))
                 } else {
                     batch.set(
                         usersCollection.document(senderId),
-                        hashMapOf("wallet_balance" to (senderBalance - amount).coerceAtLeast(0.0)),
+                        hashMapOf("wallet_balance" to (senderBalance - amountXlm).coerceAtLeast(0.0)),
                         com.google.firebase.firestore.SetOptions.merge()
                     )
                 }
 
                 if (recipientDoc.exists()) {
-                    batch.update(recipientDoc.reference, "wallet_balance", recipientBalance + amount)
+                    batch.update(recipientDoc.reference, "wallet_balance", recipientBalance + amountXlm)
                 } else {
                     batch.set(
                         usersCollection.document(recipient.userId),
                         hashMapOf(
-                            "wallet_balance" to (recipientBalance + amount),
+                            "wallet_balance" to (recipientBalance + amountXlm),
                             "full_name" to recipient.displayName,
                             "phone_number" to recipient.userId
                         ),

@@ -128,7 +128,7 @@ fun NewGroupBillScreen(navController: NavController) {
     // Target bill amount is ALWAYS determined by Step 2 input (never overwritten by itemized sum)
     val rawTotal = totalAmountInput.toDoubleOrNull() ?: 0.0
 
-    val exchangeRate = AppState.currentExchangeRate.doubleValue.takeIf { it > 0.0 } ?: 56.50
+    val exchangeRate = AppState.getPhpRate()
     val totalInPhp = if (isFiatMode) rawTotal else rawTotal * exchangeRate
     val totalInXlm = if (isFiatMode) rawTotal / exchangeRate else rawTotal
 

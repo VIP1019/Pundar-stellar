@@ -47,6 +47,7 @@ import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarOutlinedButton
 import com.example.pundarapp.ui.components.PundarPrimaryButton
 import com.example.pundarapp.ui.components.PundarTextButton
+import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.theme.PundarTheme
 import java.util.Locale
 
@@ -55,6 +56,10 @@ import java.util.Locale
 fun ReceiveMoneyScreen(navController: NavController) {
     val context = LocalContext.current
     val user by AuthRepository.currentUserState
+
+    LaunchedEffect(Unit) {
+        AppState.fetchExchangeRate()
+    }
 
     // Pre-QR configuration state
     var amountInput by remember { mutableStateOf("") }
@@ -98,9 +103,11 @@ fun ReceiveMoneyScreen(navController: NavController) {
         val count = peopleCount ?: return@remember null
 
         if (qrMode == 1 && !currentUser.stellarPublicKey.isNullOrBlank()) {
-            val formattedShare = String.format(Locale.US, "%.2f", fixedShare)
+            val shareXlm = AppState.phpToXlm(fixedShare)
+            val formattedShareXlm = String.format(Locale.US, "%.7f", shareXlm)
+            val formattedSharePhp = String.format(Locale.US, "%.2f", fixedShare)
             val formattedTotal = String.format(Locale.US, "%.2f", total)
-            "web+stellar:pay?destination=${currentUser.stellarPublicKey}&amount=$formattedShare&totalAmount=$formattedTotal&participants=$count&memo=${java.net.URLEncoder.encode(effectiveBillTitle, "UTF-8")}"
+            "web+stellar:pay?destination=${currentUser.stellarPublicKey}&amount=$formattedShareXlm&amountPhp=$formattedSharePhp&totalAmount=$formattedTotal&participants=$count&memo=${java.net.URLEncoder.encode(effectiveBillTitle, "UTF-8")}"
         } else {
             val payload = QrCodeGenerator.createReceiveMoneyPayload(
                 userId = currentUser.id,
@@ -516,7 +523,7 @@ fun ReceiveMoneyScreen(navController: NavController) {
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    "Fixed Share: ₱${String.format(Locale.US, "%,.2f", perPersonAmount ?: 0.0)} / person",
+                                    "Fixed Share: ₱${String.format(Locale.US, "%,.2f", perPersonAmount ?: 0.0)} / person (≈ ${String.format(Locale.US, "%,.2f", AppState.phpToXlm(perPersonAmount ?: 0.0))} XLM)",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = PundarTheme.colors.brandPrimary,
                                     fontWeight = FontWeight.ExtraBold

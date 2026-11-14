@@ -60,11 +60,15 @@ fun BillQrScreen(billId: String, navController: NavController) {
 
     fun generatePayload(): QrPayload {
         val txnId = "BILL-${UUID.randomUUID().toString().take(8).uppercase()}"
+        val hostPhone = AuthRepository.getCurrentUserPhone()
         return QrCodeGenerator.createBillPaymentPayload(
-            userId = userId ?: bill.id,
+            userId = hostPhone.ifBlank { userId ?: bill.id },
             amount = bill.yourShare,
             billRef = bill.name,
-            transactionId = txnId
+            transactionId = txnId,
+            displayName = AuthRepository.getCurrentUserName(),
+            username = hostPhone.ifBlank { null },
+            walletId = AuthRepository.getCurrentUserStellarPublicKey()
         )
     }
 
@@ -94,6 +98,7 @@ fun BillQrScreen(billId: String, navController: NavController) {
                 if (remote == BillQrStatus.PAID) {
                     qrStatus = BillQrStatus.PAID
                     AppState.markBillSettled(billId)
+                    AppState.refreshWalletBalance()
                     break
                 }
                 if (remote == BillQrStatus.EXPIRED) qrStatus = BillQrStatus.EXPIRED
@@ -152,6 +157,11 @@ fun BillQrScreen(billId: String, navController: NavController) {
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Black,
                 color = PundarTheme.colors.brandPrimary
+            )
+            Text(
+                "≈ ${String.format("%,.4f", AppState.phpToXlm(bill.yourShare))} XLM · Stellar Testnet",
+                style = MaterialTheme.typography.bodySmall,
+                color = PundarTheme.colors.textSecondary
             )
 
             if (qrStatus == BillQrStatus.ACTIVE) {

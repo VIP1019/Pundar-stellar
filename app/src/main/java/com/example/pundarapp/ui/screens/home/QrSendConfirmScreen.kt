@@ -33,7 +33,10 @@ import com.example.pundarapp.data.remote.BillQrRepository
 import com.example.pundarapp.data.remote.HomeRepository
 import com.example.pundarapp.data.remote.QrPaymentRepository
 import com.example.pundarapp.data.remote.TransactionPinRepository
+import com.example.pundarapp.data.stellar.PayStellarClient
+import com.example.pundarapp.data.stellar.PaymentResult
 import com.example.pundarapp.data.stellar.StellarWalletManager
+import com.example.pundarapp.data.stellar.Stroops
 import com.example.pundarapp.ui.components.FuturisticIcon
 import com.example.pundarapp.ui.components.PundarDetailTopBar
 import com.example.pundarapp.ui.components.PundarPrimaryButton
@@ -87,9 +90,15 @@ fun QrSendConfirmScreen(navController: NavController) {
         mutableStateOf(if (isBillDetected) QrActionMode.JOIN_PAY else QrActionMode.SEND_PAYMENT)
     }
 
+    val initialAmountPhp = remember(payload) {
+        payload.amount?.takeIf { it > 0.0 }?.let { raw ->
+            if (payload.currency.equals("XLM", ignoreCase = true)) AppState.xlmToPhp(raw) else raw
+        }
+    }
+
     var amount by remember {
         mutableStateOf(
-            if (payload.amount != null && payload.amount > 0) String.format("%.2f", payload.amount) else ""
+            if (initialAmountPhp != null) String.format(java.util.Locale.US, "%.2f", initialAmountPhp) else ""
         )
     }
     var note by remember {
@@ -106,6 +115,7 @@ fun QrSendConfirmScreen(navController: NavController) {
     var isJoinSettleNow by remember { mutableStateOf(false) }
 
     LaunchedEffect(payload.userId) {
+        AppState.fetchExchangeRate()
         QrPaymentRepository.lookupRecipient(payload.userId).onSuccess {
             recipientName = it.displayName
         }
@@ -128,11 +138,12 @@ fun QrSendConfirmScreen(navController: NavController) {
             },
             text = {
                 Column {
+                    val dialogXlm = AppState.phpToXlm(amount.toDoubleOrNull() ?: 0.0)
                     Text(
                         text = if (isJoinSettleNow)
-                            "Enter your 4-digit PIN to pay your share of ₱$amount and join the bill."
+                            "Enter your 4-digit PIN to pay your share of ₱$amount (≈ ${String.format("%,.4f", dialogXlm)} XLM) and join the bill."
                         else
-                            "Enter your 4-digit PIN to send ₱$amount to $recipientName.",
+                            "Enter your 4-digit PIN to send ₱$amount (≈ ${String.format("%,.4f", dialogXlm)} XLM) to $recipientName.",
                         color = PundarTheme.colors.textSecondary
                     )
                     Spacer(Modifier.height(14.dp))
@@ -155,12 +166,24 @@ fun QrSendConfirmScreen(navController: NavController) {
                             isProcessing = true
                             val senderId = AuthRepository.getCurrentUserId() ?: AuthRepository.getCurrentUserPhone()
                             val senderPhone = AuthRepository.getCurrentUserPhone()
+                            val senderSeed = AuthRepository.getCurrentUserEncryptedSeed().orEmpty()
 
-                            // Verify PIN
-                            val verify = TransactionPinRepository.verifyPin(senderPhone, pin)
-                            val isPinValid = (verify.isSuccess && verify.getOrNull() == true) ||
-                                    (AuthRepository.verifyMpin(pin).getOrNull() == true) ||
-                                    pin.length == 4 // allow execution when PIN is entered
+                            // Decrypt Stellar seed or verify PIN strictly
+                            val decryptedSecret: CharArray? = if (senderSeed.isNotBlank()) {
+                                try {
+                                    StellarWalletManager.decryptSecretSeed(senderSeed, pin)
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            } else null
+
+                            val isPinValid = if (senderSeed.isNotBlank()) {
+                                decryptedSecret != null
+                            } else {
+                                val verify = TransactionPinRepository.verifyPin(senderPhone, pin)
+                                (verify.isSuccess && verify.getOrNull() == true) ||
+                                        (AuthRepository.verifyMpin(pin).getOrNull() == true)
+                            }
 
                             if (!isPinValid) {
                                 Toast.makeText(context, "Incorrect PIN.", Toast.LENGTH_SHORT).show()
@@ -170,6 +193,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                             }
 
                             val sendAmount = amount.toDoubleOrNull() ?: 0.0
+                            val sendAmountXlm = AppState.phpToXlm(sendAmount)
                             val recipientResult = QrPaymentRepository.lookupRecipient(payload.userId)
                             val recipient = recipientResult.getOrElse {
                                 com.example.pundarapp.data.remote.QrRecipient(
@@ -179,42 +203,66 @@ fun QrSendConfirmScreen(navController: NavController) {
                                 )
                             }
 
-                            val isExternalStellar = recipient.userId.startsWith("G") && recipient.userId.length == 56
+                            val precondition = QrPaymentRepository.validateTransferPreconditions(
+                                senderId = senderId,
+                                recipient = recipient,
+                                amount = sendAmount,
+                                qrPayload = payload
+                            )
+                            if (precondition.isFailure) {
+                                Toast.makeText(
+                                    context,
+                                    precondition.exceptionOrNull()?.message ?: "Validation failed",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                isProcessing = false
+                                showPinDialog = false
+                                pin = ""
+                                return@launch
+                            }
 
-                            val transfer: Result<String> = if (isExternalStellar) {
-                                val senderPk = AuthRepository.getCurrentUserStellarPublicKey().orEmpty()
-                                val senderSeed = AuthRepository.getCurrentUserEncryptedSeed().orEmpty()
-                                if (senderPk.isNotBlank() && senderSeed.isNotBlank()) {
-                                    val stellarRes = StellarWalletManager.sendPayment(
-                                        senderPublicKey = senderPk,
-                                        senderEncryptedSeed = senderSeed,
-                                        senderMpin = pin,
-                                        recipientPublicKey = recipient.userId,
-                                        amountXlm = sendAmount.toString(),
-                                        memo = (if (isJoinSettleNow) billTitle else note.ifBlank { "PUNDAR QR" }).take(28)
-                                    )
-                                    if (stellarRes.isSuccess) {
-                                        stellarRes
-                                    } else {
-                                        // Fallback to in-app wallet balance
-                                        QrPaymentRepository.transferMoney(
-                                            senderId = senderId,
-                                            senderName = AuthRepository.getCurrentUserName(),
-                                            recipient = recipient,
-                                            amount = sendAmount,
-                                            notes = if (isJoinSettleNow) billTitle else note.ifBlank { null },
-                                            qrPayload = payload
-                                        )
-                                    }
+                            // Resolve recipient Stellar public key (G...) across all QR payload / profile fields
+                            val recipientStellarKey = listOfNotNull(
+                                recipient.walletId,
+                                payload.walletId,
+                                recipient.userId,
+                                payload.userId
+                            ).firstOrNull { it.startsWith("G") && it.length == 56 }
+                                ?: payload.username?.takeIf { it.isNotBlank() }?.let {
+                                    AuthRepository.findRegisteredUser(it)?.stellarPublicKey
+                                }?.takeIf { it.startsWith("G") && it.length == 56 }
+                                ?: AuthRepository.findRegisteredUser(payload.userId)?.stellarPublicKey?.takeIf {
+                                    it.startsWith("G") && it.length == 56
+                                }
+
+                            val memoText = (if (isJoinSettleNow) billTitle else note.ifBlank { payload.billRef ?: "PUNDAR QR" }).take(28)
+
+                            val transfer: Result<String> = if (decryptedSecret != null && recipientStellarKey != null) {
+                                val stroops = Stroops.fromXlmString(String.format(java.util.Locale.US, "%.7f", sendAmountXlm))
+                                if (stroops == null || stroops <= 0) {
+                                    Result.failure(Exception("Enter a valid amount."))
                                 } else {
-                                    QrPaymentRepository.transferMoney(
-                                        senderId = senderId,
-                                        senderName = AuthRepository.getCurrentUserName(),
-                                        recipient = recipient,
-                                        amount = sendAmount,
-                                        notes = if (isJoinSettleNow) billTitle else note.ifBlank { null },
-                                        qrPayload = payload
-                                    )
+                                    when (val payRes = PayStellarClient.sendPayment(
+                                        secret = decryptedSecret,
+                                        destination = recipientStellarKey,
+                                        amountStroops = stroops,
+                                        memo = memoText
+                                    )) {
+                                        is PaymentResult.Success -> {
+                                            // Sync Firestore metadata (bill_qrs PAID status, group_bills SETTLED, notifications)
+                                            QrPaymentRepository.transferMoney(
+                                                senderId = senderId,
+                                                senderName = AuthRepository.getCurrentUserName(),
+                                                recipient = recipient,
+                                                amount = sendAmount,
+                                                notes = if (isJoinSettleNow) billTitle else note.ifBlank { null },
+                                                qrPayload = payload,
+                                                onChainTxHash = payRes.hash
+                                            )
+                                        }
+                                        is PaymentResult.Failure -> Result.failure(Exception(payRes.message))
+                                        is PaymentResult.Unknown -> Result.failure(Exception("Network timed out. Check your balance before retrying."))
+                                    }
                                 }
                             } else {
                                 QrPaymentRepository.transferMoney(
@@ -229,11 +277,19 @@ fun QrSendConfirmScreen(navController: NavController) {
 
                             isProcessing = false
                             showPinDialog = false
+                            val usedPin = pin
                             pin = ""
 
                             transfer.onSuccess { ref ->
                                 isCompleted = true
-                                AppState.updateWalletBalance((AppState.walletBalance.value - sendAmount).coerceAtLeast(0.0))
+                                AppState.updateWalletBalance((AppState.walletBalance.value - sendAmountXlm).coerceAtLeast(0.0))
+                                AppState.refreshWalletBalance()
+                                AppState.processPayRoundUp(
+                                    sourceReference = ref,
+                                    sourceAmount = sendAmount,
+                                    sourceLabel = if (isJoinSettleNow) "Join & Pay" else "QR Payment",
+                                    mpin = usedPin
+                                )
 
                                 if (isJoinSettleNow) {
                                     // Join bill and mark settled
@@ -258,6 +314,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                                         sendAmount
                                     )
                                     AppState.homeActivities.add(0, activity)
+                                    HomeRepository.createActivity(senderId, activity)
                                     Toast.makeText(context, "Joined & Paid! Ref: ${ref.take(10)}", Toast.LENGTH_LONG).show()
                                 } else if (payload.type == QrPayload.TYPE_BILL_PAYMENT) {
                                     BillQrRepository.getRecord(payload.securityToken)?.billId?.let {
@@ -268,13 +325,12 @@ fun QrSendConfirmScreen(navController: NavController) {
                                         sendAmount
                                     )
                                     AppState.homeActivities.add(0, activity)
+                                    HomeRepository.createActivity(senderId, activity)
                                     Toast.makeText(context, "Bill Paid! Ref: ${ref.take(10)}", Toast.LENGTH_LONG).show()
                                 } else {
                                     val activity = QrPaymentRepository.homeActivityForSend(recipient.displayName, sendAmount)
                                     AppState.homeActivities.add(0, activity)
-                                    if (isExternalStellar) {
-                                        HomeRepository.createActivity(senderId, activity)
-                                    }
+                                    HomeRepository.createActivity(senderId, activity)
                                     Toast.makeText(context, "Payment Sent! Ref: ${ref.take(10)}", Toast.LENGTH_LONG).show()
                                 }
 
@@ -332,7 +388,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                                 Toast.makeText(context, "Please enter a valid share amount.", Toast.LENGTH_SHORT).show()
                                 return@PundarPrimaryButton
                             }
-                            if (shareAmount > AppState.walletBalance.value) {
+                            if (AppState.phpToXlm(shareAmount) > AppState.walletBalance.value) {
                                 Toast.makeText(context, "Insufficient balance to settle now.", Toast.LENGTH_SHORT).show()
                                 return@PundarPrimaryButton
                             }
@@ -383,7 +439,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                                 Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
                                 return@PundarPrimaryButton
                             }
-                            if (sendAmount > AppState.walletBalance.value) {
+                            if (AppState.phpToXlm(sendAmount) > AppState.walletBalance.value) {
                                 Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
                                 return@PundarPrimaryButton
                             }
@@ -588,11 +644,12 @@ fun QrSendConfirmScreen(navController: NavController) {
                     } else null,
                     supportingText = if (isAmountLocked) {
                         {
+                            val lockedPhp = initialAmountPhp ?: payload.amount ?: 0.0
                             val splitNote = if (payload.totalBillAmount != null && payload.participantCount != null) {
                                 " (Total ₱${String.format(java.util.Locale.US, "%,.2f", payload.totalBillAmount)} ÷ ${payload.participantCount} people)"
                             } else ""
                             Text(
-                                "Amount settled by host: ₱${String.format(java.util.Locale.US, "%,.2f", payload.amount)}$splitNote — not editable",
+                                "Amount settled by host: ₱${String.format(java.util.Locale.US, "%,.2f", lockedPhp)} (≈ ${String.format(java.util.Locale.US, "%,.4f", AppState.phpToXlm(lockedPhp))} XLM)$splitNote — not editable",
                                 color = PundarTheme.colors.brandPrimary,
                                 fontWeight = FontWeight.Bold
                             )
@@ -650,8 +707,9 @@ fun QrSendConfirmScreen(navController: NavController) {
                     } else null,
                     supportingText = if (isAmountLocked) {
                         {
+                            val lockedPhp = initialAmountPhp ?: payload.amount ?: 0.0
                             Text(
-                                "Amount fixed by recipient: ₱${String.format(java.util.Locale.US, "%,.2f", payload.amount)}",
+                                "Amount fixed by recipient: ₱${String.format(java.util.Locale.US, "%,.2f", lockedPhp)} (≈ ${String.format(java.util.Locale.US, "%,.4f", AppState.phpToXlm(lockedPhp))} XLM)",
                                 color = PundarTheme.colors.brandPrimary,
                                 fontWeight = FontWeight.Bold
                             )
@@ -724,7 +782,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "₱${String.format("%,.2f", AppState.walletBalance.value)}",
+                        text = "₱${String.format("%,.2f", AppState.xlmToPhp(AppState.walletBalance.value))} (≈ ${String.format("%,.2f", AppState.walletBalance.value)} XLM)",
                         color = PundarTheme.colors.textPrimary,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.bodyMedium

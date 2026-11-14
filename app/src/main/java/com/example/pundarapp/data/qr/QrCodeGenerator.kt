@@ -54,11 +54,17 @@ object QrCodeGenerator {
         userId: String,
         amount: Double,
         billRef: String,
-        transactionId: String
+        transactionId: String,
+        displayName: String? = null,
+        username: String? = null,
+        walletId: String? = null
     ): QrPayload = QrPayload(
         type = QrPayload.TYPE_BILL_PAYMENT,
         version = 1,
         userId = userId,
+        username = username,
+        displayName = displayName,
+        walletId = walletId,
         amount = amount,
         billRef = billRef,
         transactionId = transactionId,

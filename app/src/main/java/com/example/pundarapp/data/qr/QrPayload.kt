@@ -22,6 +22,7 @@ data class QrPayload(
     val displayName: String? = null,
     val walletId: String? = null,  // Stellar public key (safe to share)
     val amount: Double? = null,    // fixed per-person requested amount / bill-payment amount
+    val currency: String = "PHP",  // "PHP" or "XLM" (for raw SEP-0007 Stellar URIs)
     val totalBillAmount: Double? = null, // total bill amount before splitting
     val participantCount: Int? = null,   // quantity of people joining the bill
     val billRef: String? = null,   // bill-payment / memo / group bill name
@@ -76,7 +77,9 @@ data class QrPayload(
                     val queryPart = trimmed.substringAfter('?', "")
                     val params = parseQueryParams(queryPart)
                     val destination = params["destination"] ?: params["to"] ?: ""
-                    val amount = params["amount"]?.toDoubleOrNull()
+                    val amountPhp = params["amountPhp"]?.toDoubleOrNull()
+                    val amount = amountPhp ?: params["amount"]?.toDoubleOrNull()
+                    val currency = if (amountPhp != null) "PHP" else "XLM"
                     val totalBillAmount = params["totalAmount"]?.toDoubleOrNull()
                     val participantCount = params["participants"]?.toIntOrNull()
                     val memo = params["memo"] ?: params["msg"] ?: params["billRef"]
@@ -87,6 +90,7 @@ data class QrPayload(
                         displayName = if (STELLAR_KEY_REGEX.matches(targetId)) "Stellar Wallet" else "Payment Target",
                         walletId = if (STELLAR_KEY_REGEX.matches(targetId)) targetId else null,
                         amount = amount,
+                        currency = currency,
                         totalBillAmount = totalBillAmount,
                         participantCount = participantCount,
                         billRef = memo,

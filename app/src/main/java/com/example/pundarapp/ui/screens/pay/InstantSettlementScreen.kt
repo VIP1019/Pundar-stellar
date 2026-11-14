@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -23,12 +24,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.TransactionRepository
+import com.example.pundarapp.data.stellar.PayStellarClient
+import com.example.pundarapp.data.stellar.PaymentResult
+import com.example.pundarapp.data.stellar.StellarWalletManager
+import com.example.pundarapp.data.stellar.Stroops
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
@@ -70,7 +77,8 @@ fun InstantSettlementScreen(navController: NavController) {
     }
     val totalDebit = totalSettlement + roundUpAmount
     
-    val walletBalance = AppState.walletBalance.value
+    val walletBalanceXlm = AppState.walletBalance.value
+    val walletBalance = AppState.xlmToPhp(walletBalanceXlm)
     val hasSufficientBalance = totalDebit <= walletBalance
     
     Scaffold(
@@ -183,7 +191,7 @@ fun InstantSettlementScreen(navController: NavController) {
                 billCount = selectedBillIds.size,
                 walletBalance = walletBalance,
                 hasSufficientBalance = hasSufficientBalance,
-                onConfirm = {
+                onConfirm = { mpin ->
                     showConfirmDialog = false
                     isProcessing = true
                     scope.launch {
@@ -195,6 +203,55 @@ fun InstantSettlementScreen(navController: NavController) {
                             Toast.makeText(context, "Not logged in.", Toast.LENGTH_SHORT).show()
                             isProcessing = false
                             return@launch
+                        }
+
+                        val senderSeed = AuthRepository.getCurrentUserEncryptedSeed().orEmpty()
+                        if (senderSeed.isNotBlank()) {
+                            val secret = try {
+                                StellarWalletManager.decryptSecretSeed(senderSeed, mpin)
+                            } catch (_: Exception) {
+                                isProcessing = false
+                                Toast.makeText(context, "Incorrect PIN.", Toast.LENGTH_SHORT).show()
+                                return@launch
+                            }
+                            processingStage = "Submitting Stellar transaction..."
+                            val settleXlm = AppState.phpToXlm(totalSettlement)
+                            val stroops = Stroops.fromXlmString(String.format(Locale.US, "%.7f", settleXlm))
+                            if (stroops == null || stroops <= 0) {
+                                isProcessing = false
+                                Toast.makeText(context, "Invalid settlement amount.", Toast.LENGTH_SHORT).show()
+                                return@launch
+                            }
+                            val myPhone = AuthRepository.getCurrentUserPhone()
+                            val firstCounterparty = pendingBills
+                                .filter { it.id in selectedBillIds }
+                                .flatMap { it.members }
+                                .firstOrNull { !it.name.equals("You", true) && it.username != myPhone && it.username.isNotBlank() }
+                                ?.username
+                            val destinationKey = firstCounterparty?.let { uname ->
+                                if (uname.startsWith("G") && uname.length == 56) uname
+                                else AuthRepository.findRegisteredUser(uname)?.stellarPublicKey
+                            }?.takeIf { it.startsWith("G") && it.length == 56 }
+                                ?: StellarWalletManager.USDC_ISSUER
+
+                            when (val payRes = PayStellarClient.sendPayment(
+                                secret = secret,
+                                destination = destinationKey,
+                                amountStroops = stroops,
+                                memo = "Instant Settle (${selectedBillIds.size})"
+                            )) {
+                                is PaymentResult.Success -> { /* continue to Firestore sync */ }
+                                is PaymentResult.Failure -> {
+                                    isProcessing = false
+                                    Toast.makeText(context, payRes.message, Toast.LENGTH_LONG).show()
+                                    return@launch
+                                }
+                                is PaymentResult.Unknown -> {
+                                    isProcessing = false
+                                    Toast.makeText(context, "Network timed out. Check your balance before retrying.", Toast.LENGTH_LONG).show()
+                                    return@launch
+                                }
+                            }
                         }
 
                         val billsById = pendingBills.associate {
@@ -210,7 +267,7 @@ fun InstantSettlementScreen(navController: NavController) {
                         val result = TransactionRepository.settleBills(
                             userId = userId,
                             billIds = selectedBillIds,
-                            currentBalance = walletBalance,
+                            currentBalance = walletBalanceXlm,
                             billsById = billsById
                         )
 
@@ -227,11 +284,12 @@ fun InstantSettlementScreen(navController: NavController) {
                         processingStage = "Updating balance..."
                         transactionRef = result.getOrNull() ?: ""
                         selectedBillIds.forEach { billId -> AppState.settleBill(billId) }
+                        AppState.refreshWalletBalance()
                         val growInvestment = AppState.processPayRoundUp(
                             sourceReference = transactionRef,
                             sourceAmount = totalSettlement,
                             sourceLabel = "Instant Settlement",
-                            mpin = ""
+                            mpin = mpin
                         )
                         AppState.requestHomeRefresh()
                         AppState.refreshNotifications()
@@ -453,9 +511,15 @@ private fun SettlementConfirmDialog(
     billCount: Int,
     walletBalance: Double,
     hasSufficientBalance: Boolean,
-    onConfirm: () -> Unit,
+    onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var requiresMpin by remember { mutableStateOf(true) }
+    var mpin by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        requiresMpin = !AuthRepository.getCurrentUserEncryptedSeed().isNullOrBlank()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = PundarTheme.colors.surfacePrimary,
@@ -482,7 +546,7 @@ private fun SettlementConfirmDialog(
                 ) {
                     Text("Total Amount:", color = PundarTheme.colors.textSecondary)
                     Text(
-                        "₱${String.format("%,.2f", totalAmount)}",
+                        "₱${String.format("%,.2f", totalAmount)} (≈ ${String.format("%,.2f", AppState.phpToXlm(totalAmount))} XLM)",
                         fontWeight = FontWeight.Bold,
                         color = PundarTheme.colors.textPrimary
                     )
@@ -523,6 +587,20 @@ private fun SettlementConfirmDialog(
                         color = if (hasSufficientBalance) Green400 else WarningAmber
                     )
                 }
+
+                if (hasSufficientBalance && requiresMpin) {
+                    Spacer(Modifier.height(14.dp))
+                    OutlinedTextField(
+                        value = mpin,
+                        onValueChange = { if (it.length <= 4) mpin = it },
+                        label = { Text("Enter 4-digit MPIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
                 
                 if (!hasSufficientBalance) {
                     Spacer(Modifier.height(12.dp))
@@ -545,8 +623,8 @@ private fun SettlementConfirmDialog(
         },
         confirmButton = {
             Button(
-                onClick = onConfirm,
-                enabled = hasSufficientBalance,
+                onClick = { onConfirm(mpin) },
+                enabled = hasSufficientBalance && (!requiresMpin || mpin.length == 4),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PundarTheme.colors.brandPrimary,
                     disabledContainerColor = NavyBorder
