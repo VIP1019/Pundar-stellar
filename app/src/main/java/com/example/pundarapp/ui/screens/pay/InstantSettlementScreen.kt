@@ -70,7 +70,8 @@ fun InstantSettlementScreen(navController: NavController) {
     }
     val totalDebit = totalSettlement + roundUpAmount
     
-    val walletBalance = AppState.walletBalance.value
+    val walletBalanceXlm = AppState.walletBalance.value
+    val walletBalance = AppState.xlmToPhp(walletBalanceXlm)
     val hasSufficientBalance = totalDebit <= walletBalance
     
     Scaffold(
@@ -210,7 +211,7 @@ fun InstantSettlementScreen(navController: NavController) {
                         val result = TransactionRepository.settleBills(
                             userId = userId,
                             billIds = selectedBillIds,
-                            currentBalance = walletBalance,
+                            currentBalance = walletBalanceXlm,
                             billsById = billsById
                         )
 

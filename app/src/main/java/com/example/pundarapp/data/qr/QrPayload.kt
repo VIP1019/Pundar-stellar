@@ -76,7 +76,7 @@ data class QrPayload(
                     val queryPart = trimmed.substringAfter('?', "")
                     val params = parseQueryParams(queryPart)
                     val destination = params["destination"] ?: params["to"] ?: ""
-                    val amount = params["amount"]?.toDoubleOrNull()
+                    val amount = params["amountPhp"]?.toDoubleOrNull() ?: params["amount"]?.toDoubleOrNull()
                     val totalBillAmount = params["totalAmount"]?.toDoubleOrNull()
                     val participantCount = params["participants"]?.toIntOrNull()
                     val memo = params["memo"] ?: params["msg"] ?: params["billRef"]

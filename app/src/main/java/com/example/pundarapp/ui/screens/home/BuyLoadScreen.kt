@@ -94,13 +94,15 @@ fun BuyLoadScreen(navController: NavController) {
                             return@PundarPrimaryButton
                         }
                         val roundUp = AppState.calculateRoundUpAmount(loadAmount)
-                        if (loadAmount + roundUp > AppState.walletBalance.value) {
+                        val loadAmountXlm = AppState.phpToXlm(loadAmount)
+                        val totalDebitXlm = AppState.phpToXlm(loadAmount + roundUp)
+                        if (totalDebitXlm > AppState.walletBalance.value) {
                             Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
                             return@PundarPrimaryButton
                         }
 
-                        // Deduct balance
-                        AppState.updateWalletBalance(AppState.walletBalance.value - loadAmount)
+                        // Deduct XLM equivalent from wallet balance
+                        AppState.updateWalletBalance((AppState.walletBalance.value - loadAmountXlm).coerceAtLeast(0.0))
                         scope.launch {
                             AppState.processPayRoundUp(
                                 sourceReference = "LOAD-${UUID.randomUUID().toString().take(8).uppercase()}",
@@ -149,10 +151,16 @@ fun BuyLoadScreen(navController: NavController) {
                 Text("Available Balance", style = MaterialTheme.typography.labelMedium, color = PundarTheme.colors.textSecondary)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    AppState.getDisplayBalance(),
-                    style = MaterialTheme.typography.headlineMedium, 
-                    fontWeight = FontWeight.Bold, 
+                    if (AppState.isBalanceHidden.value) "₱ •••••" else "₱ ${String.format("%,.2f", AppState.xlmToPhp(AppState.walletBalance.value))}",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
                     color = ElectricBlue
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "≈ ${AppState.getDisplayBalance()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PundarTheme.colors.textSecondary
                 )
             }
 

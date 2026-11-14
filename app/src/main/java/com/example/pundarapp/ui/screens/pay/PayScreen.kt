@@ -190,7 +190,7 @@ fun PayScreen(navController: NavController) {
                                     fontWeight = FontWeight.ExtraBold,
                                     color = Color.White
                                 )
-                                val rate = AppState.currentExchangeRate.doubleValue.takeIf { it > 0.0 } ?: 56.50
+                                val rate = AppState.getPhpRate()
                                 Text(
                                     text = "≈ ${String.format("%,.2f", monthTotal / rate)} XLM · Stellar Rail",
                                     fontSize = 12.sp,

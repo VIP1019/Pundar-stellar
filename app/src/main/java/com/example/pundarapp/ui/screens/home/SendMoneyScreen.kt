@@ -49,6 +49,7 @@ import java.util.UUID
 fun SendMoneyScreen(navController: NavController) {
     var recipientPhone by remember { mutableStateOf("") }
     var amount         by remember { mutableStateOf("") }
+    var isPhpMode      by remember { mutableStateOf(true) }
     var message        by remember { mutableStateOf("") }
     var isSending      by remember { mutableStateOf(false) }
     var showPinDialog  by remember { mutableStateOf(false) }
@@ -57,6 +58,15 @@ fun SendMoneyScreen(navController: NavController) {
 
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        AppState.fetchExchangeRate()
+    }
+
+    val phpRate = AppState.getPhpRate()
+    val rawAmount = amount.toDoubleOrNull() ?: 0.0
+    val sendAmountPhp = if (isPhpMode) rawAmount else rawAmount * phpRate
+    val sendAmountXlm = if (isPhpMode) AppState.phpToXlm(rawAmount) else rawAmount
 
     // PIN confirmation dialog
     if (showPinDialog) {
@@ -70,7 +80,7 @@ fun SendMoneyScreen(navController: NavController) {
             text = {
                 Column {
                     Text(
-                        "Sending ₱${String.format("%,.2f", amount.toDoubleOrNull() ?: 0.0)} to $recipientPhone",
+                        "Sending ₱${String.format("%,.2f", sendAmountPhp)} (≈ ${String.format("%,.4f", sendAmountXlm)} XLM) to $recipientPhone",
                         style = MaterialTheme.typography.bodyMedium,
                         color = PundarTheme.colors.textSecondary
                     )
@@ -125,7 +135,8 @@ fun SendMoneyScreen(navController: NavController) {
 
                                 val senderPk   = AuthRepository.getCurrentUserStellarPublicKey() ?: ""
                                 val senderSeed = AuthRepository.getCurrentUserEncryptedSeed() ?: ""
-                                val stroops    = Stroops.fromXlmString(amount)
+                                val xlmFormatted = String.format(java.util.Locale.US, "%.7f", sendAmountXlm)
+                                val stroops    = Stroops.fromXlmString(xlmFormatted)
                                 if (stroops == null || stroops <= 0) {
                                     errorMsg  = "Enter a valid amount."
                                     isSending = false
@@ -146,18 +157,17 @@ fun SendMoneyScreen(navController: NavController) {
                                 )
                                 if (result is PaymentResult.Success) {
                                     AppState.refreshWalletBalance()
-                                    val sentAmount = amount.toDoubleOrNull() ?: 0.0
                                     AppState.processPayRoundUp(
                                         sourceReference = "PAY-${UUID.randomUUID().toString().take(8).uppercase()}",
-                                        sourceAmount = sentAmount,
+                                        sourceAmount = sendAmountPhp,
                                         sourceLabel = "Send Money",
                                         mpin = mpinInput
                                     )
                                     val activity = HomeActivity(
                                         icon      = "send",
                                         title     = "Sent to $recipientDisplayName",
-                                        subtitle  = message.ifBlank { "Money Transfer" },
-                                        amount    = "-₱${String.format("%,.2f", amount.toDoubleOrNull() ?: 0.0)}",
+                                        subtitle  = "${message.ifBlank { "Money Transfer" }} (${String.format("%,.2f", sendAmountXlm)} XLM)",
+                                        amount    = "-₱${String.format("%,.2f", sendAmountPhp)}",
                                         isPositive = false,
                                         module    = "Wallet"
                                     )
@@ -205,16 +215,16 @@ fun SendMoneyScreen(navController: NavController) {
                 PundarPrimaryButton(
                     text    = if (isSending) "Sending…" else "Send Money",
                     enabled = !isSending && recipientPhone.isNotBlank()
-                              && (amount.toDoubleOrNull() ?: 0.0) > 0,
+                              && rawAmount > 0,
                     onClick = {
-                        val sendAmt = amount.toDoubleOrNull() ?: 0.0
-                        if (sendAmt <= 0) {
+                        if (rawAmount <= 0 || sendAmountXlm <= 0) {
                             errorMsg = "Enter a valid amount."
                             return@PundarPrimaryButton
                         }
-                        val roundUp = AppState.calculateRoundUpAmount(sendAmt)
-                        if (sendAmt + roundUp > AppState.walletBalance.value) {
-                            errorMsg = "Insufficient balance."
+                        val roundUpPhp = AppState.calculateRoundUpAmount(sendAmountPhp)
+                        val roundUpXlm = AppState.phpToXlm(roundUpPhp)
+                        if (sendAmountXlm + roundUpXlm > AppState.walletBalance.value) {
+                            errorMsg = "Insufficient balance (${String.format("%,.2f", AppState.walletBalance.value)} XLM ≈ ₱${String.format("%,.2f", AppState.xlmToPhp(AppState.walletBalance.value))} available)."
                             return@PundarPrimaryButton
                         }
                         errorMsg = null
@@ -246,10 +256,16 @@ fun SendMoneyScreen(navController: NavController) {
                         style = MaterialTheme.typography.labelSmall, color = Color.White.copy(0.75f))
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        AppState.getDisplayBalance(),
+                        if (AppState.isBalanceHidden.value) "₱ •••••" else "₱ ${String.format("%,.2f", AppState.xlmToPhp(AppState.walletBalance.value))}",
                         style      = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color      = Color.White
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        if (AppState.isBalanceHidden.value) "••••• XLM" else "≈ ${String.format("%,.2f", AppState.walletBalance.value)} XLM  •  1 XLM = ₱${String.format("%,.2f", phpRate)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(0.75f)
                     )
                 }
             }
@@ -284,17 +300,54 @@ fun SendMoneyScreen(navController: NavController) {
             )
 
             // Amount field
-            Text("Amount", style = MaterialTheme.typography.labelMedium,
-                color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Medium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (isPhpMode) "Amount (PHP)" else "Amount (XLM)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = PundarTheme.colors.textSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = if (isPhpMode) "Switch to XLM" else "Switch to PHP (₱)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Blue400,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable {
+                        isPhpMode = !isPhpMode
+                        amount = ""
+                    }
+                )
+            }
             OutlinedTextField(
                 value         = amount,
                 onValueChange = {
-                    if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d{0,2}$"))) amount = it
+                    val regex = if (isPhpMode) Regex("^\\d*\\.?\\d{0,2}$") else Regex("^\\d*\\.?\\d{0,7}$")
+                    if (it.isEmpty() || it.matches(regex)) amount = it
                 },
-                placeholder   = { Text("₱ 0.00", color = PundarTheme.colors.textDim) },
+                placeholder   = { Text(if (isPhpMode) "₱ 0.00" else "0.00 XLM", color = PundarTheme.colors.textDim) },
                 leadingIcon   = {
-                    Text("₱", color = PundarTheme.colors.textSecondary, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 12.dp))
+                    Text(
+                        if (isPhpMode) "₱" else "XLM",
+                        color = PundarTheme.colors.textSecondary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 12.dp)
+                    )
+                },
+                supportingText = {
+                    if (rawAmount > 0.0) {
+                        Text(
+                            text = if (isPhpMode)
+                                "≈ ${String.format("%,.4f", sendAmountXlm)} XLM will be sent on Stellar"
+                            else
+                                "≈ ₱${String.format("%,.2f", sendAmountPhp)} (at ₱${String.format("%,.2f", phpRate)} / XLM)",
+                            color = PundarTheme.colors.brandPrimary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 },
                 modifier        = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -313,11 +366,12 @@ fun SendMoneyScreen(navController: NavController) {
 
             // Quick amount chips
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("100", "200", "500", "1000").forEach { preset ->
+                val presets = if (isPhpMode) listOf("100", "200", "500", "1000") else listOf("10", "25", "50", "100")
+                presets.forEach { preset ->
                     FilterChip(
                         selected = amount == preset,
                         onClick  = { amount = preset },
-                        label    = { Text("₱$preset", fontSize = 11.sp) },
+                        label    = { Text(if (isPhpMode) "₱$preset" else "$preset XLM", fontSize = 11.sp) },
                         colors   = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = PundarTheme.colors.brandPrimary.copy(0.20f),
                             selectedLabelColor     = PundarTheme.colors.brandLight,

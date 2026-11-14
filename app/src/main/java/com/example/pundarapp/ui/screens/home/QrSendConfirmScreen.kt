@@ -128,11 +128,12 @@ fun QrSendConfirmScreen(navController: NavController) {
             },
             text = {
                 Column {
+                    val dialogXlm = AppState.phpToXlm(amount.toDoubleOrNull() ?: 0.0)
                     Text(
                         text = if (isJoinSettleNow)
-                            "Enter your 4-digit PIN to pay your share of ₱$amount and join the bill."
+                            "Enter your 4-digit PIN to pay your share of ₱$amount (≈ ${String.format("%,.4f", dialogXlm)} XLM) and join the bill."
                         else
-                            "Enter your 4-digit PIN to send ₱$amount to $recipientName.",
+                            "Enter your 4-digit PIN to send ₱$amount (≈ ${String.format("%,.4f", dialogXlm)} XLM) to $recipientName.",
                         color = PundarTheme.colors.textSecondary
                     )
                     Spacer(Modifier.height(14.dp))
@@ -170,6 +171,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                             }
 
                             val sendAmount = amount.toDoubleOrNull() ?: 0.0
+                            val sendAmountXlm = AppState.phpToXlm(sendAmount)
                             val recipientResult = QrPaymentRepository.lookupRecipient(payload.userId)
                             val recipient = recipientResult.getOrElse {
                                 com.example.pundarapp.data.remote.QrRecipient(
@@ -190,7 +192,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                                         senderEncryptedSeed = senderSeed,
                                         senderMpin = pin,
                                         recipientPublicKey = recipient.userId,
-                                        amountXlm = sendAmount.toString(),
+                                        amountXlm = String.format(java.util.Locale.US, "%.7f", sendAmountXlm),
                                         memo = (if (isJoinSettleNow) billTitle else note.ifBlank { "PUNDAR QR" }).take(28)
                                     )
                                     if (stellarRes.isSuccess) {
@@ -233,7 +235,7 @@ fun QrSendConfirmScreen(navController: NavController) {
 
                             transfer.onSuccess { ref ->
                                 isCompleted = true
-                                AppState.updateWalletBalance((AppState.walletBalance.value - sendAmount).coerceAtLeast(0.0))
+                                AppState.updateWalletBalance((AppState.walletBalance.value - sendAmountXlm).coerceAtLeast(0.0))
 
                                 if (isJoinSettleNow) {
                                     // Join bill and mark settled
@@ -332,7 +334,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                                 Toast.makeText(context, "Please enter a valid share amount.", Toast.LENGTH_SHORT).show()
                                 return@PundarPrimaryButton
                             }
-                            if (shareAmount > AppState.walletBalance.value) {
+                            if (AppState.phpToXlm(shareAmount) > AppState.walletBalance.value) {
                                 Toast.makeText(context, "Insufficient balance to settle now.", Toast.LENGTH_SHORT).show()
                                 return@PundarPrimaryButton
                             }
@@ -383,7 +385,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                                 Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
                                 return@PundarPrimaryButton
                             }
-                            if (sendAmount > AppState.walletBalance.value) {
+                            if (AppState.phpToXlm(sendAmount) > AppState.walletBalance.value) {
                                 Toast.makeText(context, "Insufficient balance", Toast.LENGTH_SHORT).show()
                                 return@PundarPrimaryButton
                             }
@@ -724,7 +726,7 @@ fun QrSendConfirmScreen(navController: NavController) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "₱${String.format("%,.2f", AppState.walletBalance.value)}",
+                        text = "₱${String.format("%,.2f", AppState.xlmToPhp(AppState.walletBalance.value))} (≈ ${String.format("%,.2f", AppState.walletBalance.value)} XLM)",
                         color = PundarTheme.colors.textPrimary,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.bodyMedium

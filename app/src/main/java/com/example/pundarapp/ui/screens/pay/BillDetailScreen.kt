@@ -34,7 +34,7 @@ fun BillDetailScreen(billId: String, navController: NavController) {
         ?: run { navController.navigateUp(); return }
     val context = LocalContext.current
     val walletBalance = AppState.walletBalance.value
-    val exchangeRate = AppState.currentExchangeRate.doubleValue.takeIf { it > 0.0 } ?: 56.50
+    val exchangeRate = AppState.getPhpRate()
     val totalXlm = bill.totalAmount / exchangeRate
     val yourShareXlm = bill.yourShare / exchangeRate
     val canAffordSettle = walletBalance >= yourShareXlm

@@ -62,16 +62,16 @@ fun detectCountryFromNetwork(context: android.content.Context): String {
         // 2. SIM country (doesn't change when roaming, but better than locale)
         val simCountry = tm?.simCountryIso?.uppercase()?.takeIf { it.length == 2 }
         if (simCountry != null) return simCountry
-        // 3. Fallback: device locale region
-        Locale.getDefault().country.uppercase().takeIf { it.length == 2 } ?: "US"
+        // 3. Fallback: Default to PH for PUNDAR wallet if no SIM/network carrier is detected
+        "PH"
     } catch (e: Exception) {
         Log.w("AppState", "Country detection failed: ${e.message}")
-        Locale.getDefault().country.uppercase().takeIf { it.length == 2 } ?: "US"
+        "PH"
     }
 }
 
 /** Maps a country code to its primary currency code */
-fun countryToCurrency(country: String): String = COUNTRY_CURRENCY_MAP[country.uppercase()] ?: "USD"
+fun countryToCurrency(country: String): String = COUNTRY_CURRENCY_MAP[country.uppercase()] ?: "PHP"
 
 fun getCurrencySymbol(code: String): String {
     return when (code.uppercase()) {
@@ -145,9 +145,8 @@ object AppState {
         if (index >= 0) {
             val old = bills[index]
             if (old.status == BillStatus.SETTLED) return // already settled
-            // Deduct user's share from wallet (convert PHP share to XLM if needed)
-            val rate = currentExchangeRate.doubleValue.takeIf { it > 0.0 } ?: 56.50
-            val shareXlm = old.yourShare / rate
+            // Deduct user's share from wallet (convert PHP share to XLM)
+            val shareXlm = phpToXlm(old.yourShare)
             updateWalletBalance((walletBalance.value - shareXlm).coerceAtLeast(0.0))
             bills[index] = old.copy(status = BillStatus.SETTLED)
             // Record as home activity
@@ -607,7 +606,8 @@ object AppState {
         val roundUp = calculateRoundUpAmount(sourceAmount)
         if (roundUp <= 0.0) return null
 
-        if (walletBalance.value < roundUp) {
+        val roundUpXlm = phpToXlm(roundUp)
+        if (walletBalance.value < roundUpXlm) {
             addHomeActivity(
                 HomeActivity(
                     icon = "trending_up",
@@ -621,7 +621,7 @@ object AppState {
             return null
         }
 
-        updateWalletBalance(walletBalance.value - roundUp)
+        updateWalletBalance((walletBalance.value - roundUpXlm).coerceAtLeast(0.0))
         val accumulated = settings.totalAccumulated + roundUp
         
         val updatedSettings = settings.copy(
@@ -956,6 +956,7 @@ object AppState {
     }
 
     fun refreshWalletBalance() {
+        fetchExchangeRate()
         val phone = AuthRepository.getCurrentUserPhone()
         if (phone.isNotBlank()) {
             scope.launch {
@@ -1087,7 +1088,18 @@ object AppState {
     // ── SETTINGS ─────────────────────────────────────────────────────────────
     val isBalanceHidden = mutableStateOf(false)
     val preferredCurrency = mutableStateOf("PHP")
-    val currentExchangeRate = mutableDoubleStateOf(56.50)
+    val currentExchangeRate = mutableDoubleStateOf(CurrencyRepository.DEFAULT_PHP_PER_XLM)
+    val phpExchangeRate = mutableDoubleStateOf(CurrencyRepository.DEFAULT_PHP_PER_XLM)
+
+    /** Returns live PHP per 1 XLM rate (e.g., ~6.50 PHP/XLM) */
+    fun getPhpRate(): Double =
+        phpExchangeRate.doubleValue.takeIf { it > 0.0 } ?: CurrencyRepository.getCachedPhpPerXlm()
+
+    /** Converts PHP amount to XLM using the live PHP/XLM exchange rate */
+    fun phpToXlm(phpAmount: Double): Double = phpAmount / getPhpRate()
+
+    /** Converts XLM amount to PHP using the live PHP/XLM exchange rate */
+    fun xlmToPhp(xlmAmount: Double): Double = xlmAmount * getPhpRate()
     
     val rwaBalance = mutableDoubleStateOf(0.0)
 
@@ -1113,8 +1125,9 @@ object AppState {
         // Theme Mode - default to LIGHT
         themeMode.value = prefs?.getString("theme_mode", "LIGHT") ?: "LIGHT"
 
-        // Detect currency from network carrier country on every init — no lock
-        val detectedCurrency = countryToCurrency(detectCountryFromNetwork(context))
+        // Load saved currency or detect from network carrier country
+        val savedCurrency = prefs?.getString("preferred_currency", null)
+        val detectedCurrency = savedCurrency ?: countryToCurrency(detectCountryFromNetwork(context))
         preferredCurrency.value = detectedCurrency
         prefs?.edit()?.putString("preferred_currency", detectedCurrency)?.apply()
         fetchExchangeRate()
@@ -1182,10 +1195,14 @@ object AppState {
         }
     }
     
-    private fun fetchExchangeRate() {
+    fun fetchExchangeRate(forceRefresh: Boolean = false) {
         scope.launch {
-            val rates = CurrencyRepository.getXlmRates(forceRefresh = false)
-            currentExchangeRate.doubleValue = rates[preferredCurrency.value] ?: 1.0
+            val rates = CurrencyRepository.getXlmRates(forceRefresh = forceRefresh)
+            val phpRate = rates["PHP"]?.takeIf { it > 0.0 } ?: CurrencyRepository.DEFAULT_PHP_PER_XLM
+            phpExchangeRate.doubleValue = phpRate
+            val activeCurrency = preferredCurrency.value.uppercase()
+            currentExchangeRate.doubleValue = rates[activeCurrency]?.takeIf { it > 0.0 }
+                ?: CurrencyRepository.getDefaultRate(activeCurrency)
         }
     }
 

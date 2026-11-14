@@ -188,8 +188,9 @@ object QrPaymentRepository {
         }
 
         return try {
+            val amountXlm = com.example.pundarapp.ui.data.AppState.phpToXlm(amount)
             val availableLocalBalance = com.example.pundarapp.ui.data.AppState.walletBalance.value
-            if (amount > availableLocalBalance) {
+            if (amountXlm > availableLocalBalance) {
                 return Result.failure(Exception("Insufficient wallet balance."))
             }
 
@@ -215,22 +216,22 @@ object QrPaymentRepository {
                 val batch = db.batch()
 
                 if (senderDoc.exists()) {
-                    batch.update(senderDoc.reference, "wallet_balance", (senderBalance - amount).coerceAtLeast(0.0))
+                    batch.update(senderDoc.reference, "wallet_balance", (senderBalance - amountXlm).coerceAtLeast(0.0))
                 } else {
                     batch.set(
                         usersCollection.document(senderId),
-                        hashMapOf("wallet_balance" to (senderBalance - amount).coerceAtLeast(0.0)),
+                        hashMapOf("wallet_balance" to (senderBalance - amountXlm).coerceAtLeast(0.0)),
                         com.google.firebase.firestore.SetOptions.merge()
                     )
                 }
 
                 if (recipientDoc.exists()) {
-                    batch.update(recipientDoc.reference, "wallet_balance", recipientBalance + amount)
+                    batch.update(recipientDoc.reference, "wallet_balance", recipientBalance + amountXlm)
                 } else {
                     batch.set(
                         usersCollection.document(recipient.userId),
                         hashMapOf(
-                            "wallet_balance" to (recipientBalance + amount),
+                            "wallet_balance" to (recipientBalance + amountXlm),
                             "full_name" to recipient.displayName,
                             "phone_number" to recipient.userId
                         ),

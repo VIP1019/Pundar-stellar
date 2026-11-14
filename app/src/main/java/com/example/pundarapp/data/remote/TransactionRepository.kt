@@ -38,7 +38,8 @@ object TransactionRepository {
             }
 
             val totalAmount = billIds.sumOf { billsById[it]?.yourShare ?: 0.0 }
-            if (totalAmount > currentBalance) {
+            val totalAmountXlm = com.example.pundarapp.ui.data.AppState.phpToXlm(totalAmount)
+            if (totalAmountXlm > currentBalance) {
                 return Result.failure(Exception("Insufficient wallet balance."))
             }
 
@@ -54,7 +55,7 @@ object TransactionRepository {
             }
 
             val userRef = usersCollection.document(userId)
-            batch.update(userRef, "wallet_balance", currentBalance - totalAmount)
+            batch.update(userRef, "wallet_balance", (currentBalance - totalAmountXlm).coerceAtLeast(0.0))
 
             val txnRef = transactionsCollection.document()
             batch.set(

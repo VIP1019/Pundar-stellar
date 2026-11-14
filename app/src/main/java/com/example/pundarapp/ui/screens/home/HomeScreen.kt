@@ -83,7 +83,7 @@ fun HomeScreen(navController: NavController) {
     val fullName = session?.name ?: "Mark James"
     val initials = AuthRepository.getCurrentUserInitials().ifBlank { "MJ" }
     val walletBalance = AppState.walletBalance.value
-    val exchangeRate = AppState.currentExchangeRate.doubleValue
+    val exchangeRate = AppState.getPhpRate()
     val fiatBalanceStr = if (AppState.isBalanceHidden.value) "₱ •••••" else "₱ ${String.format("%,.2f", walletBalance * exchangeRate)}"
     val xlmBalanceStr = if (AppState.isBalanceHidden.value) "••••• XLM" else "≈ ${String.format("%,.2f", walletBalance)} XLM"
 
