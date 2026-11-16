@@ -97,9 +97,16 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                     return@launch
                                 }
                                 val myPhone = AuthRepository.getCurrentUserPhone()
+                                val myName = AuthRepository.getCurrentUserName()
                                 val counterpartyUsername = bill.members
-                                    .firstOrNull { !it.name.equals("You", true) && it.username != myPhone && it.username.isNotBlank() }
+                                    .firstOrNull {
+                                        !it.name.equals("You", true) &&
+                                            !it.name.equals(myName, true) &&
+                                            it.username.removePrefix("@") != myPhone &&
+                                            it.username.isNotBlank()
+                                    }
                                     ?.username
+                                    ?.removePrefix("@")
                                 val counterpartyKey = counterpartyUsername?.let { uname ->
                                     if (uname.startsWith("G") && uname.length == 56) uname
                                     else AuthRepository.findRegisteredUser(uname)?.stellarPublicKey
@@ -264,9 +271,14 @@ fun BillDetailScreen(billId: String, navController: NavController) {
 
             if (bill.members.isNotEmpty()) {
                 item {
+                    val myPhone = AuthRepository.getCurrentUserPhone()
+                    val myName = AuthRepository.getCurrentUserName()
                     PundarCard {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             bill.members.forEachIndexed { index, member ->
+                                val isCurrentUser = member.name == "You" ||
+                                    (myName.isNotBlank() && member.name.equals(myName, ignoreCase = true)) ||
+                                    (myPhone.isNotBlank() && member.username.removePrefix("@") == myPhone)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
@@ -277,13 +289,13 @@ fun BillDetailScreen(billId: String, navController: NavController) {
                                             .size(40.dp)
                                             .clip(CircleShape)
                                             .background(
-                                                if (member.name == "You") PundarTheme.colors.brandPrimary.copy(alpha = 0.1f)
+                                                if (isCurrentUser) PundarTheme.colors.brandPrimary.copy(alpha = 0.1f)
                                                 else Color(member.avatarColor)
                                             )
                                     ) {
                                         Text(
                                             text = member.initials,
-                                            color = if (member.name == "You") PundarTheme.colors.brandPrimary else PundarTheme.colors.surfacePrimary,
+                                            color = if (isCurrentUser) PundarTheme.colors.brandPrimary else PundarTheme.colors.surfacePrimary,
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold
                                         )

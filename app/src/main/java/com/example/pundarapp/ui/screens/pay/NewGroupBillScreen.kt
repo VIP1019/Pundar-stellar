@@ -104,14 +104,63 @@ fun NewGroupBillScreen(navController: NavController) {
     // ── Step 3 Split Mode ─────────────────────────────────────────
     var splitModeIndex by remember { mutableIntStateOf(0) } // 0 = Equal, 1 = Itemized
 
-    // Selected group members (starts with "You" + verified recipient)
+    val currentUser by AuthRepository.currentUserState
+    val creatorName = remember(currentUser?.name) {
+        currentUser?.name?.takeIf { it.isNotBlank() }
+            ?: AuthRepository.getCurrentUserName().takeIf { it.isNotBlank() && it != "User" }
+            ?: "You"
+    }
+    val creatorPhone = remember(currentUser?.phone) {
+        currentUser?.phone?.takeIf { it.isNotBlank() }
+            ?: AuthRepository.getCurrentUserPhone()
+    }
+    val creatorUsername = remember(creatorPhone, creatorName) {
+        if (creatorPhone.isNotBlank()) {
+            if (creatorPhone.startsWith("@")) creatorPhone else "@$creatorPhone"
+        } else {
+            "@${creatorName.lowercase().replace(" ", "")}"
+        }
+    }
+    val creatorInitials = remember(currentUser?.name, creatorName) {
+        AuthRepository.getCurrentUserInitials().takeIf { it.isNotBlank() && it != "U" }
+            ?: run {
+                val parts = creatorName.trim().split(" ").filter { it.isNotBlank() }
+                when {
+                    parts.size >= 2 -> (parts.first().take(1) + parts.last().take(1)).uppercase()
+                    parts.size == 1 -> parts[0].take(2).uppercase()
+                    else -> "YO"
+                }
+            }
+    }
+
+    // Selected group members (starts with logged-in creator + verified recipient)
     val selectedMembers = remember {
         mutableStateListOf(
-            BillMember("You", "@currentuser", "YOU", 0.0, 0xFF0B192C)
+            BillMember(creatorName, creatorUsername, creatorInitials, 0.0, 0xFF0B192C)
         )
     }
 
     val itemizedAmounts = remember { mutableStateMapOf<String, String>() }
+
+    LaunchedEffect(creatorName, creatorUsername, creatorInitials) {
+        if (selectedMembers.isNotEmpty()) {
+            val first = selectedMembers[0]
+            if (first.username == "@currentuser" || first.name == "You" || first.avatarColor == 0xFF0B192C) {
+                val oldName = first.name
+                selectedMembers[0] = first.copy(
+                    name = creatorName,
+                    username = creatorUsername,
+                    initials = creatorInitials
+                )
+                if (oldName != creatorName && itemizedAmounts.containsKey(oldName)) {
+                    val existingAmount = itemizedAmounts.remove(oldName)
+                    if (existingAmount != null) {
+                        itemizedAmounts[creatorName] = existingAmount
+                    }
+                }
+            }
+        }
+    }
 
     // Dialog state handlers
     var showGenerateGroupQrDialog by remember { mutableStateOf(false) }
@@ -183,7 +232,11 @@ fun NewGroupBillScreen(navController: NavController) {
         }
     }
 
-    val yourSharePhp = computedMembers.find { it.name == "You" }?.amount ?: sharePerMemberPhp
+    val yourSharePhp = computedMembers.firstOrNull {
+        it.name.equals(creatorName, ignoreCase = true) ||
+            it.username.equals(creatorUsername, ignoreCase = true) ||
+            it.name == "You"
+    }?.amount ?: computedMembers.firstOrNull()?.amount ?: sharePerMemberPhp
     val yourShareXlm = if (exchangeRate > 0.0) yourSharePhp / exchangeRate else 0.0
 
     // Pays the user's share to the verified recipient on Stellar Testnet, then shows the receipt.
@@ -410,11 +463,16 @@ fun NewGroupBillScreen(navController: NavController) {
                                     parts.size == 1 -> parts[0].take(2).uppercase()
                                     else -> "PU"
                                 }
-                                if (selectedMembers.none { it.name.equals(name, ignoreCase = true) }) {
+                                val candidateUsername = if (ref.startsWith("@")) ref else "@$ref"
+                                if (selectedMembers.none {
+                                        it.name.equals(name, ignoreCase = true) ||
+                                            (ref.isNotBlank() && it.username.equals(candidateUsername, ignoreCase = true))
+                                    }
+                                ) {
                                     selectedMembers.add(
                                         BillMember(
                                             name = name,
-                                            username = if (ref.startsWith("@")) ref else "@$ref",
+                                            username = candidateUsername,
                                             initials = initials,
                                             amount = scannedAmount ?: 0.0,
                                             avatarColor = 0xFF2563EB
@@ -444,11 +502,16 @@ fun NewGroupBillScreen(navController: NavController) {
                                     parts.size == 1 -> parts[0].take(2).uppercase()
                                     else -> "PU"
                                 }
-                                if (selectedMembers.none { it.name.equals(user.name, ignoreCase = true) }) {
+                                val candidateUsername = "@${user.phone}"
+                                if (selectedMembers.none {
+                                        it.name.equals(user.name, ignoreCase = true) ||
+                                            it.username.equals(candidateUsername, ignoreCase = true)
+                                    }
+                                ) {
                                     selectedMembers.add(
                                         BillMember(
                                             name = user.name,
-                                            username = "@${user.phone}",
+                                            username = candidateUsername,
                                             initials = initials,
                                             amount = 0.0,
                                             avatarColor = 0xFF2563EB
@@ -472,15 +535,24 @@ fun NewGroupBillScreen(navController: NavController) {
                             onAmountChange = { totalAmountInput = it },
                             totalInPhp = totalInPhp,
                             totalInXlm = totalInXlm,
+                            creatorName = creatorName,
+                            creatorUsername = creatorUsername,
                             selectedMembers = selectedMembers,
                             onOpenGenerateQr = { showGenerateGroupQrDialog = true },
                             onAddMember = { member ->
-                                if (selectedMembers.none { it.name.equals(member.name, ignoreCase = true) }) {
+                                if (selectedMembers.none {
+                                        it.name.equals(member.name, ignoreCase = true) ||
+                                            (member.username.isNotBlank() && it.username.equals(member.username, ignoreCase = true))
+                                    }
+                                ) {
                                     selectedMembers.add(member)
                                 }
                             },
                             onRemoveMember = { m ->
-                                if (m.name != "You") {
+                                val isCreator = m.name.equals(creatorName, ignoreCase = true) ||
+                                    m.username.equals(creatorUsername, ignoreCase = true) ||
+                                    m.name == "You"
+                                if (!isCreator) {
                                     selectedMembers.remove(m)
                                     itemizedAmounts.remove(m.name)
                                 }
@@ -1432,6 +1504,8 @@ private fun Step2AmountAndBillSplit(
     onAmountChange: (String) -> Unit,
     totalInPhp: Double,
     totalInXlm: Double,
+    creatorName: String,
+    creatorUsername: String,
     selectedMembers: List<BillMember>,
     onOpenGenerateQr: () -> Unit,
     onAddMember: (BillMember) -> Unit,
@@ -1452,10 +1526,18 @@ private fun Step2AmountAndBillSplit(
             addFriendError = null
             val user = AuthRepository.findRegisteredUser(query)
             isAddingFriend = false
+            val myPhone = AuthRepository.getCurrentUserPhone()
             when {
                 user == null -> addFriendError = "No registered PUNDAR account found for this number."
-                user.id == AuthRepository.currentUserState.value?.id -> addFriendError = "You're already included in this split."
-                selectedMembers.any { it.name.equals(user.name, ignoreCase = true) } -> addFriendError = "${user.name} is already in this split."
+                user.id == AuthRepository.currentUserState.value?.id ||
+                    (myPhone.isNotBlank() && user.phone == myPhone) ||
+                    user.name.equals(creatorName, ignoreCase = true) ||
+                    "@${user.phone}".equals(creatorUsername, ignoreCase = true) ->
+                    addFriendError = "You're already included in this split."
+                selectedMembers.any {
+                    it.name.equals(user.name, ignoreCase = true) ||
+                        it.username.equals("@${user.phone}", ignoreCase = true)
+                } -> addFriendError = "${user.name} is already in this split."
                 else -> {
                     val parts = user.name.trim().split(" ").filter { it.isNotBlank() }
                     val initials = when {
@@ -1957,7 +2039,10 @@ private fun Step2AmountAndBillSplit(
                         Text(m.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF0F172A))
                         Text(m.username, fontSize = 11.sp, color = Color(0xFF64748B))
                     }
-                    if (m.name != "You") {
+                    val isCreator = m.name.equals(creatorName, ignoreCase = true) ||
+                        m.username.equals(creatorUsername, ignoreCase = true) ||
+                        m.name == "You"
+                    if (!isCreator) {
                         IconButton(onClick = { onRemoveMember(m) }) {
                             Icon(Icons.Filled.Close, contentDescription = null, tint = Color(0xFF94A3B8))
                         }
@@ -3178,9 +3263,25 @@ private fun GenerateGroupQrModalDialog(
                         }
                         Button(
                             onClick = {
-                                val currentPhone = currentUser?.phone?.takeIf { it.isNotBlank() } ?: currentUser?.id.orEmpty()
-                                val currentName = currentUser?.name?.takeIf { it.isNotBlank() } ?: "You"
-                                val currentInitials = AuthRepository.getCurrentUserInitials().ifBlank { "YO" }
+                                val currentPhone = currentUser?.phone?.takeIf { it.isNotBlank() }
+                                    ?: AuthRepository.getCurrentUserPhone().ifBlank { currentUser?.id.orEmpty() }
+                                val currentName = currentUser?.name?.takeIf { it.isNotBlank() }
+                                    ?: AuthRepository.getCurrentUserName().takeIf { it.isNotBlank() && it != "User" }
+                                    ?: "You"
+                                val currentInitials = AuthRepository.getCurrentUserInitials().takeIf { it.isNotBlank() && it != "U" }
+                                    ?: run {
+                                        val parts = currentName.trim().split(" ").filter { it.isNotBlank() }
+                                        when {
+                                            parts.size >= 2 -> (parts.first().take(1) + parts.last().take(1)).uppercase()
+                                            parts.size == 1 -> parts[0].take(2).uppercase()
+                                            else -> "YO"
+                                        }
+                                    }
+                                val currentHandle = if (currentPhone.isNotBlank()) {
+                                    if (currentPhone.startsWith("@")) currentPhone else "@$currentPhone"
+                                } else {
+                                    "@${currentName.lowercase().replace(" ", "")}"
+                                }
                                 val computedTotal = settledAmount * totalSplitCount
                                 onSyncBillConfig(
                                     titleInput.trim().ifBlank { "Group Split" },
@@ -3189,7 +3290,7 @@ private fun GenerateGroupQrModalDialog(
                                     peopleJoiningCount
                                 )
                                 val membersList = buildList {
-                                    add(BillMember(name = "You ($currentName)", username = currentPhone, initials = currentInitials, amount = settledAmount))
+                                    add(BillMember(name = currentName, username = currentHandle, initials = currentInitials, amount = settledAmount, avatarColor = 0xFF0B192C))
                                     for (i in 1..peopleJoiningCount) {
                                         add(BillMember(name = "Participant $i", username = "", initials = "P$i", amount = settledAmount))
                                     }
