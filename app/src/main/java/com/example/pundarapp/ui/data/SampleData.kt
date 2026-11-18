@@ -125,10 +125,104 @@ data class CircleMember(
     val payoutRound: Int = 1,
     val acceptanceStatus: String = "ACCEPTED", // "ACCEPTED", "PENDING", "DECLINED"
     val acceptedTermsVersion: Int = 1,
+    val declineReason: String = "",
     val contributionTxHash: String = "",
     val hasReceivedPayout: Boolean = false,
-    val payoutTxHash: String = ""
+    val payoutTxHash: String = "",
+    val pundarScore: Int = 800,
+    val isBanned: Boolean = false,
+    val paidAtTimestamp: Long = 0L,
+    val ledgerSequence: Long = 0L
+) {
+    @get:com.google.firebase.firestore.Exclude
+    val formattedPaidTime: String
+        get() = if (paidAtTimestamp > 0L) {
+            java.text.SimpleDateFormat("MMM dd, yyyy hh:mm a", java.util.Locale.getDefault())
+                .format(java.util.Date(paidAtTimestamp))
+        } else ""
+}
+
+data class CircleContractClause(
+    val code: String,
+    val title: String,
+    val description: String
 )
+
+object CircleContractRules {
+    const val POINTS_ON_TIME_CONTRIBUTION = 15
+    const val POINTS_CIRCLE_COMPLETION = 25
+    const val POINTS_FAILED_PAYMENT_PENALTY = -50
+    const val MIN_REHABILITATION_SCORE = 750
+    const val NEW_USER_MIN_RESERVE_XLM = 2.0
+
+    fun getClauses(
+        contributionFormatted: String = "Fixed Amount",
+        scheduleText: String = "Bi-weekly / Monthly",
+        payoutOrderType: String = "Predetermined Fixed Rotation",
+        payoutFormatted: String = "Contribution x Members"
+    ): List<CircleContractClause> = listOf(
+        CircleContractClause(
+            code = "a",
+            title = "Voluntary Participation",
+            description = "Every invited participant joins voluntarily and must explicitly review and accept the complete proposed Circle terms and member roster before activation."
+        ),
+        CircleContractClause(
+            code = "b",
+            title = "Fixed Membership",
+            description = "Once all members accept the final terms and the Circle is activated on the Soroban smart contract, the member list is permanently locked for the entire cycle."
+        ),
+        CircleContractClause(
+            code = "c",
+            title = "Fixed Contribution Amount",
+            description = "Every participating member must submit the exact same fixed contribution ($contributionFormatted) each round. Partial or custom amounts are rejected."
+        ),
+        CircleContractClause(
+            code = "d",
+            title = "Contribution Schedule",
+            description = "Contributions follow the agreed schedule ($scheduleText) and must be submitted on or before the round due date. Missed payments reduce PUNDAR points and trigger a Circle participation ban."
+        ),
+        CircleContractClause(
+            code = "e",
+            title = "Predetermined Payout Order",
+            description = "The payout rotation ($payoutOrderType) is assigned by the organizer or randomized with participant agreement prior to activation, assigning each member to one specific round."
+        ),
+        CircleContractClause(
+            code = "f",
+            title = "Payout Amount",
+            description = "The scheduled payout amount per round ($payoutFormatted) equals the fixed contribution amount multiplied by the number of participating members locked at activation."
+        ),
+        CircleContractClause(
+            code = "g",
+            title = "Payout Eligibility",
+            description = "Only the member assigned to the active round in the locked rotation is eligible for the scheduled payout, and only after 100% of required contributions for that round are recorded."
+        ),
+        CircleContractClause(
+            code = "h",
+            title = "Smart Contract Enforcement",
+            description = "The Soroban smart contract independently validates active round state, contribution completeness, scheduled recipient identity, exact payout amount, and payout-only-once rules."
+        ),
+        CircleContractClause(
+            code = "i",
+            title = "Cancellation and Changes",
+            description = "If an invited member declines before activation, the Circle remains inactive; the organizer may replace the participant, revise terms for remaining members, or create a new proposal. After activation, no terms or recipient order can be revised by anyone until completion."
+        ),
+        CircleContractClause(
+            code = "j",
+            title = "Wallet Authorization and Security",
+            description = "All contract activations, round contributions, and payout invocations require explicit non-custodial Stellar wallet authorization signed with the member's 4-digit MPIN."
+        ),
+        CircleContractClause(
+            code = "k",
+            title = "Transaction Transparency",
+            description = "All recorded transactions, including members who paid and did not pay, with dates, times, amounts, ledger numbers, and statuses, are visible to all Circle participants."
+        ),
+        CircleContractClause(
+            code = "l",
+            title = "Testnet Limitation",
+            description = "All PUNDAR Circle smart contract executions, escrow settlements, and ledger verifications operate on the Stellar Testnet."
+        )
+    )
+}
 
 enum class ContributionStatus { PAID, PENDING, OVERDUE }
 
@@ -276,48 +370,10 @@ object SampleData {
 
     // ── Pay ─────────────────────────────────────────────
     val recentBills = emptyList<GroupBill>()
-    val recentContacts = listOf(
-        BillMember("Maria Santos", "09171234567", "MS", 0.0),
-        BillMember("Mark Cruz", "09189876543", "MC", 0.0),
-        BillMember("Anna Reyes", "09191112233", "AR", 0.0)
-    )
+    val recentContacts = emptyList<BillMember>()
 
     // ── Circle ──────────────────────────────────────────
-    val circles = listOf(
-        Circle(
-            id = "circle_sample_1",
-            name = "Emergency Fund 2026",
-            targetAmount = 50000.00,
-            savedAmount = 22500.00,
-            targetDate = "Dec 2026",
-            memberCount = 5,
-            contributionPerMonth = 5000.00,
-            members = listOf(
-                CircleMember("1", "You", "JD", 20, 5000.00, ContributionStatus.PAID, isYou = true),
-                CircleMember("2", "Maria S.", "MS", 20, 5000.00, ContributionStatus.PAID),
-                CircleMember("3", "Mark C.", "MC", 20, 5000.00, ContributionStatus.PENDING),
-                CircleMember("4", "Anna R.", "AR", 20, 5000.00, ContributionStatus.PAID),
-                CircleMember("5", "Leo G.", "LG", 20, 5000.00, ContributionStatus.PAID)
-            ),
-            isActive = true
-        ),
-        Circle(
-            id = "circle_sample_2",
-            name = "Travel Fund - Japan",
-            targetAmount = 30000.00,
-            savedAmount = 15000.00,
-            targetDate = "Nov 2026",
-            memberCount = 4,
-            contributionPerMonth = 3750.00,
-            members = listOf(
-                CircleMember("1", "You", "JD", 25, 3750.00, ContributionStatus.PAID, isYou = true),
-                CircleMember("2", "Sarah T.", "ST", 25, 3750.00, ContributionStatus.PAID),
-                CircleMember("3", "Mark C.", "MC", 25, 3750.00, ContributionStatus.PAID),
-                CircleMember("4", "Leo G.", "LG", 25, 3750.00, ContributionStatus.PENDING)
-            ),
-            isActive = true
-        )
-    )
+    val circles = emptyList<Circle>()
     val circleInvitation: CircleInvitation? = null
 
     // ── Grow ────────────────────────────────────────────

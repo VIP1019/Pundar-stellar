@@ -86,15 +86,27 @@ fun RequestsScreen(navController: NavController) {
                         RequestCard(
                             request = req,
                             onAccept = {
-                                scope.launch {
-                                    handleAccept(req, context)
-                                    AppState.refreshUnifiedRequests()
+                                if (req.type == RequestType.CIRCLE_INVITE) {
+                                    val payload = req.payload as CircleInvitation
+                                    AppState.pendingInvitation.value = payload
+                                    navController.navigate(com.example.pundarapp.ui.navigation.Routes.circleInvite(payload.id))
+                                } else {
+                                    scope.launch {
+                                        handleAccept(req, context)
+                                        AppState.refreshUnifiedRequests()
+                                    }
                                 }
                             },
                             onDecline = {
-                                scope.launch {
-                                    handleDecline(req, context)
-                                    AppState.refreshUnifiedRequests()
+                                if (req.type == RequestType.CIRCLE_INVITE) {
+                                    val payload = req.payload as CircleInvitation
+                                    AppState.pendingInvitation.value = payload
+                                    navController.navigate(com.example.pundarapp.ui.navigation.Routes.circleInvite(payload.id))
+                                } else {
+                                    scope.launch {
+                                        handleDecline(req, context)
+                                        AppState.refreshUnifiedRequests()
+                                    }
                                 }
                             }
                         )
@@ -215,17 +227,26 @@ fun RequestCard(request: AppRequest, onAccept: () -> Unit, onDecline: () -> Unit
                 color = PundarTheme.colors.textPrimary
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(modifier = Modifier.weight(1f)) {
-                    PundarSecondaryButton(
-                        text = "Decline",
-                        onClick = onDecline
-                    )
-                }
-                Box(modifier = Modifier.weight(1f)) {
-                    PundarPrimaryButton(
-                        text = "Accept",
-                        onClick = onAccept
-                    )
+                if (request.type == RequestType.CIRCLE_INVITE) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        PundarPrimaryButton(
+                            text = "Review Terms & Conditions to Join",
+                            onClick = onAccept
+                        )
+                    }
+                } else {
+                    Box(modifier = Modifier.weight(1f)) {
+                        PundarSecondaryButton(
+                            text = "Decline",
+                            onClick = onDecline
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        PundarPrimaryButton(
+                            text = "Accept",
+                            onClick = onAccept
+                        )
+                    }
                 }
             }
         }

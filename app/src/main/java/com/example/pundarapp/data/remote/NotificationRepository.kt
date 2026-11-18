@@ -31,32 +31,63 @@ object NotificationRepository {
     fun collection(userId: String) =
         db.collection("users").document(userId).collection("notifications")
 
+    @Suppress("UNCHECKED_CAST")
     suspend fun fetchAll(userId: String): Result<List<AppNotification>> = try {
-        val snap = collection(userId)
-            .orderBy("created_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .get()
-            .await()
-        val list = snap.documents.mapNotNull { d ->
-            val title = d.getString("title") ?: return@mapNotNull null
-            val message = d.getString("message") ?: return@mapNotNull null
-            AppNotification(
-                id = d.id,
-                title = title,
-                message = message,
-                timestamp = d.getLong("created_at") ?: 0L,
-                isRead = d.getBoolean("is_read") ?: false,
-                kind = d.getString("kind") ?: "INFO"
-            )
+        val byId = linkedMapOf<String, AppNotification>()
+
+        runCatching {
+            val snap = collection(userId)
+                .orderBy("created_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get()
+                .await()
+            snap.documents.forEach { d ->
+                val title = d.getString("title") ?: return@forEach
+                val message = d.getString("message") ?: return@forEach
+                byId[d.id] = AppNotification(
+                    id = d.id,
+                    title = title,
+                    message = message,
+                    timestamp = d.getLong("created_at") ?: 0L,
+                    isRead = d.getBoolean("is_read") ?: false,
+                    kind = d.getString("kind") ?: "INFO"
+                )
+            }
         }
-        Result.success(list)
+
+        // Also read fallback notifications embedded in users/{userId}.user_notifications
+        runCatching {
+            val userDoc = db.collection("users").document(userId).get().await()
+            val rawMap = userDoc.get("user_notifications") as? Map<String, Any>
+            rawMap?.forEach { (nid, raw) ->
+                val m = raw as? Map<String, Any> ?: return@forEach
+                val title = m["title"] as? String ?: return@forEach
+                val message = m["message"] as? String ?: return@forEach
+                if (!byId.containsKey(nid)) {
+                    byId[nid] = AppNotification(
+                        id = nid,
+                        title = title,
+                        message = message,
+                        timestamp = (m["created_at"] as? Number)?.toLong() ?: 0L,
+                        isRead = m["is_read"] as? Boolean ?: false,
+                        kind = m["kind"] as? String ?: "INFO"
+                    )
+                }
+            }
+        }
+
+        Result.success(byId.values.sortedByDescending { it.timestamp })
     } catch (e: Exception) {
         Log.e(TAG, "fetchAll failed (will return empty list)", e)
-        // If the collection doesn't exist yet, treat as empty (not an error).
         Result.success(emptyList())
     }
 
     suspend fun markRead(userId: String, notificationId: String): Result<Boolean> = try {
-        collection(userId).document(notificationId).update("is_read", true).await()
+        runCatching { collection(userId).document(notificationId).update("is_read", true).await() }
+        runCatching {
+            db.collection("users").document(userId)
+                .update("user_notifications.$notificationId.is_read", true)
+                .await()
+        }
         Result.success(true)
     } catch (e: Exception) {
         Log.e(TAG, "markRead failed", e)
@@ -64,10 +95,22 @@ object NotificationRepository {
     }
 
     suspend fun markAllRead(userId: String): Result<Boolean> = try {
-        val unread = collection(userId).whereEqualTo("is_read", false).get().await()
-        val batch = db.batch()
-        unread.documents.forEach { d -> batch.update(d.reference, "is_read", true) }
-        batch.commit().await()
+        runCatching {
+            val unread = collection(userId).whereEqualTo("is_read", false).get().await()
+            val batch = db.batch()
+            unread.documents.forEach { d -> batch.update(d.reference, "is_read", true) }
+            batch.commit().await()
+        }
+        runCatching {
+            val userDoc = db.collection("users").document(userId).get().await()
+            @Suppress("UNCHECKED_CAST")
+            val rawMap = userDoc.get("user_notifications") as? Map<String, Any>
+            if (!rawMap.isNullOrEmpty()) {
+                val updates = mutableMapOf<String, Any>()
+                rawMap.keys.forEach { nid -> updates["user_notifications.$nid.is_read"] = true }
+                db.collection("users").document(userId).update(updates).await()
+            }
+        }
         Result.success(true)
     } catch (e: Exception) {
         Log.e(TAG, "markAllRead failed", e)
@@ -98,18 +141,31 @@ object NotificationRepository {
         }
     }
 
-    suspend fun sendNotification(userId: String, title: String, message: String, kind: String = "INFO"): Result<Boolean> = try {
-        val data = hashMapOf(
-            "title" to title,
-            "message" to message,
-            "kind" to kind,
-            "created_at" to System.currentTimeMillis(),
-            "is_read" to false
-        )
-        collection(userId).document().set(data).await()
-        Result.success(true)
-    } catch (e: Exception) {
-        Log.e(TAG, "sendNotification failed", e)
-        Result.failure(e)
+    suspend fun sendNotification(userId: String, title: String, message: String, kind: String = "INFO"): Result<Boolean> {
+        return try {
+            val cleanId = userId.trim()
+            if (cleanId.isBlank()) return Result.success(false)
+            val notifId = "ntf_${System.currentTimeMillis()}_${(1000..9999).random()}"
+            val data = hashMapOf(
+                "title" to title,
+                "message" to message,
+                "kind" to kind,
+                "created_at" to System.currentTimeMillis(),
+                "is_read" to false
+            )
+            runCatching {
+                collection(cleanId).document(notifId).set(data).await()
+            }
+            runCatching {
+                db.collection("users").document(cleanId).set(
+                    mapOf("user_notifications" to mapOf(notifId to data)),
+                    com.google.firebase.firestore.SetOptions.merge()
+                ).await()
+            }
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "sendNotification failed", e)
+            Result.failure(e)
+        }
     }
 }

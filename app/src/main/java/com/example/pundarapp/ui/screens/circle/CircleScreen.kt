@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -42,6 +43,11 @@ private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 @Composable
 fun CircleScreen(navController: NavController) {
     val initials    = AuthRepository.getCurrentUserInitials().ifBlank { "PJ" }
+    val context     = androidx.compose.ui.platform.LocalContext.current
+    val scope       = rememberCoroutineScope()
+    val userScore   = AppState.pundarScore.intValue
+    val isBanned    = AppState.isCircleBanned.value
+    val banReason   = AppState.circleBanReason.value
     val invitations = AppState.pendingInvitations
     val singleInvite = AppState.pendingInvitation.value
     val allInvites  = remember(invitations.size, singleInvite) {
@@ -86,10 +92,13 @@ fun CircleScreen(navController: NavController) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(46.dp)
+                                        .size(44.dp)
                                         .clip(CircleShape)
                                         .background(Color(0xFF1E2E5C))
                                         .border(1.5.dp, Color(0xFF3B82F6), CircleShape),
@@ -99,26 +108,31 @@ fun CircleScreen(navController: NavController) {
                                         initials,
                                         color = Color.White,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
+                                        fontSize = 15.sp
                                     )
                                 }
                                 Spacer(Modifier.width(12.dp))
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         "PUNDAR Circle",
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = Color.White,
+                                        maxLines = 1
                                     )
                                     Text(
-                                        "Deterministic Community Savings · Soroban Testnet",
+                                        "Deterministic Savings · Soroban Testnet",
                                         fontSize = 11.sp,
-                                        color = Color(0xFF94A3B8)
+                                        color = Color(0xFF94A3B8),
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                             }
 
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Spacer(Modifier.width(8.dp))
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
@@ -232,42 +246,156 @@ fun CircleScreen(navController: NavController) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 14.dp),
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            CircleFloatingAction(
-                                icon = Icons.Filled.AddCircle,
-                                label = "Create Circle",
-                                tint = Color(0xFF10B981),
-                                onClick = { navController.navigate(Routes.CIRCLE_CREATE) }
-                            )
-                            CircleFloatingAction(
-                                icon = Icons.Filled.MailOutline,
-                                label = "Invites (${allInvites.size})",
-                                tint = Color(0xFF2563EB),
-                                onClick = {
-                                    val first = allInvites.firstOrNull()
-                                    if (first != null) {
-                                        AppState.pendingInvitation.value = first
-                                        navController.navigate(Routes.circleInvite(first.id))
-                                    } else {
-                                        navController.navigate(Routes.REQUESTS)
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                CircleFloatingAction(
+                                    icon = Icons.Filled.AddCircle,
+                                    label = "New Circle",
+                                    tint = Color(0xFF10B981),
+                                    onClick = { navController.navigate(Routes.CIRCLE_CREATE) }
+                                )
+                            }
+                            Box(Modifier.width(1.dp).height(26.dp).background(PundarTheme.colors.borderPrimary))
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                CircleFloatingAction(
+                                    icon = Icons.Filled.MailOutline,
+                                    label = "Invites (${allInvites.size})",
+                                    tint = Color(0xFF2563EB),
+                                    onClick = {
+                                        val first = allInvites.firstOrNull()
+                                        if (first != null) {
+                                            AppState.pendingInvitation.value = first
+                                            navController.navigate(Routes.circleInvite(first.id))
+                                        } else {
+                                            navController.navigate(Routes.REQUESTS)
+                                        }
                                     }
-                                }
-                            )
-                            CircleFloatingAction(
-                                icon = Icons.Filled.Star,
-                                label = "Score",
-                                tint = Color(0xFFF59E0B),
-                                onClick = { navController.navigate(Routes.SCORE) }
-                            )
+                                )
+                            }
+                            Box(Modifier.width(1.dp).height(26.dp).background(PundarTheme.colors.borderPrimary))
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                CircleFloatingAction(
+                                    icon = Icons.Filled.Star,
+                                    label = "Score",
+                                    tint = Color(0xFFF59E0B),
+                                    onClick = { navController.navigate(Routes.SCORE) }
+                                )
+                            }
                         }
                     }
                 }
             }
 
             item { Spacer(Modifier.height(16.dp)) }
+
+            // ── PUNDAR POINTS, MINIMUM BALANCE & BAN STANDING CARD ──
+            item {
+                Box(Modifier.padding(horizontal = 20.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = if (isBanned) Color(0xFFFEF2F2) else PundarTheme.colors.surfacePrimary,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isBanned) Color(0xFFFECACA) else PundarTheme.colors.borderPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isBanned) Icons.Filled.GppBad else Icons.Filled.VerifiedUser,
+                                        contentDescription = null,
+                                        tint = if (isBanned) Color(0xFFDC2626) else Color(0xFF059669),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isBanned) "Circle Access Restricted (Banned)"
+                                        else "Circle Eligibility & PUNDAR Standing",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp,
+                                        color = if (isBanned) Color(0xFF991B1B) else PundarTheme.colors.textPrimary,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isBanned) Color(0xFFFEE2E2) else Color(0xFFFEF3C7)
+                                ) {
+                                    Text(
+                                        text = "$userScore Pts",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 11.sp,
+                                        color = if (isBanned) Color(0xFF991B1B) else Color(0xFFB45309),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = if (isBanned) {
+                                    "You are banned from joining other Circles due to: ${banReason.ifBlank { "Missed scheduled Circle payment" }}. Meet rehabilitation criteria (minimum wallet balance & obligation settlement) to restore access."
+                                } else {
+                                    "On-time contribution: +15 pts • Full Circle completion: +25 pts • Missed payment: -50 pts & automatic Circle ban • Strict minimum balance enforced before joining."
+                                },
+                                fontSize = 11.sp,
+                                color = PundarTheme.colors.textSecondary
+                            )
+
+                            if (isBanned) {
+                                Button(
+                                    onClick = {
+                                        scope.launch {
+                                            val res = AppState.rehabilitateCircleBan()
+                                            if (res.isSuccess) {
+                                                android.widget.Toast.makeText(
+                                                    context,
+                                                    "Circle participation ban lifted! (+25 PUNDAR Points restored)",
+                                                    android.widget.Toast.LENGTH_LONG
+                                                ).show()
+                                            } else {
+                                                android.widget.Toast.makeText(
+                                                    context,
+                                                    res.exceptionOrNull()?.message ?: "Criteria not met",
+                                                    android.widget.Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(40.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B1B3D))
+                                ) {
+                                    Text(
+                                        "Verify Rehabilitation Criteria & Restore Circle Access",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             // ── PENDING CIRCLE INVITATIONS ──────────────────────────
             if (allInvites.isNotEmpty()) {
@@ -347,26 +475,29 @@ private fun CircleFloatingAction(
 ) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .background(tint),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(15.dp))
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             label,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = PundarTheme.colors.textPrimary
+            color = PundarTheme.colors.textPrimary,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
@@ -479,6 +610,7 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
     )
 
     val currentRecipient = circle.currentRoundRecipient
+    val declinedMembers = circle.members.filter { it.acceptanceStatus == "DECLINED" }
 
     Surface(
         modifier = Modifier
@@ -488,15 +620,17 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
         color = PundarTheme.colors.surfacePrimary,
         border = BorderStroke(1.dp, PundarTheme.colors.borderPrimary)
     ) {
-        Column(Modifier.padding(20.dp)) {
+        Column(Modifier.padding(18.dp)) {
+            // Top Row: Status Pill on the left, Scheduled Payout on the right (never crowded by member count)
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
+                verticalAlignment     = Alignment.Top
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Box(
-                        Modifier.clip(RoundedCornerShape(8.dp))
+                        Modifier
+                            .clip(RoundedCornerShape(8.dp))
                             .background(accentColor.copy(0.12f))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
@@ -504,39 +638,62 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                             statusLabel,
                             fontSize      = 10.sp,
                             fontWeight    = FontWeight.ExtraBold,
-                            letterSpacing = 0.6.sp,
-                            color         = accentColor
+                            letterSpacing = 0.4.sp,
+                            color         = accentColor,
+                            maxLines      = 1,
+                            overflow      = TextOverflow.Ellipsis
                         )
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Filled.Group, null, tint = PundarTheme.colors.textMuted, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        "$totalMembers Members",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = PundarTheme.colors.textMuted,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Group,
+                            contentDescription = null,
+                            tint = PundarTheme.colors.textMuted,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "$totalMembers Members",
+                            style      = MaterialTheme.typography.labelSmall,
+                            color      = PundarTheme.colors.textMuted,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines   = 1,
+                            softWrap   = false
+                        )
+                    }
                 }
+                Spacer(Modifier.width(12.dp))
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         "${String.format("%,.0f", circle.scheduledPayoutAmount)} ${circle.currency}",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize   = 16.sp,
-                        color      = accentColor
+                        color      = accentColor,
+                        maxLines   = 1,
+                        softWrap   = false
                     )
                     Text(
                         "Scheduled Payout / Round",
                         fontWeight = FontWeight.Medium,
                         fontSize   = 10.sp,
-                        color      = PundarTheme.colors.textMuted
+                        color      = PundarTheme.colors.textMuted,
+                        maxLines   = 1,
+                        softWrap   = false
                     )
                 }
             }
 
             Spacer(Modifier.height(10.dp))
 
-            Text(circle.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = PundarTheme.colors.textPrimary)
+            Text(
+                circle.name,
+                fontWeight = FontWeight.Bold,
+                fontSize   = 18.sp,
+                color      = PundarTheme.colors.textPrimary,
+                maxLines   = 2,
+                overflow   = TextOverflow.Ellipsis
+            )
             Spacer(Modifier.height(4.dp))
             Text(
                 "Fixed Contribution: ${String.format("%,.0f", circle.contributionPerMonth)} ${circle.currency} · Schedule: ${circle.targetDate}",
@@ -563,7 +720,11 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
 
             Spacer(Modifier.height(8.dp))
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 val leftProgressText = when (circle.lifecycleStatus) {
                     "AWAITING_ACCEPTANCE", "DECLINED_REVISION_NEEDED", "READY_TO_ACTIVATE" ->
                         "$acceptedCount of $totalMembers Accepted Terms (v${circle.termsVersion})"
@@ -577,21 +738,27 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                     "AWAITING_ACCEPTANCE" -> "Inactive Proposal"
                     "DECLINED_REVISION_NEEDED" -> "Action Required"
                     "READY_TO_ACTIVATE" -> "Ready to Activate"
-                    "ACTIVE" -> if (circle.isCurrentRoundPayoutEligible) "Payout Eligible ✓" else "${totalMembers - paidCount} pending"
-                    "COMPLETED" -> "Completed ✓"
+                    "ACTIVE" -> if (circle.isCurrentRoundPayoutEligible) "Payout Eligible" else "${totalMembers - paidCount} pending"
+                    "COMPLETED" -> "Completed"
                     else -> ""
                 }
                 Text(
                     leftProgressText,
                     style      = MaterialTheme.typography.labelSmall,
                     color      = PundarTheme.colors.textMuted,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis,
+                    modifier   = Modifier.weight(1f)
                 )
+                Spacer(Modifier.width(8.dp))
                 Text(
                     rightProgressText,
                     style      = MaterialTheme.typography.labelSmall,
                     color      = accentColor,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines   = 1,
+                    softWrap   = false
                 )
             }
 
@@ -604,24 +771,64 @@ private fun CircleCard(circle: Circle, index: Int, onClick: () -> Unit) {
                     .border(1.dp, accentColor.copy(0.20f), RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Text(
-                        if (circle.lifecycleStatus == "COMPLETED") "Final Status"
-                        else "Round ${circle.currentRound} Scheduled Recipient",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = PundarTheme.colors.textSecondary
-                    )
-                    Text(
-                        if (circle.lifecycleStatus == "COMPLETED") "All Payouts Settled"
-                        else (currentRecipient?.name ?: "Round #${circle.currentRound}"),
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize   = 13.sp,
-                        color      = accentColor
-                    )
+                if (circle.lifecycleStatus == "DECLINED_REVISION_NEEDED" && declinedMembers.isNotEmpty()) {
+                    val declinedNames = declinedMembers.joinToString(", ") { it.name }
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "Invitation Declined (Awaiting Organizer Update)",
+                            style    = MaterialTheme.typography.labelSmall,
+                            color    = PundarTheme.colors.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "Declined by: $declinedNames",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize   = 13.sp,
+                            color      = accentColor,
+                            maxLines   = 2,
+                            overflow   = TextOverflow.Ellipsis
+                        )
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                if (circle.lifecycleStatus == "COMPLETED") "Final Status"
+                                else "Round ${circle.currentRound} Scheduled Recipient",
+                                style    = MaterialTheme.typography.labelSmall,
+                                color    = PundarTheme.colors.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (circle.lifecycleStatus == "ACTIVE") {
+                                Text(
+                                    "Locked on Soroban",
+                                    fontSize   = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = accentColor,
+                                    maxLines   = 1,
+                                    softWrap   = false
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            if (circle.lifecycleStatus == "COMPLETED") "All Payouts Settled"
+                            else (currentRecipient?.name ?: "Round #${circle.currentRound}"),
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize   = 14.sp,
+                            color      = accentColor,
+                            maxLines   = 1,
+                            overflow   = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }

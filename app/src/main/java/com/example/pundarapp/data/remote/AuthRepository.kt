@@ -58,7 +58,9 @@ object AuthRepository {
         val stellarPublicKey: String? = null,
         val profileImageUrl: String? = null,
         val walletBalance: Double = 0.0,
-        val pundarScore: Int = 800
+        val pundarScore: Int = 800,
+        val isCircleBanned: Boolean = false,
+        val circleBanReason: String = ""
     )
 
     suspend fun registerWithPhone(phone: String, fullName: String, mpin: String): Result<Boolean> {
@@ -172,11 +174,16 @@ object AuthRepository {
                 stellarPublicKey = publicKey,
                 profileImageUrl = profileImage,
                 walletBalance = balance,
-                pundarScore = doc.getLong("pundar_score")?.toInt() ?: 800
+                pundarScore = doc.getLong("pundar_score")?.toInt() ?: 800,
+                isCircleBanned = doc.getBoolean("is_circle_banned") ?: false,
+                circleBanReason = doc.getString("circle_ban_reason") ?: ""
             )
             currentUserState.value = user
             saveSession(user)
             AppState.loadUserBalance(cleanPhone, balance)
+            AppState.pundarScore.intValue = user.pundarScore
+            AppState.isCircleBanned.value = user.isCircleBanned
+            AppState.circleBanReason.value = user.circleBanReason
             Log.d(TAG, "loginWithPhone: success (balance=$balance)")
 
             Result.success(true)
@@ -409,20 +416,32 @@ object AuthRepository {
     }
 
     suspend fun searchUsers(query: String): List<UserData> {
-        if (query.isBlank()) return emptyList()
-        val lowerQuery = query.lowercase()
+        val lowerQuery = query.trim().lowercase()
 
         return try {
             val snapshot = kotlinx.coroutines.withTimeout(5000) { usersCollection.get().await() }
             val dbUsers = snapshot.documents.mapNotNull { doc ->
-                val phone = doc.getString("phone_number") ?: return@mapNotNull null
+                val phone = doc.getString("phone_number") ?: doc.id
                 val name = doc.getString("full_name") ?: return@mapNotNull null
-                
+
                 if (phone == currentUserState.value?.id) return@mapNotNull null
-                
-                if (phone.contains(lowerQuery) || name.lowercase().contains(lowerQuery)) {
+
+                if (lowerQuery.isBlank() || phone.contains(lowerQuery) || name.lowercase().contains(lowerQuery)) {
                     val stellarPublicKey = doc.getString("stellarPublicKey")
-                    UserData(id = phone, name = name, phone = phone, stellarPublicKey = stellarPublicKey)
+                    val bal = doc.getDouble("wallet_balance") ?: doc.getDouble("walletBalance") ?: 0.0
+                    val score = doc.getLong("pundar_score")?.toInt() ?: 800
+                    val banned = doc.getBoolean("is_circle_banned") ?: false
+                    val banReason = doc.getString("circle_ban_reason") ?: ""
+                    UserData(
+                        id = phone,
+                        name = name,
+                        phone = phone,
+                        stellarPublicKey = stellarPublicKey,
+                        walletBalance = bal,
+                        pundarScore = score,
+                        isCircleBanned = banned,
+                        circleBanReason = banReason
+                    )
                 } else {
                     null
                 }
@@ -439,7 +458,7 @@ object AuthRepository {
      * or Stellar public key. Returns null if no such registered account exists.
      */
     suspend fun findRegisteredUser(identifier: String): UserData? {
-        val raw = identifier.trim()
+        val raw = identifier.trim().removePrefix("@").removeSuffix("*pundar.site")
         if (raw.isBlank()) return null
         return try {
             kotlinx.coroutines.withTimeout(8000) {
@@ -447,11 +466,19 @@ object AuthRepository {
                     if (!doc.exists()) return null
                     val phone = doc.getString("phone_number") ?: doc.id
                     val name = doc.getString("full_name") ?: return null
+                    val bal = doc.getDouble("wallet_balance") ?: doc.getDouble("walletBalance") ?: 0.0
+                    val score = doc.getLong("pundar_score")?.toInt() ?: 800
+                    val banned = doc.getBoolean("is_circle_banned") ?: false
+                    val banReason = doc.getString("circle_ban_reason") ?: ""
                     return UserData(
                         id = doc.id,
                         name = name,
                         phone = phone,
-                        stellarPublicKey = doc.getString("stellarPublicKey")
+                        stellarPublicKey = doc.getString("stellarPublicKey"),
+                        walletBalance = bal,
+                        pundarScore = score,
+                        isCircleBanned = banned,
+                        circleBanReason = banReason
                     )
                 }
 
@@ -477,6 +504,62 @@ object AuthRepository {
         } catch (e: Exception) {
             Log.e(TAG, "findRegisteredUser failed", e)
             null
+        }
+    }
+
+    /**
+     * Updates a user's PUNDAR Points (`pundar_score`) and optional Circle ban status in Firestore
+     * and in local session state if the target user is the currently logged-in user.
+     */
+    suspend fun updateUserCircleStanding(
+        phoneOrId: String,
+        scoreDelta: Int,
+        setBanned: Boolean? = null,
+        banReason: String? = null
+    ) {
+        val clean = phoneOrId.trim()
+        if (clean.isBlank()) return
+        try {
+            val docRef = usersCollection.document(clean)
+            val snap = kotlinx.coroutines.withTimeout(5000) { docRef.get().await() }
+            val currentScore = snap.getLong("pundar_score")?.toInt()
+                ?: if (clean == getCurrentUserPhone()) AppState.pundarScore.intValue else 800
+            val newScore = (currentScore + scoreDelta).coerceIn(300, 999)
+            val updates = mutableMapOf<String, Any>("pundar_score" to newScore)
+            if (setBanned != null) {
+                updates["is_circle_banned"] = setBanned
+                updates["circle_ban_reason"] = banReason ?: if (setBanned) "Failed scheduled Circle payment" else ""
+            }
+            if (snap.exists()) {
+                kotlinx.coroutines.withTimeout(5000) { docRef.update(updates).await() }
+            }
+            if (clean == getCurrentUserPhone()) {
+                AppState.pundarScore.intValue = newScore
+                prefs?.edit()?.putInt("pundar_score_$clean", newScore)?.apply()
+                if (setBanned != null) {
+                    AppState.isCircleBanned.value = setBanned
+                    AppState.circleBanReason.value = banReason.orEmpty()
+                    prefs?.edit()
+                        ?.putBoolean("circle_banned_$clean", setBanned)
+                        ?.putString("circle_ban_reason_$clean", banReason.orEmpty())
+                        ?.apply()
+                }
+                currentUserState.value = currentUserState.value?.copy(
+                    pundarScore = newScore,
+                    isCircleBanned = setBanned ?: currentUserState.value?.isCircleBanned ?: false,
+                    circleBanReason = banReason ?: currentUserState.value?.circleBanReason.orEmpty()
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "updateUserCircleStanding failed for $clean", e)
+            if (clean == getCurrentUserPhone()) {
+                val nextScore = (AppState.pundarScore.intValue + scoreDelta).coerceIn(300, 999)
+                AppState.pundarScore.intValue = nextScore
+                if (setBanned != null) {
+                    AppState.isCircleBanned.value = setBanned
+                    AppState.circleBanReason.value = banReason.orEmpty()
+                }
+            }
         }
     }
 }

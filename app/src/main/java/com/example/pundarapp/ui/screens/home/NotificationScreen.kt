@@ -51,6 +51,7 @@ private fun iconForKind(kind: String) = when (kind.uppercase()) {
     "INVESTMENT" -> Icons.Filled.TrendingUp
     "BILL" -> Icons.Filled.Receipt
     "SECURITY" -> Icons.Filled.Security
+    "CIRCLE" -> Icons.Filled.Groups
     else -> Icons.Filled.Notifications
 }
 
@@ -61,6 +62,7 @@ private fun colorForKind(kind: String) = when (kind.uppercase()) {
     "INVESTMENT" -> ElectricBlue
     "BILL" -> WarningAmber
     "SECURITY" -> ErrorRed
+    "CIRCLE" -> ElectricBlue
     else -> PundarTheme.colors.brandPrimary
 }
 

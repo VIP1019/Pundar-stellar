@@ -3,6 +3,7 @@ package com.example.pundarapp.ui.screens.circle
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,16 +22,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.data.remote.CircleRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.Circle
+import com.example.pundarapp.ui.data.CircleContractRules
 import com.example.pundarapp.ui.navigation.Routes
 import com.example.pundarapp.ui.theme.*
 import com.example.pundarapp.ui.theme.PundarTheme
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +56,8 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
     val scope = rememberCoroutineScope()
     var showAcceptConfirmDialog by remember { mutableStateOf(false) }
     var showDeclineConfirmDialog by remember { mutableStateOf(false) }
+    var declineReasonInput by remember { mutableStateOf("") }
+    var agreedToAll12Clauses by remember { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
     var actionError by remember { mutableStateOf<String?>(null) }
 
@@ -62,66 +69,223 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
     val participantCount = if (members.isNotEmpty()) members.size else invite.maxMembers.coerceAtLeast(1)
     val scheduledPayoutAmount = fixedContribution * participantCount
 
+    val requiredXlm = if (currency.equals("PHP", ignoreCase = true)) {
+        AppState.phpToXlm(fixedContribution)
+    } else {
+        fixedContribution
+    }
+    val minRequiredXlm = requiredXlm + CircleContractRules.NEW_USER_MIN_RESERVE_XLM
+    val isBanned = AppState.isCircleBanned.value
+    val hasMinBalance = AppState.walletBalance.value >= minRequiredXlm
+
+    val contractClauses = remember(fixedContribution, currency, scheduleText, scheduledPayoutAmount) {
+        CircleContractRules.getClauses(
+            contributionFormatted = "${if (currency == "PHP") "₱" else ""}${String.format(Locale.US, "%,.2f", fixedContribution)} $currency / round",
+            scheduleText = scheduleText,
+            payoutOrderType = fullCircle?.payoutOrderType ?: "Predetermined Fixed Rotation",
+            payoutFormatted = "${if (currency == "PHP") "₱" else ""}${String.format(Locale.US, "%,.2f", scheduledPayoutAmount)} $currency"
+        )
+    }
+
     if (showAcceptConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showAcceptConfirmDialog = false },
-            containerColor = PundarTheme.colors.surfacePrimary,
-            title = { Text("Accept Circle Terms (v$termsVersion)?", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "You are explicitly opting in to the proposed Circle configuration for \"${invite.circleName}\":",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text("• Fixed Contribution: ${String.format("%,.2f", fixedContribution)} $currency per round")
-                    Text("• Schedule: $scheduleText")
-                    Text("• Total Participants: $participantCount Verified Members")
-                    Text("• Scheduled Payout / Round: ${String.format("%,.2f", scheduledPayoutAmount)} $currency")
-                    Text(
-                        "Note: Your acceptance applies specifically to Terms Version $termsVersion. The Circle remains inactive until every participant accepts these exact terms.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = PundarTheme.colors.textSecondary
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        isProcessing = true
-                        actionError = null
-                        scope.launch {
-                            val result = AppState.acceptInvitation(invite)
-                            isProcessing = false
-                            if (result.isSuccess) {
-                                showAcceptConfirmDialog = false
-                                Toast.makeText(
-                                    context,
-                                    "Accepted Terms v$termsVersion for ${invite.circleName}!",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                navController.navigate(Routes.circleDetail(invite.circleId)) {
-                                    popUpTo(Routes.CIRCLE) { inclusive = false }
+        Dialog(
+            onDismissRequest = { if (!isProcessing) showAcceptConfirmDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.94f)
+                    .heightIn(max = 660.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF0B1B3D))
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFF1E2E5C)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Gavel,
+                                        contentDescription = null,
+                                        tint = Color(0xFF60A5FA),
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
-                            } else {
-                                actionError = result.exceptionOrNull()?.message ?: "Failed to record acceptance"
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        "Accept Circle Contract (v$termsVersion)",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 16.sp,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        "${invite.circleName} • $participantCount Members",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF94A3B8)
+                                    )
+                                }
+                            }
+                            IconButton(
+                                onClick = { if (!isProcessing) showAcceptConfirmDialog = false },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
                             }
                         }
-                    },
-                    enabled = !isProcessing,
-                    colors = ButtonDefaults.buttonColors(containerColor = PundarTheme.colors.brandPrimary),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        if (isProcessing) "Recording..." else "Confirm Acceptance",
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFEFF6FF),
+                                border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("Proposed Circle Summary", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = Color(0xFF0B2447))
+                                    Text("• Fixed Contribution: ${String.format(Locale.US, "%,.2f", fixedContribution)} $currency / round", fontSize = 12.sp, color = Color(0xFF0F172A))
+                                    Text("• Schedule: $scheduleText", fontSize = 12.sp, color = Color(0xFF0F172A))
+                                    Text("• Total Participants: $participantCount Verified Members", fontSize = 12.sp, color = Color(0xFF0F172A))
+                                    Text("• Scheduled Payout / Round: ${String.format(Locale.US, "%,.2f", scheduledPayoutAmount)} $currency", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8))
+                                }
+                            }
+                        }
+
+                        items(contractClauses.size) { idx ->
+                            val cl = contractClauses[idx]
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFF8FAFC),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(22.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color(0xFF0B2447)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                cl.code.uppercase(),
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontSize = 10.sp,
+                                                color = Color.White
+                                            )
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            cl.title,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = Color(0xFF0F172A)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        cl.description,
+                                        fontSize = 11.sp,
+                                        lineHeight = 16.sp,
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Surface(
                         color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = { if (!isProcessing) showAcceptConfirmDialog = false },
+                                enabled = !isProcessing,
+                                modifier = Modifier
+                                    .weight(0.38f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Cancel", fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = {
+                                    isProcessing = true
+                                    actionError = null
+                                    scope.launch {
+                                        val result = AppState.acceptInvitation(invite)
+                                        isProcessing = false
+                                        if (result.isSuccess) {
+                                            showAcceptConfirmDialog = false
+                                            Toast.makeText(
+                                                context,
+                                                "Accepted Terms v$termsVersion for ${invite.circleName}!",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                            navController.navigate(Routes.circleDetail(invite.circleId)) {
+                                                popUpTo(Routes.CIRCLE) { inclusive = false }
+                                            }
+                                        } else {
+                                            showAcceptConfirmDialog = false
+                                            actionError = result.exceptionOrNull()?.message ?: "Failed to record acceptance"
+                                        }
+                                    }
+                                },
+                                enabled = !isProcessing,
+                                modifier = Modifier
+                                    .weight(0.62f)
+                                    .height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B2447)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    if (isProcessing) "Recording..." else "Confirm & Join Circle",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAcceptConfirmDialog = false }) { Text("Cancel") }
             }
-        )
+        }
     }
 
     if (showDeclineConfirmDialog) {
@@ -130,17 +294,26 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
             containerColor = PundarTheme.colors.surfacePrimary,
             title = { Text("Decline Circle Invitation?", fontWeight = FontWeight.Bold) },
             text = {
-                Text(
-                    "If you decline, your status will be recorded as Declined and the Circle will remain inactive. It cannot be activated unless the organizer removes the declined participant and all remaining members accept the revised terms.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "If you decline, your status will be recorded as Declined and the Circle will remain inactive until the organizer replaces you or issues revised terms.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = declineReasonInput,
+                        onValueChange = { declineReasonInput = it },
+                        label = { Text("Reason for declining") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         isProcessing = true
                         scope.launch {
-                            AppState.rejectInvitation(invite)
+                            AppState.rejectInvitation(invite, declineReasonInput)
                             isProcessing = false
                             showDeclineConfirmDialog = false
                             Toast.makeText(
@@ -167,7 +340,7 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
     Scaffold(
         topBar = {
             PundarDetailTopBar(
-                title = "Circle Invitation Details",
+                title = "Circle Invitation & Contract",
                 onBack = { navController.navigateUp() }
             )
         },
@@ -187,10 +360,37 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                         )
                     }
-                    PundarBlueButton(
-                        text = if (isProcessing) "Processing..." else "Accept Circle Terms (v$termsVersion) ✓",
-                        onClick = { if (!isProcessing) showAcceptConfirmDialog = true }
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .clickable { agreedToAll12Clauses = !agreedToAll12Clauses }
+                    ) {
+                        Checkbox(
+                            checked = agreedToAll12Clauses,
+                            onCheckedChange = { agreedToAll12Clauses = it }
+                        )
+                        Text(
+                            "I agree to all 12 Circle Contract rules (a - l) and the proposed member roster.",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PundarTheme.colors.textPrimary
+                        )
+                    }
+                    Button(
+                        onClick = { if (!isProcessing) showAcceptConfirmDialog = true },
+                        enabled = agreedToAll12Clauses && !isProcessing && !isBanned && hasMinBalance,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B2447))
+                    ) {
+                        Text(
+                            if (isProcessing) "Processing..." else "Accept Circle Terms (v$termsVersion)",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Spacer(Modifier.height(10.dp))
                     PundarSecondaryButton(
                         text = "Decline Invitation",
@@ -242,6 +442,37 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                 }
             }
 
+            // Eligibility Check Card (Strict Minimum Balance + Ban Status)
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (isBanned || !hasMinBalance) Color(0xFFFEF2F2) else Color(0xFFECFDF5),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isBanned || !hasMinBalance) Color(0xFFFECACA) else Color(0xFFA7F3D0)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = when {
+                                isBanned -> "Circle Participation Banned: You cannot join Circles due to a previous failed payment."
+                                !hasMinBalance -> "Strict Minimum Balance Required: Need ${String.format(Locale.US, "%,.2f", minRequiredXlm)} XLM to join."
+                                else -> "Eligibility Verified • PUNDAR Score: ${AppState.pundarScore.intValue} pts • Min Balance Met"
+                            },
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = if (isBanned || !hasMinBalance) Color(0xFF991B1B) else Color(0xFF065F46)
+                        )
+                        Text(
+                            "Your Balance: ${String.format(Locale.US, "%,.2f", AppState.walletBalance.value)} XLM • Required Minimum: ${String.format(Locale.US, "%,.2f", minRequiredXlm)} XLM",
+                            fontSize = 11.sp,
+                            color = PundarTheme.colors.textSecondary
+                        )
+                    }
+                }
+            }
+
             // Complete Circle Terms Card
             item {
                 PundarCard {
@@ -252,31 +483,26 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                         color = PundarTheme.colors.textPrimary
                     )
                     Spacer(Modifier.height(12.dp))
-                    InviteTermRow("Fixed Contribution / Member", "${String.format("%,.2f", fixedContribution)} $currency")
+                    InviteTermRow("Fixed Contribution / Member", "${String.format(Locale.US, "%,.2f", fixedContribution)} $currency")
                     InviteTermRow("Contribution Schedule", scheduleText)
                     InviteTermRow("Total Participants", "$participantCount Verified Members")
                     InviteTermRow("Terms Version", "v$termsVersion")
                     HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = PundarDivider)
                     InviteTermRow(
                         "Scheduled Payout / Round",
-                        "${String.format("%,.2f", scheduledPayoutAmount)} $currency (${String.format("%,.0f", fixedContribution)} × $participantCount)",
+                        "${String.format(Locale.US, "%,.2f", scheduledPayoutAmount)} $currency (${String.format(Locale.US, "%,.0f", fixedContribution)} x $participantCount)",
                         highlight = true
                     )
                 }
             }
 
-            // Complete Participant List & Full Rotating Payout Order
+            // Full Rotating Payout Order & Member Consent
             item {
                 Text(
-                    "Full Rotating Payout Order & Member Consent",
+                    "Rotating Payout Order & Member Consent",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = PundarTheme.colors.textPrimary
-                )
-                Text(
-                    "Review who is participating and which member receives the scheduled payout in every round.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = PundarTheme.colors.textSecondary
                 )
             }
 
@@ -308,7 +534,7 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(PundarTheme.colors.brandPrimary),
+                                        .background(Color(0xFF0B2447)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text("R$roundNum", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -321,7 +547,7 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                                         color = PundarTheme.colors.textPrimary
                                     )
                                     Text(
-                                        "Round $roundNum Recipient · ${String.format("%,.2f", scheduledPayoutAmount)} $currency",
+                                        "Slot $roundNum Recipient · ${String.format(Locale.US, "%,.2f", scheduledPayoutAmount)} $currency",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = PundarTheme.colors.textSecondary
                                     )
@@ -339,6 +565,34 @@ fun CircleInviteScreen(inviteId: String, navController: NavController) {
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            // 12 Mandatory Contract Clauses (a - l)
+            item {
+                PundarCard {
+                    Text(
+                        "12 Circle Smart Contract Terms (a - l)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = PundarTheme.colors.textPrimary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    contractClauses.forEach { cl ->
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Text(
+                                "${cl.code}. ${cl.title}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Color(0xFF0B2447)
+                            )
+                            Text(
+                                cl.description,
+                                fontSize = 11.sp,
+                                color = PundarTheme.colors.textSecondary
+                            )
                         }
                     }
                 }

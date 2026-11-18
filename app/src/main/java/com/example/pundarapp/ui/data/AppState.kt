@@ -470,7 +470,27 @@ object AppState {
     suspend fun acceptInvitation(invitation: CircleInvitation): Result<Unit> {
         return try {
             val userId = AuthRepository.getCurrentUserPhone()
+            if (isCircleBanned.value || AuthRepository.currentUserState.value?.isCircleBanned == true) {
+                val reason = circleBanReason.value.ifBlank { "previous failed Circle payment" }
+                return Result.failure(
+                    Exception("Circle Access Banned: You are currently banned from joining Circles due to $reason. Rehabilitate your account on the Circle dashboard first.")
+                )
+            }
             val refreshed = CircleRepository.refreshInvitation(invitation)
+            val requiredXlm = if (refreshed.currency.equals("PHP", ignoreCase = true)) {
+                phpToXlm(refreshed.monthlyContribution)
+            } else {
+                refreshed.monthlyContribution
+            }
+            val minRequiredXlm = requiredXlm + CircleContractRules.NEW_USER_MIN_RESERVE_XLM
+            if (walletBalance.value < minRequiredXlm) {
+                val reqPhp = xlmToPhp(minRequiredXlm)
+                return Result.failure(
+                    Exception(
+                        "Minimum Balance Required: Joining this Circle requires at least ${String.format("%,.2f", minRequiredXlm)} XLM (≈ ₱${String.format("%,.2f", reqPhp)}) to cover 1 round contribution + Stellar reserve. Your current balance is ${String.format("%,.2f", walletBalance.value)} XLM."
+                    )
+                )
+            }
             val respondResult = CircleRepository.respondToCircleTerms(
                 circleId = refreshed.circleId,
                 userId = userId,
@@ -503,7 +523,7 @@ object AppState {
         }
     }
 
-    suspend fun rejectInvitation(invitation: CircleInvitation): Result<Unit> {
+    suspend fun rejectInvitation(invitation: CircleInvitation, declineReason: String = ""): Result<Unit> {
         return try {
             val userId = AuthRepository.getCurrentUserPhone()
             val refreshed = CircleRepository.refreshInvitation(invitation)
@@ -511,7 +531,8 @@ object AppState {
                 circleId = refreshed.circleId,
                 userId = userId,
                 accept = false,
-                termsVersion = refreshed.termsVersion
+                termsVersion = refreshed.termsVersion,
+                declineReason = declineReason
             )
             val result = CircleRepository.updateInvitationStatus(invitation.id, "DECLINED")
             pendingInvitations.removeAll { it.id == invitation.id || it.circleId == invitation.circleId }
@@ -1060,6 +1081,8 @@ object AppState {
     val walletBalance = mutableStateOf(0.0)
     val homeRefreshTrigger = mutableIntStateOf(0)
     val pundarScore = mutableIntStateOf(800)
+    val isCircleBanned = mutableStateOf(false)
+    val circleBanReason = mutableStateOf("")
 
     fun requestHomeRefresh() {
         homeRefreshTrigger.intValue += 1
@@ -1286,6 +1309,8 @@ object AppState {
             refreshWalletBalance()
             
             pundarScore.intValue = AuthRepository.currentUserState.value?.pundarScore ?: prefs?.getInt("pundar_score_$phone", 800) ?: 800
+            isCircleBanned.value = AuthRepository.currentUserState.value?.isCircleBanned ?: prefs?.getBoolean("circle_banned_$phone", false) ?: false
+            circleBanReason.value = AuthRepository.currentUserState.value?.circleBanReason ?: prefs?.getString("circle_ban_reason_$phone", "") ?: ""
             // Restore portfolio totalValue
             val savedPortfolioValue = prefs?.getFloat("portfolio_value_$phone", -1f) ?: -1f
             if (savedPortfolioValue >= 0f) {
@@ -1295,11 +1320,32 @@ object AppState {
     }
 
     fun incrementPundarScore(points: Int = 5) {
-        pundarScore.value += points
+        val next = (pundarScore.intValue + points).coerceIn(300, 999)
+        pundarScore.intValue = next
         val phone = AuthRepository.getCurrentUserPhone()
         if (phone.isNotBlank()) {
-            prefs?.edit()?.putInt("pundar_score_$phone", pundarScore.value)?.apply()
+            prefs?.edit()?.putInt("pundar_score_$phone", next)?.apply()
+            scope.launch {
+                AuthRepository.updateUserCircleStanding(phone, points)
+            }
         }
+    }
+
+    suspend fun rehabilitateCircleBan(): Result<Unit> {
+        val phone = AuthRepository.getCurrentUserPhone()
+        if (phone.isBlank()) return Result.failure(Exception("User not logged in."))
+        if (walletBalance.value < CircleContractRules.NEW_USER_MIN_RESERVE_XLM + 5.0) {
+            return Result.failure(
+                Exception("System Rehabilitation Criteria Not Met: Maintain at least 7.00 XLM wallet balance to lift your Circle participation ban.")
+            )
+        }
+        AuthRepository.updateUserCircleStanding(
+            phoneOrId = phone,
+            scoreDelta = 25,
+            setBanned = false,
+            banReason = ""
+        )
+        return Result.success(Unit)
     }
     
     fun setCurrency(currencyCode: String) {
