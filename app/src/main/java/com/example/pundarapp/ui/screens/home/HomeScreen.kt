@@ -158,13 +158,16 @@ fun HomeScreen(navController: NavController) {
     }
 
     Scaffold(
-        containerColor = Color(0xFFF4F6F9)
+        containerColor = Color(0xFFF4F6F9),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = { isRefreshing = true; scope.launch { refreshData(); isRefreshing = false } },
             state = pullState,
-            modifier = Modifier.fillMaxSize().padding(padding)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -178,8 +181,17 @@ fun HomeScreen(navController: NavController) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                                .background(Color(0xFF0B1B3D)) // Deep Dark Navy Blue
-                                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 44.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0xFF1E3A8A),
+                                            Color(0xFF1E2E5C),
+                                            Color(0xFF0B1B3D)
+                                        )
+                                    )
+                                )
+                                .statusBarsPadding()
+                                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp)
                         ) {
                             // User Profile + Top Icon Buttons
                             Row(
@@ -345,11 +357,26 @@ fun HomeScreen(navController: NavController) {
                                 Spacer(Modifier.height(4.dp))
 
                                 // Subtitle: ≈ 842.15 XLM • Verified Account
-                                Text(
-                                    "$xlmBalanceStr • Verified Account",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF94A3B8)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        xlmBalanceStr,
+                                        fontSize = 11.sp,
+                                        color = Color(0xFFCBD5E1)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Icon(
+                                        Icons.Filled.Verified,
+                                        contentDescription = null,
+                                        tint = Color(0xFF60A5FA),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        "Verified Account",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFFE2E8F0)
+                                    )
+                                }
                             }
 
                             Spacer(Modifier.height(24.dp))
@@ -357,53 +384,50 @@ fun HomeScreen(navController: NavController) {
                             // Embedded PUNDAR SCORE Card
                             Card(
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .fillMaxWidth(0.82f)
+                                    .align(Alignment.CenterHorizontally)
                                     .clickable { navController.navigate(Routes.SCORE) },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F2450))
+                                shape = RoundedCornerShape(50.dp),
+                                colors = CardDefaults.cardColors(containerColor = Glass10),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column {
-                                        Text(
-                                            "PUNDAR SCORE",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF94A3B8),
-                                            letterSpacing = 1.sp
-                                        )
-                                        Spacer(Modifier.height(2.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                Icons.Filled.Star,
-                                                contentDescription = "Star",
-                                                tint = Color(0xFFF59E0B),
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(
-                                                "${AppState.pundarScore.intValue}",
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = Color(0xFFF59E0B)
-                                            )
-                                        }
-                                    }
-
+                                    Text(
+                                        "SCORE:",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF93B4EE),
+                                        letterSpacing = 0.4.sp
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Icon(
+                                        Icons.Filled.Star,
+                                        contentDescription = "Star",
+                                        tint = Color(0xFFFACC15),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        "${AppState.pundarScore.intValue}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
+                                    )
+                                    Spacer(Modifier.weight(1f))
                                     Box(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color(0xFF064E3B))
-                                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                                            .clip(RoundedCornerShape(50.dp))
+                                            .background(Color(0xFF0B625B))
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
                                     ) {
                                         Text(
                                             "Excellent",
-                                            fontSize = 11.sp,
+                                            fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF34D399)
                                         )
@@ -419,12 +443,12 @@ fun HomeScreen(navController: NavController) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = 20.dp)
                             .offset(y = (-20).dp)
                     ) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                             elevation = CardDefaults.cardElevation(4.dp)
@@ -432,31 +456,44 @@ fun HomeScreen(navController: NavController) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                    .padding(vertical = 8.dp, horizontal = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Cash In
                                 QuickActionTile(
+                                    modifier = Modifier.weight(1f),
                                     label = "Cash In",
                                     icon = Icons.Filled.Add,
-                                    bgColor = Color(0xFF10B981),
+                                    iconBackground = Color(0xFFEAF2FF),
+                                    iconTint = Color(0xFF2563EB),
                                     onClick = { navController.navigate(Routes.CASH_IN) }
                                 )
-
-                                // Send
+                                Box(
+                                    Modifier
+                                        .width(1.dp)
+                                        .height(30.dp)
+                                        .background(Color(0xFFE2E8F0))
+                                )
                                 QuickActionTile(
+                                    modifier = Modifier.weight(1f),
                                     label = "Send",
                                     icon = Icons.Filled.Send,
-                                    bgColor = Color(0xFF2563EB),
+                                    iconBackground = Color(0xFF2563EB),
+                                    iconTint = Color.White,
                                     onClick = { navController.navigate(Routes.SEND_MONEY) }
                                 )
-
-                                // Receive
+                                Box(
+                                    Modifier
+                                        .width(1.dp)
+                                        .height(30.dp)
+                                        .background(Color(0xFFE2E8F0))
+                                )
                                 QuickActionTile(
+                                    modifier = Modifier.weight(1f),
                                     label = "Receive",
                                     icon = Icons.Filled.ArrowDownward,
-                                    bgColor = Color(0xFFF59E0B),
+                                    iconBackground = Color(0xFFEAF2FF),
+                                    iconTint = Color(0xFF2563EB),
                                     onClick = { navController.navigate(Routes.RECEIVE_MONEY) }
                                 )
                             }
@@ -717,33 +754,36 @@ fun HomeScreen(navController: NavController) {
 // ── Quick Action Tile Helper ──────────────────────────────────────
 @Composable
 private fun QuickActionTile(
+    modifier: Modifier = Modifier,
     label: String,
     icon: ImageVector,
-    bgColor: Color,
+    iconBackground: Color,
+    iconTint: Color,
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+        modifier = modifier
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
-                .size(38.dp)
+                .size(34.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(bgColor),
+                .background(iconBackground),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = label, tint = iconTint, modifier = Modifier.size(16.dp))
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             label,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF0F172A)
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF1E293B),
+            maxLines = 1
         )
     }
 }

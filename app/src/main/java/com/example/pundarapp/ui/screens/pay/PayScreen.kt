@@ -25,8 +25,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
+import androidx.compose.ui.graphics.Brush
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.BillStatus
 import com.example.pundarapp.ui.data.parseCategorizedTitle
@@ -45,16 +45,13 @@ fun PayScreen(navController: NavController) {
     val settledCount  = bills.count { it.status == BillStatus.SETTLED }
     val pendingCount  = bills.count { it.status == BillStatus.PENDING || it.status == BillStatus.PARTIAL }
     val monthTotal    = bills.sumOf { it.yourShare }
-    val userSession by AuthRepository.currentUserState
-    val initials      = AuthRepository.getCurrentUserInitials().ifBlank { "MJ" }
-
     val scope = rememberCoroutineScope()
     var isRefreshing by remember { mutableStateOf(false) }
     val pullState = rememberPullToRefreshState()
 
     Scaffold(
-        floatingActionButton = { PayFab { navController.navigate(Routes.PAY_NEW_BILL) } },
-        containerColor = PundarTheme.colors.bgPrimary
+        containerColor = Color(0xFFF5F7FB),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -66,228 +63,287 @@ fun PayScreen(navController: NavController) {
                 }
             },
             state = pullState,
-            modifier = Modifier.fillMaxSize().padding(padding)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
             LazyColumn(
                 modifier            = Modifier.fillMaxSize(),
                 contentPadding      = PaddingValues(bottom = 110.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // ── DEEP NAVY HERO HEADER + FLOATING ACTION CARD ─────────
+                // ── PAY DASHBOARD HEADER ────────────────────────────────
                 item {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Column(
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF5F7FB))
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Surface(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                                .background(Color(0xFF0B1B3D))
-                                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 44.dp)
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
-                            // Top Bar Row inside Navy Hero
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable {
-                                        navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
-                                    }
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
+                                        }
                                 ) {
-                                    PundarAvatar(
-                                        initials = initials,
-                                        imageUrl = userSession?.profileImageUrl,
-                                        size = 46.dp,
-                                        showRing = true,
-                                        initialsFontSize = 16.sp,
-                                        innerBackground = Color(0xFF1E2E5C)
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            "PUNDAR Pay",
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0xFF10284B)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.ReceiptLong,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
                                         )
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "PUNDAR Pay",
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF0F172A)
+                                            )
+                                            Spacer(Modifier.width(5.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(50.dp))
+                                                    .background(Color(0xFFEAF2FF))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Box(
+                                                        Modifier
+                                                            .size(4.dp)
+                                                            .clip(CircleShape)
+                                                            .background(Color(0xFF2563EB))
+                                                    )
+                                                    Spacer(Modifier.width(3.dp))
+                                                    Text(
+                                                        "Stellar Rail",
+                                                        fontSize = 8.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = Color(0xFF2563EB)
+                                                    )
+                                                }
+                                            }
+                                        }
                                         Text(
-                                            "Intelligent Settlement · Stellar Rails",
-                                            fontSize = 11.sp,
-                                            color = Color(0xFF94A3B8)
+                                            "Smart Splits & Settlements",
+                                            fontSize = 9.sp,
+                                            color = Color(0xFF64748B)
                                         )
                                     }
                                 }
 
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(
                                         modifier = Modifier
-                                            .size(40.dp)
+                                            .size(30.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFF1E2E5C))
+                                            .background(Color(0xFFF1F5F9))
                                             .clickable { navController.navigate(Routes.NOTIFICATIONS) },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             Icons.Filled.Notifications,
                                             contentDescription = "Notifications",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(20.dp)
+                                            tint = Color(0xFF334155),
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
                                     Box(
                                         modifier = Modifier
-                                            .size(40.dp)
+                                            .size(30.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFF1E2E5C))
+                                            .background(Color(0xFFF1F5F9))
                                             .clickable { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             Icons.Filled.Settings,
                                             contentDescription = "Settings",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(20.dp)
+                                            tint = Color(0xFF334155),
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
                                 }
                             }
-
-                            Spacer(Modifier.height(22.dp))
-
-                            // Monthly Spend Center Display
-                            val isHidden = AppState.isBalanceHidden.value
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(50.dp))
-                                            .background(Color(0xFF1E2E5C))
-                                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(6.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color(0xFF10B981))
-                                            )
-                                            Spacer(Modifier.width(6.dp))
-                                            Text(
-                                                "Monthly Group Spend",
-                                                fontSize = 11.sp,
-                                                color = Color(0xFFCBD5E1),
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                        }
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(50.dp))
-                                            .background(Color(0xFF1E2E5C))
-                                            .clickable { AppState.toggleBalanceVisibility() }
-                                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = if (isHidden) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                                contentDescription = "Toggle Amount Visibility",
-                                                tint = Color(0xFF60A5FA),
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(
-                                                text = if (isHidden) "Show" else "Hide",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF60A5FA)
-                                            )
-                                        }
-                                    }
-                                }
-                                Spacer(Modifier.height(10.dp))
-                                Text(
-                                    text = if (isHidden) "₱ •••••" else "₱ ${String.format("%,.2f", monthTotal)}",
-                                    fontSize = 34.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White,
-                                    modifier = Modifier.clickable { AppState.toggleBalanceVisibility() }
-                                )
-                                val rate = AppState.getPhpRate()
-                                Text(
-                                    text = if (isHidden) "••••• XLM · Stellar Rail" else "≈ ${String.format("%,.2f", monthTotal / rate)} XLM · Stellar Rail",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF94A3B8)
-                                )
-                            }
-
-                            Spacer(Modifier.height(20.dp))
-
-                            // Inner Stats Card inside Navy Hero (matches Score card on HomeScreen)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color(0xFF14254E))
-                                    .padding(horizontal = 18.dp, vertical = 14.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    PayHeroStat(settledCount, "Settled", Color(0xFF10B981))
-                                    Box(Modifier.width(1.dp).height(28.dp).background(Color.White.copy(alpha = 0.12f)))
-                                    PayHeroStat(pendingCount, "Pending", Color(0xFFF59E0B))
-                                    Box(Modifier.width(1.dp).height(28.dp).background(Color.White.copy(alpha = 0.12f)))
-                                    PayHeroStat(bills.size, "Total Bills", Color(0xFF3B82F6))
-                                }
-                            }
                         }
 
-                        // Floating White Action Pill overlapping bottom of Navy Header
-                        Surface(
+                        Spacer(Modifier.height(10.dp))
+
+                        val isHidden = AppState.isBalanceHidden.value
+                        val rate = AppState.getPhpRate()
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp)
-                                .align(Alignment.BottomCenter)
-                                .offset(y = 24.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            color = PundarTheme.colors.surfacePrimary,
-                            shadowElevation = 4.dp,
-                            border = BorderStroke(1.dp, PundarTheme.colors.borderPrimary)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(Color(0xFF142E5D), Color(0xFF0B1426))
+                                    )
+                                )
+                                .padding(horizontal = 18.dp, vertical = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            Surface(
+                                shape = RoundedCornerShape(50.dp),
+                                color = Color.White.copy(alpha = 0.12f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF34D399))
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        "MONTHLY GROUP SPEND",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFE2E8F0)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = if (isHidden) "₱ •••••" else "₱ ${String.format("%,.2f", monthTotal)}",
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                                modifier = Modifier.clickable { AppState.toggleBalanceVisibility() }
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (isHidden) "••••• XLM" else "≈ ${String.format("%,.2f", monthTotal / rate)} XLM",
+                                fontSize = 10.sp,
+                                color = Color(0xFFCBD5E1),
+                                modifier = Modifier.clickable { AppState.toggleBalanceVisibility() }
+                            )
+                            Spacer(Modifier.height(14.dp))
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color.White.copy(alpha = 0.07f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                PayFloatingActionItem(
-                                    icon = Icons.Filled.PersonAdd,
-                                    label = "New Bill",
-                                    tint = Color(0xFF2563EB),
-                                    onClick = { navController.navigate(Routes.PAY_NEW_BILL) }
-                                )
-                                PayFloatingActionItem(
-                                    icon = Icons.Filled.QrCodeScanner,
-                                    label = "Scan QR",
-                                    tint = Color(0xFF10B981),
-                                    onClick = { navController.navigate(Routes.SCAN) }
-                                )
+                                PayHeroStat(settledCount, "Settled", Color(0xFF10B981))
+                                Box(Modifier.width(1.dp).height(30.dp).background(Color.White.copy(alpha = 0.10f)))
+                                PayHeroStat(pendingCount, "Pending", Color(0xFFF59E0B))
+                                Box(Modifier.width(1.dp).height(30.dp).background(Color.White.copy(alpha = 0.10f)))
+                                PayHeroStat(bills.size, "Total Bills", Color(0xFF3B82F6))
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp)
+                                    .clickable { navController.navigate(Routes.PAY_NEW_BILL) },
+                                shape = RoundedCornerShape(16.dp),
+                                shadowElevation = 4.dp,
+                                color = Color(0xFF193A83),
+                                contentColor = Color.White
+                            ) {
+                                Box(
+                                    modifier = Modifier.background(
+                                        Brush.horizontalGradient(
+                                            listOf(Color(0xFF203F8A), Color(0xFF142F6A))
+                                        )
+                                    )
+                                ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color.White.copy(alpha = 0.14f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Filled.PersonAdd, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("New Bill", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(Icons.Filled.ChevronRight, null, tint = Color(0xFFB7CBEC), modifier = Modifier.size(18.dp))
+                                }
+                                }
+                            }
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp)
+                                    .clickable { navController.navigate(Routes.SCAN) },
+                                shape = RoundedCornerShape(16.dp),
+                                shadowElevation = 1.dp,
+                                color = Color.White,
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0xFFEAF2FF)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Filled.QrCodeScanner, null, tint = Color(0xFF2563EB), modifier = Modifier.size(17.dp))
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Scan QR", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(Icons.Filled.ChevronRight, null, tint = Color(0xFF94A3B8), modifier = Modifier.size(18.dp))
+                                }
                             }
                         }
                     }
                 }
-
-                item { Spacer(Modifier.height(16.dp)) }
 
                 item {
                     Row(
@@ -350,16 +406,25 @@ fun PayScreen(navController: NavController) {
 @Composable
 private fun PayHeroStat(count: Int, label: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                label,
+                fontSize = 9.sp,
+                color = Color(0xFFCBD5E1)
+            )
+        }
         Text(
             count.toString(),
-            fontSize = 18.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = color
-        )
-        Text(
-            label,
-            fontSize = 11.sp,
-            color = Color(0xFF94A3B8)
+            color = Color.White
         )
     }
 }

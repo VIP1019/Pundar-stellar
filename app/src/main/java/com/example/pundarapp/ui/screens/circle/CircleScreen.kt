@@ -26,7 +26,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.pundarapp.data.remote.AuthRepository
 import com.example.pundarapp.ui.components.*
 import com.example.pundarapp.ui.data.AppState
 import com.example.pundarapp.ui.data.Circle
@@ -42,7 +41,6 @@ private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CircleScreen(navController: NavController) {
-    val initials    = AuthRepository.getCurrentUserInitials().ifBlank { "PJ" }
     val context     = androidx.compose.ui.platform.LocalContext.current
     val scope       = rememberCoroutineScope()
     val userScore   = AppState.pundarScore.intValue
@@ -67,28 +65,36 @@ fun CircleScreen(navController: NavController) {
     }
 
     Scaffold(
-        floatingActionButton = {
-            CircleFab { navController.navigate(Routes.CIRCLE_CREATE) }
-        },
-        containerColor = PundarTheme.colors.bgPrimary
+        containerColor = Color(0xFFF4F6F9),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         LazyColumn(
-            modifier            = Modifier.fillMaxSize().padding(padding),
+            modifier            = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding()),
             contentPadding      = PaddingValues(bottom = 110.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── DEEP NAVY HERO HEADER + FLOATING ACTION CARD ─────────
+            // ── CIRCLE DASHBOARD HEADER ───────────────────────────────
             item {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Column(
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF4F6F9))
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Surface(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                            .background(Color(0xFF0B1B3D))
-                            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 44.dp)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -98,198 +104,187 @@ fun CircleScreen(navController: NavController) {
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF1E2E5C))
-                                        .border(1.5.dp, Color(0xFF3B82F6), CircleShape),
+                                        .size(34.dp)
+                                        .clip(RoundedCornerShape(9.dp))
+                                        .background(Color(0xFF10284B)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        initials,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp
+                                    Icon(
+                                        Icons.Filled.Groups,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(19.dp)
                                     )
                                 }
-                                Spacer(Modifier.width(12.dp))
+                                Spacer(Modifier.width(9.dp))
                                 Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "PUNDAR Circle",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF0F172A),
+                                            maxLines = 1
+                                        )
+                                        Spacer(Modifier.width(5.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(50.dp),
+                                            color = Color(0xFFEAF2FF)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Box(
+                                                    Modifier
+                                                        .size(5.dp)
+                                                        .clip(CircleShape)
+                                                        .background(Color(0xFF2563EB))
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(
+                                                    "Soroban Rail",
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = Color(0xFF2563EB)
+                                                )
+                                            }
+                                        }
+                                    }
                                     Text(
-                                        "PUNDAR Circle",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        "Deterministic Savings · Soroban Testnet",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF94A3B8),
+                                        "Deterministic Savings & Settlements",
+                                        fontSize = 9.sp,
+                                        color = Color(0xFF64748B),
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                             }
 
-                            Spacer(Modifier.width(8.dp))
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF1E2E5C))
-                                        .clickable { navController.navigate(Routes.NOTIFICATIONS) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Notifications,
-                                        contentDescription = "Notifications",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF1E2E5C))
-                                        .clickable { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Settings,
-                                        contentDescription = "Settings",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(Modifier.height(22.dp))
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(50.dp))
-                                    .background(Color(0xFF1E2E5C))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFFF1F5F9))
+                                    .clickable { navController.navigate(Routes.ALL_ACTIVITY) },
+                                contentAlignment = Alignment.Center
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF10B981))
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        "Total Round Pool Volume",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFFCBD5E1),
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                            Spacer(Modifier.height(10.dp))
-                            Text(
-                                text = AppState.formatFiat(totalSaved),
-                                fontSize = 34.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "$activeCount Active · $pendingCount Pending Consent · Soroban Enforced",
-                                fontSize = 12.sp,
-                                color = Color(0xFF94A3B8)
-                            )
-                        }
-
-                        Spacer(Modifier.height(20.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFF14254E))
-                                .padding(horizontal = 18.dp, vertical = 14.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircleHeroStat(AppState.circles.size.toString(), "My Circles", Color(0xFF3B82F6))
-                                Box(Modifier.width(1.dp).height(28.dp).background(Color.White.copy(alpha = 0.12f)))
-                                CircleHeroStat(activeCount.toString(), "Active", Color(0xFF10B981))
-                                Box(Modifier.width(1.dp).height(28.dp).background(Color.White.copy(alpha = 0.12f)))
-                                CircleHeroStat(allInvites.size.toString(), "Invitations", Color(0xFFF59E0B))
+                                Icon(
+                                    Icons.Filled.History,
+                                    contentDescription = "Circle activity history",
+                                    tint = Color(0xFF64748B),
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                     }
 
-                    // Floating White Action Card overlapping bottom of Navy Header
-                    Surface(
+                    Spacer(Modifier.height(12.dp))
+
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                            .align(Alignment.BottomCenter)
-                            .offset(y = 24.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        color = PundarTheme.colors.surfacePrimary,
-                        shadowElevation = 4.dp,
-                        border = BorderStroke(1.dp, PundarTheme.colors.borderPrimary)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF142E5D), Color(0xFF0B1426))
+                                )
+                            )
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Color.White.copy(alpha = 0.12f))
+                                .padding(horizontal = 12.dp, vertical = 5.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF34D399))
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "TOTAL ROUND POOL VOLUME",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFE2E8F0)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "≈ ${AppState.formatFiat(totalSaved)}",
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "$activeCount Active  ·  $pendingCount Pending Consent  ·  Soroban Enforced",
+                            fontSize = 10.sp,
+                            color = Color(0xFFCBD5E1),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(14.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White.copy(alpha = 0.07f))
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                CircleFloatingAction(
-                                    icon = Icons.Filled.AddCircle,
-                                    label = "New Circle",
-                                    tint = Color(0xFF10B981),
-                                    onClick = { navController.navigate(Routes.CIRCLE_CREATE) }
-                                )
-                            }
-                            Box(Modifier.width(1.dp).height(26.dp).background(PundarTheme.colors.borderPrimary))
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                CircleFloatingAction(
-                                    icon = Icons.Filled.MailOutline,
-                                    label = "Invites (${allInvites.size})",
-                                    tint = Color(0xFF2563EB),
-                                    onClick = {
-                                        val first = allInvites.firstOrNull()
-                                        if (first != null) {
-                                            AppState.pendingInvitation.value = first
-                                            navController.navigate(Routes.circleInvite(first.id))
-                                        } else {
-                                            navController.navigate(Routes.REQUESTS)
-                                        }
-                                    }
-                                )
-                            }
-                            Box(Modifier.width(1.dp).height(26.dp).background(PundarTheme.colors.borderPrimary))
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                CircleFloatingAction(
-                                    icon = Icons.Filled.Star,
-                                    label = "Score",
-                                    tint = Color(0xFFF59E0B),
-                                    onClick = { navController.navigate(Routes.SCORE) }
-                                )
-                            }
+                            CircleHeroStat(AppState.circles.size.toString(), "My Circles", Color(0xFF22D3EE))
+                            Box(Modifier.width(1.dp).height(30.dp).background(Color.White.copy(alpha = 0.10f)))
+                            CircleHeroStat(activeCount.toString(), "Active", Color(0xFF34D399))
+                            Box(Modifier.width(1.dp).height(30.dp).background(Color.White.copy(alpha = 0.10f)))
+                            CircleHeroStat(allInvites.size.toString(), "Invitations", Color(0xFFFBBF24))
                         }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircleFloatingAction(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Filled.Add,
+                            label = "New Circle",
+                            tint = Color(0xFF10B981),
+                            onClick = { navController.navigate(Routes.CIRCLE_CREATE) }
+                        )
+                        CircleFloatingAction(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Filled.MailOutline,
+                            label = "Invites (${allInvites.size})",
+                            tint = Color(0xFF2563EB),
+                            onClick = {
+                                val first = allInvites.firstOrNull()
+                                if (first != null) {
+                                    AppState.pendingInvitation.value = first
+                                    navController.navigate(Routes.circleInvite(first.id))
+                                } else {
+                                    navController.navigate(Routes.REQUESTS)
+                                }
+                            }
+                        )
+                        CircleFloatingAction(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Filled.Star,
+                            label = "Score",
+                            tint = Color(0xFFF59E0B),
+                            onClick = { navController.navigate(Routes.SCORE) }
+                        )
                     }
                 }
             }
-
-            item { Spacer(Modifier.height(16.dp)) }
 
             // ── PUNDAR POINTS, MINIMUM BALANCE & BAN STANDING CARD ──
             item {
@@ -461,44 +456,63 @@ fun CircleScreen(navController: NavController) {
 @Composable
 private fun CircleHeroStat(value: String, label: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = color)
-        Text(label, fontSize = 11.sp, color = Color(0xFF94A3B8))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(label, fontSize = 9.sp, color = Color(0xFFCBD5E1))
+        }
+        Text(value, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
     }
 }
 
 @Composable
 private fun CircleFloatingAction(
+    modifier: Modifier = Modifier,
     icon: ImageVector,
     label: String,
     tint: Color,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+    Surface(
+        modifier = modifier
+            .height(56.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(28.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(tint),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(horizontal = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(15.dp))
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(tint.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(15.dp))
+            }
+            Spacer(Modifier.width(5.dp))
+            Text(
+                label,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF0F172A),
+                maxLines = 2,
+                softWrap = true
+            )
         }
-        Spacer(Modifier.width(6.dp))
-        Text(
-            label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = PundarTheme.colors.textPrimary,
-            maxLines = 1,
-            softWrap = false
-        )
     }
 }
 

@@ -17,7 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -46,7 +46,7 @@ enum class BottomNavItem(
 private fun iconFor(item: BottomNavItem, selected: Boolean): ImageVector = when (item) {
     BottomNavItem.HOME   -> if (selected) Icons.Filled.Home          else Icons.Outlined.Home
     BottomNavItem.PAY    -> if (selected) Icons.Filled.Receipt        else Icons.Outlined.Receipt
-    BottomNavItem.SCAN   -> if (selected) Icons.Filled.QrCodeScanner  else Icons.Outlined.QrCode2
+    BottomNavItem.SCAN   -> Icons.Filled.QrCodeScanner
     BottomNavItem.CIRCLE -> if (selected) Icons.Filled.Groups         else Icons.Outlined.Groups
     BottomNavItem.PROFILE -> if (selected) Icons.Filled.Person        else Icons.Outlined.Person
 }
@@ -59,24 +59,16 @@ fun PundarBottomBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 6.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .shadow(8.dp, RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
-                .background(
-                    if (PundarTheme.colors.isLight)
-                        Brush.linearGradient(listOf(Color(0xFFFFFFFF), Color(0xFFF5F8FF)))
-                    else
-                        Brush.linearGradient(listOf(PundarTheme.colors.surfaceSecondary, PundarTheme.colors.surfacePrimary))
-                )
-                .border(
-                    1.dp,
-                    Brush.linearGradient(listOf(PundarTheme.colors.glassMedium, PundarTheme.colors.glassSubtle)),
-                    RoundedCornerShape(28.dp)
-                )
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .background(Color.White)
+                .border(1.dp, Color(0xFFE5EAF1), RoundedCornerShape(28.dp))
+                .padding(horizontal = 6.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment     = Alignment.CenterVertically
         ) {
@@ -119,34 +111,29 @@ private fun RowScope.NavItem(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = 4.dp),
+                .padding(vertical = 2.dp),
             contentAlignment = Alignment.Center
         ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .graphicsLayer(scaleX = scale, scaleY = scale)
-                .clip(CircleShape)
-                .background(
-                    if (selected)
-                        Brush.linearGradient(listOf(PundarTheme.colors.brandPrimary, PundarTheme.colors.brandSecondary))
-                    else
-                        Brush.linearGradient(listOf(PundarTheme.colors.surfaceTertiary, PundarTheme.colors.surfaceSecondary))
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .graphicsLayer(scaleX = scale, scaleY = scale)
+                    .shadow(5.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(Color(0xFF10284B))
+                    .clickable(
+                        indication        = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { onClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector        = icon,
+                    contentDescription = item.label,
+                    tint               = Color.White,
+                    modifier           = Modifier.size(22.dp)
                 )
-                .border(1.dp, if (selected) PundarTheme.colors.brandLight.copy(0.5f) else PundarTheme.colors.glassMedium, CircleShape)
-                .clickable(
-                    indication        = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { onClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = icon,
-                contentDescription = item.label,
-                tint               = if (selected) PundarTheme.colors.surfacePrimary else PundarTheme.colors.textSecondary,
-                modifier           = Modifier.size(24.dp)
-            )
-        }
+            }
         }
     } else {
         Column(
