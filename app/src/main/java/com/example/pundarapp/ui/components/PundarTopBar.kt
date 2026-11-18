@@ -28,6 +28,14 @@ private val HeroNavyBg = Color(0xFF0B1B3D)      // Signature Deep Dark Navy head
 private val HeroNavyButton = Color(0xFF1E2E5C)  // Circular dark-navy icon container
 private val HeroNavySub = Color(0xFF94A3B8)     // Muted slate subtitle on navy
 
+private val HeroGradient = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFF1E3A8A), // Vibrant Lighter Royal Blue
+        Color(0xFF1E2E5C), // Rich Navy
+        Color(0xFF0B1B3D)  // Deep Navy
+    )
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PundarMainTopBar(
@@ -44,9 +52,11 @@ fun PundarMainTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-            .background(HeroNavyBg)
+            .background(HeroGradient)
+            .statusBarsPadding()
     ) {
         TopAppBar(
+            windowInsets = WindowInsets(0, 0, 0, 0),
             title = {
                 Column {
                     Text(
@@ -157,9 +167,11 @@ fun PundarDetailTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-            .background(HeroNavyBg)
+            .background(HeroGradient)
+            .statusBarsPadding()
     ) {
         TopAppBar(
+            windowInsets = WindowInsets(0, 0, 0, 0),
             title = {
                 Text(
                     title,
@@ -217,9 +229,11 @@ fun PundarCircleTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-            .background(HeroNavyBg)
+            .background(HeroGradient)
+            .statusBarsPadding()
     ) {
         TopAppBar(
+            windowInsets = WindowInsets(0, 0, 0, 0),
             title = {
                 Text(
                     "PUNDAR",
@@ -279,9 +293,11 @@ fun PundarGrowTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-            .background(HeroNavyBg)
+            .background(HeroGradient)
+            .statusBarsPadding()
     ) {
         TopAppBar(
+            windowInsets = WindowInsets(0, 0, 0, 0),
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PundarAvatar(

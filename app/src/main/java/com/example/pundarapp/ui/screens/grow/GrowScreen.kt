@@ -420,6 +420,7 @@ fun GrowScreen(navController: NavController) {
 
     Scaffold(
         containerColor = PundarTheme.colors.bgPrimary,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             PundarGrowTopBar(
                 userInitials       = userInitials,
@@ -434,8 +435,8 @@ fun GrowScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize(),
             contentPadding = PaddingValues(
-                top    = paddingValues.calculateTopPadding() + 12.dp,
-                bottom = 100.dp,
+                top    = 12.dp,
+                bottom = paddingValues.calculateBottomPadding() + 100.dp,
                 start  = 16.dp,
                 end    = 16.dp
             ),
