@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PUNDAR Admin — User &amp; Stellar Wallet Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #F4F7FB;
+      --surface: #FFFFFF;
+      --surface-soft: #F8FAFC;
+      --navy: #0B1B3D;
+      --navy-mid: #14254E;
+      --blue-600: #1A56DB;
+      --blue-500: #2563EB;
+      --blue-100: #DBEAFE;
+      --blue-50: #EFF6FF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --text-secondary: #475569;
+      --muted: #64748B;
+      --green: #059669;
+      --green-bg: #ECFDF5;
+      --amber: #D97706;
+      --amber-bg: #FFFBEB;
+      --red: #DC2626;
+      --red-bg: #FEF2F2;
+      --sans: 'Google Sans', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Navy Hero Header (matching PUNDAR App) ── */
+    .hero {
+      background: linear-gradient(135deg, var(--navy) 0%, #102A63 100%);
+      color: #FFFFFF;
+      padding: 26px 20px 64px;
+      border-bottom-left-radius: 28px;
+      border-bottom-right-radius: 28px;
+    }
+
+    .hero-inner {
+      max-width: 1240px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 21px;
+      color: #FFFFFF;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 3px 0 0;
+      font-size: 13px;
+      color: #94A3B8;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn {
+      font-family: var(--sans);
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 9px 15px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--blue-500);
+      background: var(--blue-50);
+      color: var(--blue-600);
+    }
+
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .btn-hero {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.22);
+      color: #FFFFFF;
+    }
+
+    .btn-hero:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.4);
+      color: #FFFFFF;
+    }
+
+    .btn-primary {
+      background: var(--blue-500);
+      border-color: var(--blue-500);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--blue-600);
+      border-color: var(--blue-600);
+      color: #FFFFFF;
+    }
+
+    /* ── Main Container ── */
+    .container {
+      max-width: 1240px;
+      margin: -42px auto 0;
+      padding: 0 20px 60px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow-md);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .stat-card.clickable { cursor: pointer; }
+    .stat-card.clickable:hover {
+      border-color: var(--blue-500);
+      transform: translateY(-2px);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat-value {
+      margin-top: 8px;
+      font-size: 30px;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -0.02em;
+    }
+
+    .stat-sub {
+      margin-top: 5px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Directory Panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 18px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .panel-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--blue-50);
+      color: var(--blue-600);
+    }
+
+    .pill.green { background: var(--green-bg); color: var(--green); }
+    .pill.amber { background: var(--amber-bg); color: var(--amber); }
+    .pill.red { background: var(--red-bg); color: var(--red); }
+
+    .controls {
+      padding: 14px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-soft);
+    }
+
+    .search-input {
+      font-family: var(--sans);
+      flex: 1 1 260px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 11px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--blue-500);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .filter-select {
+      font-family: var(--sans);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 11px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: var(--surface-soft);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tr.user-row { transition: background 0.12s ease; }
+    tr.user-row:hover td { background: #F8FAFF; }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 13px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .user-cell {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .user-name {
+      font-weight: 700;
+      color: var(--navy);
+      font-size: 14px;
+    }
+
+    .user-meta {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .address-cell {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .stellar-link {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--blue-600);
+      text-decoration: none;
+      background: var(--blue-50);
+      border: 1px solid var(--blue-100);
+      padding: 5px 9px;
+      border-radius: 8px;
+      transition: all 0.15s ease;
+      word-break: break-all;
+    }
+
+    .stellar-link:hover {
+      background: var(--blue-100);
+      border-color: var(--blue-500);
+      color: #1E40AF;
+    }
+
+    .mini-btn {
+      font-family: var(--sans);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 8px;
+      padding: 5px 9px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .mini-btn:hover {
+      border-color: var(--blue-500);
+      color: var(--blue-600);
+      background: var(--blue-50);
+    }
+
+    .mini-btn.blue {
+      background: var(--blue-50);
+      border-color: var(--blue-100);
+      color: var(--blue-600);
+    }
+
+    .balance-xlm {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--navy);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .balance-php {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hidden { display: none !important; }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-bar {
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* ── Slide-Over Profile & Transactions Drawer ── */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 27, 61, 0.45);
+      backdrop-filter: blur(2px);
+      z-index: 50;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .drawer {
+      width: min(640px, 100vw);
+      height: 100%;
+      background: var(--surface);
+      box-shadow: -12px 0 36px rgba(15, 23, 42, 0.18);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .drawer-header {
+      background: linear-gradient(135deg, var(--navy) 0%, #102A63 100%);
+      color: #FFFFFF;
+      padding: 20px 22px;
+    }
+
+    .drawer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .drawer-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .drawer-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--blue-500);
+      border: 2px solid rgba(255,255,255,0.3);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .drawer-bal-row {
+      margin-top: 16px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .drawer-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-soft);
+    }
+
+    .tab-btn {
+      font-family: var(--sans);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: var(--blue-500);
+      border-color: var(--blue-500);
+      color: #FFFFFF;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tx-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 13px 15px;
+      background: var(--surface);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .tx-title {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: var(--navy);
+    }
+
+    .tx-sub {
+      margin-top: 3px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .tx-right {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .tx-amt {
+      font-weight: 700;
+      font-size: 13.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tx-amt.pos { color: var(--green); }
+    .tx-amt.neg { color: var(--navy); }
+
+    .tx-link {
+      display: inline-block;
+      margin-top: 5px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--blue-600);
+      text-decoration: none;
+    }
+
+    .tx-link:hover { text-decoration: underline; }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="brand">
+        <div class="logo">P</div>
+        <div>
+          <h1>PUNDAR Admin Monitor</h1>
+          <p class="subtitle">Registered Users · Designated Stellar Testnet Wallets · Pay &amp; Circle Activity</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="refreshUsersBtn" class="btn btn-primary" onclick="loadDashboard()">
+          ↻ Refresh All Data
+        </button>
+        <button id="exportCsvBtn" class="btn btn-hero" onclick="exportCsv()" disabled>
+          ⭳ Export Users CSV
+        </button>
+        <button id="exportAllTxCsvBtn" class="btn btn-hero" onclick="exportAllTransactionsCsv()" disabled>
+          ⭳ Export All Tx CSV
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <section class="stats-grid">
+      <div class="stat-card clickable" onclick="toggleDirectory()" title="Click to expand or collapse user list">
+        <div class="stat-label">Total Registered Users</div>
+        <div class="stat-value" id="totalUsersVal">—</div>
+        <div class="stat-sub" id="totalUsersSub">Loading from Firestore...</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Active Stellar Wallets</div>
+        <div class="stat-value" id="walletUsersVal">—</div>
+        <div class="stat-sub" id="walletUsersSub">1 wallet per user account</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Total On-Chain Balance</div>
+        <div class="stat-value" id="totalXlmVal">—</div>
+        <div class="stat-sub" id="totalPhpVal">Querying Stellar Horizon Testnet...</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Live Market Rate</div>
+        <div class="stat-value" id="xlmRateVal">—</div>
+        <div class="stat-sub">CoinGecko XLM → PHP</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2 class="panel-title">Registered Users &amp; Stellar Wallets</h2>
+          <span class="pill" id="directoryCountPill">0 users</span>
+          <span class="pill green hidden" id="horizonProgressPill">Syncing balances...</span>
+        </div>
+
+        <button id="toggleDirBtn" class="btn" onclick="toggleDirectory()">
+          ▼ Expand User List
+        </button>
+      </div>
+
+      <div id="directoryBody" class="hidden">
+        <div class="controls">
+          <input
+            id="searchInput"
+            class="search-input"
+            type="text"
+            placeholder="Search by name, phone number, or G... Stellar address"
+            oninput="renderTable()"
+          />
+          <select id="filterSelect" class="filter-select" onchange="renderTable()">
+            <option value="all">All Users</option>
+            <option value="funded">Funded On-Chain</option>
+            <option value="unfunded">Unfunded / Missing (404)</option>
+            <option value="nowallet">No Stellar Address</option>
+          </select>
+          <button id="syncBalancesBtn" class="btn" onclick="syncAllHorizonBalances()">
+            ⚡ Sync Live Horizon Balances
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>User Profile</th>
+                <th>Designated Stellar Wallet (Click for Stellar Expert)</th>
+                <th>Live Balance</th>
+                <th>Pay &amp; Circle Activity</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="usersTbody">
+              <tr><td colspan="6" class="empty-state">Loading registered users...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="status-bar">
+      <span id="statusText">Initializing...</span>
+      <span>Network: Stellar Testnet (`horizon-testnet.stellar.org`) · Firestore: `pundar-app-3d9a3`</span>
+    </div>
+  </div>
+
+  <!-- Per-Profile Transactions Drawer -->
+  <div id="profileDrawerBackdrop" class="drawer-backdrop hidden" onclick="if (event.target === this) closeProfileDrawer()">
+    <div class="drawer">
+      <div class="drawer-header">
+        <div class="drawer-top">
+          <div class="drawer-user">
+            <div class="drawer-avatar" id="drawerAvatar">PU</div>
+            <div>
+              <div style="font-size: 18px; font-weight: 700;" id="drawerName">User Name</div>
+              <div style="font-size: 12.5px; color: #CBD5E1; margin-top: 2px;" id="drawerMeta">Phone • Score</div>
+            </div>
+          </div>
+          <button class="btn btn-hero" style="padding: 6px 11px;" onclick="closeProfileDrawer()">✕ Close</button>
+        </div>
+
+        <div class="drawer-bal-row">
+          <div>
+            <div style="font-size: 11px; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Live Stellar Balance</div>
+            <div style="font-size: 20px; font-weight: 700; margin-top: 2px;" id="drawerBalance">— XLM</div>
+          </div>
+          <div id="drawerAddressWrap"></div>
+        </div>
+      </div>
+
+      <div class="drawer-tabs">
+        <button id="tabPayBtn" class="tab-btn active" onclick="switchDrawerTab('pay')">PUNDAR Pay (0)</button>
+        <button id="tabCircleBtn" class="tab-btn" onclick="switchDrawerTab('circle')">PUNDAR Circle (0)</button>
+        <button id="tabOnChainBtn" class="tab-btn" onclick="switchDrawerTab('onchain')">On-Chain Horizon (0)</button>
+        <button id="exportUserTxBtn" class="mini-btn blue" style="margin-left:auto;" onclick="exportSingleUserTransactionsCsv()">⭳ Export Tx CSV</button>
+      </div>
+
+      <div id="drawerBody" class="drawer-body"></div>
+    </div>
+  </div>
+
+  <script>
+    const FIREBASE_PROJECT_ID = "pundar-app-3d9a3";
+    const FIREBASE_API_KEY = "AIzaSyC1k5DhtYrDMBHEYwOrlJD6-XJbGp61uZE";
+    const HORIZON_URL = "https://horizon-testnet.stellar.org";
+    const COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=php";
+    const STELLAR_EXPERT_ACC = "https://stellar.expert/explorer/testnet/account/";
+    const STELLAR_EXPERT_TX = "https://stellar.expert/explorer/testnet/tx/";
+
+    let users = [];
+    let allCircles = [];
+    let allGroupBills = [];
+    let phpPerXlm = 6.50;
+    let isDirectoryExpanded = false;
+    let isSyncingBalances = false;
+    let activeDrawerUser = null;
+    let activeDrawerTab = "pay";
+
+    function toggleDirectory(forceState) {
+      isDirectoryExpanded = typeof forceState === "boolean" ? forceState : !isDirectoryExpanded;
+      document.getElementById("directoryBody").classList.toggle("hidden", !isDirectoryExpanded);
+      document.getElementById("toggleDirBtn").textContent = isDirectoryExpanded ? "▲ Collapse User List" : "▼ Expand User List";
+      updateStats();
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatNumber(n, decimals = 2) {
+      if (typeof n !== "number" || Number.isNaN(n)) return "—";
+      return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+
+    function formatTime(ts) {
+      if (!ts) return "—";
+      const d = new Date(typeof ts === "number" ? ts : Date.parse(ts));
+      if (Number.isNaN(d.getTime())) return String(ts);
+      return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+
+    function isTxHash(str) {
+      return typeof str === "string" && /^[0-9a-fA-F]{64}$/.test(str.trim());
+    }
+
+    function parseVal(val) {
+      if (!val || typeof val !== "object") return null;
+      if ("stringValue" in val) return val.stringValue;
+      if ("doubleValue" in val) return Number(val.doubleValue);
+      if ("integerValue" in val) return Number(val.integerValue);
+      if ("booleanValue" in val) return Boolean(val.booleanValue);
+      if ("arrayValue" in val) return (val.arrayValue.values || []).map(parseVal);
+      if ("mapValue" in val) {
+        const out = {};
+        const fields = val.mapValue.fields || {};
+        for (const k of Object.keys(fields)) out[k] = parseVal(fields[k]);
+        return out;
+      }
+      return null;
+    }
+
+    async function fetchCollection(collectionName, fieldPaths = []) {
+      const docsOut = [];
+      let pageToken = "";
+      const mask = fieldPaths.map((f) => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+      do {
+        const tokenParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "";
+        const maskParam = mask ? `&${mask}` : "";
+        const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/${collectionName}?pageSize=200${maskParam}${tokenParam}&key=${FIREBASE_API_KEY}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`${collectionName} HTTP ${res.status}`);
+        const json = await res.json();
+        for (const doc of json.documents || []) {
+          const docId = (doc.name || "").split("/").pop() || "";
+          const parsed = { _docId: docId };
+          const fields = doc.fields || {};
+          for (const k of Object.keys(fields)) parsed[k] = parseVal(fields[k]);
+          docsOut.push(parsed);
+        }
+        pageToken = json.nextPageToken || "";
+      } while (pageToken);
+      return docsOut;
+    }
+
+    async function fetchXlmPhpRate() {
+      try {
+        const res = await fetch(COINGECKO_URL);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (typeof data?.stellar?.php === "number" && data.stellar.php > 0) phpPerXlm = data.stellar.php;
+      } catch (err) {
+        console.warn("CoinGecko fallback rate used:", err);
+      }
+      document.getElementById("xlmRateVal").textContent = `₱${formatNumber(phpPerXlm, 2)}`;
+    }
+
+    function buildUserTransactions(user) {
+      const phone = user.phone;
+      const nameLower = user.name.toLowerCase();
+
+      // 1. PUNDAR Pay transactions (from user's homeActivities + group_bills)
+      const payFromActivities = (user.homeActivities || [])
+        .filter((a) => {
+          const mod = (a.module || "").toLowerCase();
+          return mod === "pay" || mod === "wallet" || mod === "send" || mod === "qr";
+        })
+        .map((a) => ({
+          source: a.module || "Pay",
+          title: a.title || "PUNDAR Pay Transaction",
+          subtitle: a.subtitle || "",
+          amount: a.amount || "",
+          isPositive: Boolean(a.isPositive),
+          txHash: isTxHash(a.referenceId) ? a.referenceId : "",
+          ref: a.referenceId || "",
+          timestamp: a.timestamp || 0
+        }));
+
+      const payFromBills = allGroupBills
+        .filter((b) => {
+          const inUsernames = Array.isArray(b.memberUsernames) && b.memberUsernames.includes(phone);
+          const inMembers = Array.isArray(b.members) && b.members.some((m) => m.username === phone || (m.name || "").toLowerCase() === nameLower);
+          return b.creatorId === phone || inUsernames || inMembers;
+        })
+        .map((b) => ({
+          source: "Group Bill",
+          title: b.name || "Split Bill",
+          subtitle: `Status: ${b.status || "PENDING"} • ${b.member_count || (b.members || []).length} members • Total ₱${formatNumber(Number(b.total_amount || 0), 2)}`,
+          amount: `₱${formatNumber(Number(b.your_share || 0), 2)}`,
+          isPositive: false,
+          txHash: "",
+          ref: b.id || "",
+          timestamp: 0,
+          dateText: b.date || ""
+        }));
+
+      const payTxs = [...payFromActivities, ...payFromBills].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      // 2. PUNDAR Circle transactions (from circles where user is creator or member + Circle homeActivities)
+      const circleTxs = [];
+      const seenCircleTx = new Set();
+
+      for (const c of allCircles) {
+        const isParticipant =
+          c.creatorId === phone ||
+          (Array.isArray(c.members) && c.members.some((m) => m.userId === phone || (m.name || "").toLowerCase() === nameLower));
+        if (!isParticipant) continue;
+
+        for (const t of c.transactionHistory || []) {
+          const isUserTx =
+            !t.memberPhone ||
+            t.memberPhone === phone ||
+            (t.memberName || "").toLowerCase() === nameLower ||
+            t.type === "CIRCLE_ACTIVATION" ||
+            t.type === "PAYOUT" ||
+            t.type === "PROPOSAL_CREATED";
+          if (!isUserTx) continue;
+
+          const dedupKey = `${c.id}_${t.id}_${t.txHash}`;
+          if (seenCircleTx.has(dedupKey)) continue;
+          seenCircleTx.add(dedupKey);
+
+          circleTxs.push({
+            circleName: c.name || "PUNDAR Circle",
+            type: t.type || "CONTRIBUTION",
+            title: t.title || t.type || "Circle Event",
+            memberName: t.memberName || "",
+            roundNumber: t.roundNumber || 0,
+            amount: Number(t.amount || 0),
+            currency: t.currency || c.currency || "XLM",
+            status: t.status || "CONFIRMED",
+            txHash: isTxHash(t.txHash) ? t.txHash : "",
+            ref: t.txHash || "",
+            timestamp: Number(t.timestamp || 0)
+          });
+        }
+      }
+
+      for (const a of user.homeActivities || []) {
+        if ((a.module || "").toLowerCase() === "circle") {
+          const dedupKey = `act_${a.title}_${a.timestamp}`;
+          if (!seenCircleTx.has(dedupKey)) {
+            circleTxs.push({
+              circleName: a.title || "Circle Activity",
+              type: "ACTIVITY",
+              title: a.subtitle || a.title || "Circle Update",
+              memberName: user.name,
+              roundNumber: 0,
+              amountText: a.amount || "",
+              status: "RECORDED",
+              txHash: isTxHash(a.referenceId) ? a.referenceId : "",
+              ref: a.referenceId || "",
+              timestamp: Number(a.timestamp || 0)
+            });
+          }
+        }
+      }
+
+      circleTxs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      user.payTxs = payTxs;
+      user.circleTxs = circleTxs;
+    }
+
+    async function fetchHorizonBalance(user) {
+      if (!user.stellarPublicKey || !user.stellarPublicKey.startsWith("G") || user.stellarPublicKey.length !== 56) {
+        user.horizonStatus = "no_wallet";
+        user.liveXlm = null;
+        return;
+      }
+      user.horizonStatus = "loading";
+      try {
+        const res = await fetch(`${HORIZON_URL}/accounts/${encodeURIComponent(user.stellarPublicKey)}`);
+        if (res.status === 404) {
+          user.horizonStatus = "unfunded";
+          user.liveXlm = 0;
+          return;
+        }
+        if (!res.ok) {
+          user.horizonStatus = "error";
+          return;
+        }
+        const data = await res.json();
+        const nativeBal = (data.balances || []).find((b) => b.asset_type === "native")?.balance;
+        user.liveXlm = nativeBal ? parseFloat(nativeBal) : 0;
+        user.horizonStatus = "funded";
+      } catch {
+        user.horizonStatus = "error";
+      }
+    }
+
+    async function fetchHorizonPaymentsForUser(user) {
+      if (!user.stellarPublicKey || !user.stellarPublicKey.startsWith("G")) return [];
+      try {
+        const res = await fetch(`${HORIZON_URL}/accounts/${encodeURIComponent(user.stellarPublicKey)}/payments?order=desc&limit=30`);
+        if (!res.ok) return [];
+        const json = await res.json();
+        return json?._embedded?.records || [];
+      } catch {
+        return [];
+      }
+    }
+
+    async function syncAllHorizonBalances() {
+      if (isSyncingBalances) return;
+      isSyncingBalances = true;
+      const syncBtn = document.getElementById("syncBalancesBtn");
+      const pill = document.getElementById("horizonProgressPill");
+      syncBtn.disabled = true;
+      pill.classList.remove("hidden");
+
+      const targets = users.filter((u) => u.stellarPublicKey && u.stellarPublicKey.startsWith("G"));
+      let done = 0;
+      const concurrency = 6;
+      let index = 0;
+
+      async function worker() {
+        while (index < targets.length) {
+          const current = targets[index++];
+          await fetchHorizonBalance(current);
+          done++;
+          pill.textContent = `Horizon Sync: ${done}/${targets.length}`;
+          if (done % 4 === 0 || done === targets.length) {
+            updateStats();
+            renderTable();
+          }
+        }
+      }
+
+      await Promise.all(Array.from({ length: Math.min(concurrency, targets.length || 1) }, worker));
+
+      isSyncingBalances = false;
+      syncBtn.disabled = false;
+      pill.textContent = `Horizon Synced (${targets.length})`;
+      updateStats();
+      renderTable();
+      document.getElementById("statusText").textContent =
+        `Last synced ${new Date().toLocaleTimeString()} · ${users.length} users, ${allCircles.length} circles, ${allGroupBills.length} group bills loaded.`;
+    }
+
+    function updateStats() {
+      const total = users.length;
+      const withWallet = users.filter((u) => u.stellarPublicKey.startsWith("G") && u.stellarPublicKey.length === 56);
+      const funded = users.filter((u) => u.horizonStatus === "funded" && typeof u.liveXlm === "number");
+      const totalXlm = funded.reduce((acc, u) => acc + u.liveXlm, 0);
+
+      document.getElementById("totalUsersVal").textContent = total.toLocaleString();
+      document.getElementById("totalUsersSub").textContent =
+        isDirectoryExpanded ? "Click card to collapse list" : "Click card or Expand button to view addresses";
+      document.getElementById("directoryCountPill").textContent = `${total} users`;
+      document.getElementById("walletUsersVal").textContent = withWallet.length.toLocaleString();
+      document.getElementById("walletUsersSub").textContent = `${funded.length} funded on Stellar Testnet`;
+      document.getElementById("totalXlmVal").textContent = `${formatNumber(totalXlm, 2)} XLM`;
+      document.getElementById("totalPhpVal").textContent = `≈ ₱${formatNumber(totalXlm * phpPerXlm, 2)}`;
+    }
+
+    function getFilteredUsers() {
+      const q = (document.getElementById("searchInput").value || "").trim().toLowerCase();
+      const filter = document.getElementById("filterSelect").value;
+      return users.filter((u) => {
+        if (filter === "funded" && u.horizonStatus !== "funded") return false;
+        if (filter === "unfunded" && u.horizonStatus !== "unfunded") return false;
+        if (filter === "nowallet" && u.horizonStatus !== "no_wallet") return false;
+        if (!q) return true;
+        return (
+          u.name.toLowerCase().includes(q) ||
+          u.phone.toLowerCase().includes(q) ||
+          u.stellarPublicKey.toLowerCase().includes(q)
+        );
+      });
+    }
+
+    function copyText(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(() => { btn.textContent = orig; }, 1200);
+      });
+    }
+
+    async function refreshSingleUser(userIdx) {
+      const user = users[userIdx];
+      if (!user) return;
+      await fetchHorizonBalance(user);
+      updateStats();
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("usersTbody");
+      const list = getFilteredUsers();
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No users match your current search or filter.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((u, idx) => {
+        const hasValidKey = u.stellarPublicKey.startsWith("G") && u.stellarPublicKey.length === 56;
+        const explorerUrl = `${STELLAR_EXPERT_ACC}${encodeURIComponent(u.stellarPublicKey)}`;
+        const userIdx = users.indexOf(u);
+        const initials = u.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "PU";
+
+        const addrHtml = hasValidKey
+          ? `<div class="address-cell">
+               <a class="stellar-link" href="${explorerUrl}" target="_blank" rel="noopener noreferrer" title="Open account on Stellar Expert Testnet">
+                 ${escapeHtml(u.stellarPublicKey)} ↗
+               </a>
+               <button class="mini-btn" onclick="copyText('${escapeHtml(u.stellarPublicKey)}', this)">Copy</button>
+             </div>`
+          : `<span style="color: var(--muted);">No wallet assigned</span>`;
+
+        let balHtml = `<span style="color: var(--muted);">—</span>`;
+        if (u.horizonStatus === "funded" && typeof u.liveXlm === "number") {
+          balHtml = `<div class="balance-xlm">${formatNumber(u.liveXlm, 4)} XLM</div>
+                     <div class="balance-php">≈ ₱${formatNumber(u.liveXlm * phpPerXlm, 2)}</div>`;
+        } else if (u.horizonStatus === "loading" || u.horizonStatus === "pending") {
+          balHtml = `<span style="color: var(--muted);">Fetching...</span>`;
+        } else if (u.horizonStatus === "unfunded") {
+          balHtml = `<div class="balance-xlm" style="color: var(--amber);">0.0000 XLM</div>
+                     <div class="balance-php">Unfunded (404)</div>`;
+        } else if (u.horizonStatus === "error") {
+          balHtml = `<span style="color: var(--red);">Timeout</span>`;
+        }
+
+        let statusPill = `<span class="pill">Pending</span>`;
+        if (u.horizonStatus === "funded") statusPill = `<span class="pill green">Active</span>`;
+        else if (u.horizonStatus === "unfunded") statusPill = `<span class="pill amber">Unfunded</span>`;
+        else if (u.horizonStatus === "no_wallet") statusPill = `<span class="pill red">No Wallet</span>`;
+        else if (u.horizonStatus === "error") statusPill = `<span class="pill red">Retry</span>`;
+
+        return `
+          <tr class="user-row">
+            <td style="color: var(--muted); font-variant-numeric: tabular-nums;">${idx + 1}</td>
+            <td>
+              <div class="user-cell">
+                <div class="avatar">${escapeHtml(initials)}</div>
+                <div>
+                  <div class="user-name">${escapeHtml(u.name)}</div>
+                  <div class="user-meta">
+                    <span>${escapeHtml(u.phone)}</span>
+                    <span>•</span>
+                    <span>Score ${escapeHtml(u.pundarScore)}</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td>${addrHtml}</td>
+            <td>${balHtml}</td>
+            <td>
+              <button class="mini-btn blue" onclick="openProfileDrawer(${userIdx})">
+                View Profile · ${u.payTxs.length} Pay / ${u.circleTxs.length} Circle
+              </button>
+            </td>
+            <td>
+              <div style="display:flex; align-items:center; gap:6px;">
+                ${statusPill}
+                ${hasValidKey ? `<button class="mini-btn" onclick="refreshSingleUser(${userIdx})" title="Refresh balance">↻</button>` : ""}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function openProfileDrawer(userIdx) {
+      const user = users[userIdx];
+      if (!user) return;
+      activeDrawerUser = user;
+      activeDrawerTab = "pay";
+
+      const initials = user.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "PU";
+      document.getElementById("drawerAvatar").textContent = initials;
+      document.getElementById("drawerName").textContent = user.name;
+      document.getElementById("drawerMeta").textContent = `${user.phone} • PUNDAR Score: ${user.pundarScore}`;
+      document.getElementById("drawerBalance").textContent =
+        typeof user.liveXlm === "number"
+          ? `${formatNumber(user.liveXlm, 7)} XLM (≈ ₱${formatNumber(user.liveXlm * phpPerXlm, 2)})`
+          : "Not funded / unavailable";
+
+      const addrWrap = document.getElementById("drawerAddressWrap");
+      if (user.stellarPublicKey && user.stellarPublicKey.startsWith("G")) {
+        const url = `${STELLAR_EXPERT_ACC}${encodeURIComponent(user.stellarPublicKey)}`;
+        addrWrap.innerHTML = `<a class="btn btn-hero" style="text-decoration:none; font-family:var(--mono); font-size:11.5px;" href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(user.stellarPublicKey.slice(0, 8))}...${escapeHtml(user.stellarPublicKey.slice(-6))} ↗</a>`;
+      } else {
+        addrWrap.innerHTML = `<span style="font-size:12px; color:#CBD5E1;">No Stellar Address</span>`;
+      }
+
+      document.getElementById("profileDrawerBackdrop").classList.remove("hidden");
+      updateDrawerTabs();
+      renderDrawerBody();
+
+      if (!user.onChainPaymentsLoaded) {
+        user.onChainPayments = await fetchHorizonPaymentsForUser(user);
+        user.onChainPaymentsLoaded = true;
+        updateDrawerTabs();
+        if (activeDrawerUser === user && activeDrawerTab === "onchain") renderDrawerBody();
+      }
+    }
+
+    function closeProfileDrawer() {
+      document.getElementById("profileDrawerBackdrop").classList.add("hidden");
+      activeDrawerUser = null;
+    }
+
+    function switchDrawerTab(tab) {
+      activeDrawerTab = tab;
+      updateDrawerTabs();
+      renderDrawerBody();
+    }
+
+    function updateDrawerTabs() {
+      if (!activeDrawerUser) return;
+      const payBtn = document.getElementById("tabPayBtn");
+      const cirBtn = document.getElementById("tabCircleBtn");
+      const chnBtn = document.getElementById("tabOnChainBtn");
+      payBtn.textContent = `PUNDAR Pay (${activeDrawerUser.payTxs.length})`;
+      cirBtn.textContent = `PUNDAR Circle (${activeDrawerUser.circleTxs.length})`;
+      chnBtn.textContent = `On-Chain Horizon (${(activeDrawerUser.onChainPayments || []).length})`;
+      payBtn.classList.toggle("active", activeDrawerTab === "pay");
+      cirBtn.classList.toggle("active", activeDrawerTab === "circle");
+      chnBtn.classList.toggle("active", activeDrawerTab === "onchain");
+    }
+
+    function renderDrawerBody() {
+      const body = document.getElementById("drawerBody");
+      const u = activeDrawerUser;
+      if (!u) return;
+
+      if (activeDrawerTab === "pay") {
+        if (u.payTxs.length === 0) {
+          body.innerHTML = `<div class="empty-state">No PUNDAR Pay transactions recorded for this profile yet.</div>`;
+          return;
+        }
+        body.innerHTML = u.payTxs.map((tx) => `
+          <div class="tx-card">
+            <div>
+              <div class="tx-title">${escapeHtml(tx.title)}</div>
+              <div class="tx-sub">
+                <span class="pill" style="margin-right:6px;">${escapeHtml(tx.source)}</span>
+                ${escapeHtml(tx.subtitle)}<br/>
+                <span>${escapeHtml(tx.timestamp ? formatTime(tx.timestamp) : (tx.dateText || ""))}</span>
+              </div>
+            </div>
+            <div class="tx-right">
+              <div class="tx-amt ${tx.isPositive ? "pos" : "neg"}">${escapeHtml(tx.amount || "—")}</div>
+              ${tx.txHash ? `<a class="tx-link" href="${STELLAR_EXPERT_TX}${tx.txHash}" target="_blank" rel="noopener noreferrer">Stellar Expert ↗</a>` : ""}
+            </div>
+          </div>
+        `).join("");
+      } else if (activeDrawerTab === "circle") {
+        if (u.circleTxs.length === 0) {
+          body.innerHTML = `<div class="empty-state">No PUNDAR Circle transactions recorded for this profile yet.</div>`;
+          return;
+        }
+        body.innerHTML = u.circleTxs.map((tx) => `
+          <div class="tx-card">
+            <div>
+              <div class="tx-title">${escapeHtml(tx.circleName)} — ${escapeHtml(tx.title)}</div>
+              <div class="tx-sub">
+                <span class="pill green" style="margin-right:6px;">${escapeHtml(tx.type)}</span>
+                ${tx.roundNumber ? `Round ${tx.roundNumber} • ` : ""}${tx.memberName ? `By ${escapeHtml(tx.memberName)} • ` : ""}${escapeHtml(tx.status)}<br/>
+                <span>${escapeHtml(formatTime(tx.timestamp))}</span>
+              </div>
+            </div>
+            <div class="tx-right">
+              <div class="tx-amt neg">${tx.amountText ? escapeHtml(tx.amountText) : `${formatNumber(tx.amount, 2)} ${escapeHtml(tx.currency)}`}</div>
+              ${tx.txHash ? `<a class="tx-link" href="${STELLAR_EXPERT_TX}${tx.txHash}" target="_blank" rel="noopener noreferrer">Stellar Expert ↗</a>` : ""}
+            </div>
+          </div>
+        `).join("");
+      } else {
+        if (!u.onChainPaymentsLoaded) {
+          body.innerHTML = `<div class="empty-state">Loading on-chain Stellar Horizon Testnet payments...</div>`;
+          return;
+        }
+        const recs = u.onChainPayments || [];
+        if (recs.length === 0) {
+          body.innerHTML = `<div class="empty-state">No on-chain Horizon operations found for this wallet.</div>`;
+          return;
+        }
+        body.innerHTML = recs.map((r) => {
+          const isIncoming = r.to === u.stellarPublicKey || r.account === u.stellarPublicKey;
+          const amt = r.amount ? `${r.amount} XLM` : `${r.starting_balance || "0"} XLM`;
+          const counterparty = isIncoming ? (r.from || r.funder || "") : (r.to || "");
+          return `
+            <div class="tx-card">
+              <div>
+                <div class="tx-title">${escapeHtml((r.type || "payment").toUpperCase())} ${isIncoming ? "(Incoming)" : "(Outgoing)"}</div>
+                <div class="tx-sub">
+                  ${counterparty ? `Counterparty: <span style="font-family:var(--mono);">${escapeHtml(counterparty.slice(0, 8))}...${escapeHtml(counterparty.slice(-6))}</span><br/>` : ""}
+                  <span>${escapeHtml(formatTime(r.created_at))}</span>
+                </div>
+              </div>
+              <div class="tx-right">
+                <div class="tx-amt ${isIncoming ? "pos" : "neg"}">${isIncoming ? "+" : "-"}${escapeHtml(amt)}</div>
+                <a class="tx-link" href="${STELLAR_EXPERT_TX}${encodeURIComponent(r.transaction_hash)}" target="_blank" rel="noopener noreferrer">Stellar Expert ↗</a>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    function exportCsv() {
+      const headers = ["Name", "Phone", "PundarScore", "StellarPublicKey", "LiveXlmBalance", "EstimatedPhpBalance", "PayTxCount", "CircleTxCount", "Status", "StellarExpertUrl"];
+      const lines = [headers.join(",")];
+      for (const u of users) {
+        const xlm = typeof u.liveXlm === "number" ? u.liveXlm.toFixed(7) : "";
+        const php = typeof u.liveXlm === "number" ? (u.liveXlm * phpPerXlm).toFixed(2) : "";
+        const url = u.stellarPublicKey ? `${STELLAR_EXPERT_ACC}${u.stellarPublicKey}` : "";
+        const row = [u.name, u.phone, u.pundarScore, u.stellarPublicKey, xlm, php, u.payTxs.length, u.circleTxs.length, u.horizonStatus, url]
+          .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`);
+        lines.push(row.join(","));
+      }
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `pundar_users_stellar_monitor_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+    }
+
+    function formatHorizonRecordsToCsvRows(accountKey, records) {
+      return records.map((r) => {
+        const amt = r.amount ? `${r.amount} XLM` : `${r.starting_balance || "0"} XLM`;
+        const from = r.from || r.funder || "";
+        const to = r.to || r.account || "";
+        const explorer = `${STELLAR_EXPERT_TX}${r.transaction_hash}`;
+        return [accountKey, r.transaction_hash, r.type, amt, from, to, r.created_at, explorer]
+          .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+          .join(",");
+      });
+    }
+
+    async function exportSingleUserTransactionsCsv() {
+      const u = activeDrawerUser;
+      if (!u || !u.stellarPublicKey || !u.stellarPublicKey.startsWith("G")) return;
+      const btn = document.getElementById("exportUserTxBtn");
+      btn.disabled = true;
+      btn.textContent = "Exporting...";
+      try {
+        const res = await fetch(`${HORIZON_URL}/accounts/${encodeURIComponent(u.stellarPublicKey)}/payments?order=desc&limit=200`);
+        const json = res.ok ? await res.json() : { _embedded: { records: [] } };
+        const recs = json?._embedded?.records || [];
+        const lines = ["Account,Hash,Type,Amount,From,To,Date,Explorer", ...formatHorizonRecordsToCsvRows(u.stellarPublicKey, recs)];
+        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `pundar_tx_${u.stellarPublicKey.slice(0, 8)}_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "⭳ Export Tx CSV";
+      }
+    }
+
+    async function exportAllTransactionsCsv() {
+      const btn = document.getElementById("exportAllTxCsvBtn");
+      btn.disabled = true;
+      btn.textContent = "Exporting Tx...";
+      const targets = users.filter((u) => u.stellarPublicKey && u.stellarPublicKey.startsWith("G") && u.stellarPublicKey.length === 56);
+      const lines = ["Account,Hash,Type,Amount,From,To,Date,Explorer"];
+      let index = 0;
+
+      async function worker() {
+        while (index < targets.length) {
+          const u = targets[index++];
+          try {
+            const res = await fetch(`${HORIZON_URL}/accounts/${encodeURIComponent(u.stellarPublicKey)}/payments?order=desc&limit=200`);
+            if (res.ok) {
+              const json = await res.json();
+              const recs = json?._embedded?.records || [];
+              lines.push(...formatHorizonRecordsToCsvRows(u.stellarPublicKey, recs));
+            }
+          } catch {}
+        }
+      }
+
+      try {
+        await Promise.all(Array.from({ length: Math.min(6, targets.length || 1) }, worker));
+        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `pundar_all_transactions_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "⭳ Export All Tx CSV";
+      }
+    }
+
+    async function loadDashboard() {
+      const btn = document.getElementById("refreshUsersBtn");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner"></span> Loading...`;
+      document.getElementById("statusText").textContent = "Fetching registered users, Pay bills, and Circles from Firestore...";
+
+      try {
+        await fetchXlmPhpRate();
+        const [rawUsers, rawCircles, rawBills] = await Promise.all([
+          fetchCollection("users", ["full_name", "name", "phone_number", "stellarPublicKey", "walletBalance", "wallet_balance", "pundar_score", "created_at", "homeActivities"]),
+          fetchCollection("circles", ["id", "name", "currency", "creatorId", "members", "transactionHistory"]).catch(() => []),
+          fetchCollection("group_bills", ["id", "name", "total_amount", "member_count", "status", "date", "your_share", "creatorId", "memberUsernames", "members"]).catch(() => [])
+        ]);
+
+        allCircles = rawCircles;
+        allGroupBills = rawBills;
+
+        users = rawUsers.map((doc) => {
+          const name = doc.full_name || doc.name || "Unnamed User";
+          const phone = doc.phone_number || doc._docId;
+          const stellarPublicKey = (doc.stellarPublicKey || "").trim();
+          const u = {
+            id: doc._docId,
+            name,
+            phone,
+            stellarPublicKey,
+            pundarScore: doc.pundar_score ?? 800,
+            createdAt: doc.created_at ?? 0,
+            homeActivities: Array.isArray(doc.homeActivities) ? doc.homeActivities : [],
+            liveXlm: null,
+            horizonStatus: stellarPublicKey.startsWith("G") && stellarPublicKey.length === 56 ? "pending" : "no_wallet",
+            payTxs: [],
+            circleTxs: [],
+            onChainPayments: [],
+            onChainPaymentsLoaded: false
+          };
+          buildUserTransactions(u);
+          return u;
+        }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        document.getElementById("exportCsvBtn").disabled = users.length === 0;
+        document.getElementById("exportAllTxCsvBtn").disabled = users.length === 0;
+        updateStats();
+        renderTable();
+        await syncAllHorizonBalances();
+      } catch (err) {
+        console.error(err);
+        document.getElementById("statusText").textContent = `Error: ${err.message}`;
+        document.getElementById("usersTbody").innerHTML =
+          `<tr><td colspan="6" class="empty-state" style="color: var(--red);">Failed to load users: ${escapeHtml(err.message)}</td></tr>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "↻ Refresh All Data";
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
