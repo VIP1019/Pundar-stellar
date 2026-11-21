@@ -46,14 +46,36 @@ impl PundarCircleContract {
     }
 
     pub fn create_circle(env: Env, members: Vec<Address>, contribution_amount: i128, payout_order: Vec<Address>, token_address: Address, cycle_duration: u64) -> u64 {
-        if members.is_empty() {
-            panic!("Circle must have at least one member");
+        if members.len() < 2 {
+            panic!("Circle must have at least two members");
         }
         if contribution_amount <= 0 {
             panic!("Contribution amount must be positive");
         }
+        if cycle_duration == 0 {
+            panic!("Cycle duration must be positive");
+        }
         if payout_order.len() != members.len() {
             panic!("Payout order must assign exactly one round per member");
+        }
+
+        let mut contributions = Map::new(&env);
+        for m in members.iter() {
+            if contributions.contains_key(m.clone()) {
+                panic!("Duplicate member address is not allowed");
+            }
+            contributions.set(m, false);
+        }
+
+        let mut payout_seen = Map::<Address, bool>::new(&env);
+        for p in payout_order.iter() {
+            if !contributions.contains_key(p.clone()) {
+                panic!("Payout order contains non-member address");
+            }
+            if payout_seen.contains_key(p.clone()) {
+                panic!("Duplicate recipient in payout order is not allowed");
+            }
+            payout_seen.set(p, true);
         }
 
         let mut count: u64 = env.storage().instance().get(&DataKey::CircleCount).unwrap_or(0);
@@ -66,11 +88,6 @@ impl PundarCircleContract {
             token_address,
             cycle_duration,
         };
-
-        let mut contributions = Map::new(&env);
-        for m in members.iter() {
-            contributions.set(m, false);
-        }
 
         let state = CircleState {
             current_cycle: 1,

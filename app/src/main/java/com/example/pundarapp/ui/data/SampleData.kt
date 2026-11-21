@@ -109,6 +109,291 @@ data class Circle(
     @get:com.google.firebase.firestore.Exclude
     val currentRoundRecipient: CircleMember? get() =
         members.find { it.payoutRound == currentRound } ?: members.getOrNull(currentRound - 1)
+
+    fun applyMemberTermsResponse(userId: String, accept: Boolean, forTermsVersion: Int): Result<Circle> {
+        if (lifecycleStatus == "ACTIVE" || lifecycleStatus == "COMPLETED") {
+            return Result.failure(IllegalStateException("Circle is already locked and active."))
+        }
+        if (termsVersion != forTermsVersion) {
+            return Result.failure(
+                IllegalArgumentException("Circle terms were revised to v$termsVersion. Please review the latest terms.")
+            )
+        }
+        val memberExists = members.any { it.userId == userId || it.isYou }
+        if (!memberExists) {
+            return Result.failure(IllegalArgumentException("User is not an invited participant of this Circle."))
+        }
+
+        val newStatus = if (accept) "ACCEPTED" else "DECLINED"
+        var responderName = userId
+        val updatedMembers = members.map { m ->
+            if (m.userId == userId || (m.userId.isBlank() && m.isYou)) {
+                responderName = m.name
+                m.copy(
+                    acceptanceStatus = newStatus,
+                    acceptedTermsVersion = termsVersion
+                )
+            } else m
+        }
+
+        val allAccepted = updatedMembers.all {
+            it.acceptanceStatus == "ACCEPTED" && it.acceptedTermsVersion == termsVersion
+        }
+        val anyDeclined = updatedMembers.any { it.acceptanceStatus == "DECLINED" }
+
+        val nextLifecycle = when {
+            anyDeclined -> "DECLINED_REVISION_NEEDED"
+            allAccepted -> "READY_TO_ACTIVATE"
+            else -> "AWAITING_ACCEPTANCE"
+        }
+
+        val record = CircleTransactionRecord(
+            id = "ctx_${System.currentTimeMillis()}",
+            type = if (accept) "TERMS_ACCEPTED" else "TERMS_DECLINED",
+            title = if (accept) "Accepted Circle Terms (v$termsVersion)"
+            else "Declined Circle Invitation (v$termsVersion)",
+            memberName = responderName,
+            memberPhone = userId,
+            roundNumber = 0,
+            amount = contributionPerMonth,
+            currency = currency,
+            status = if (accept) "CONFIRMED" else "DECLINED",
+            txHash = "CONSENT-V$termsVersion-${userId.takeLast(4)}"
+        )
+
+        return Result.success(
+            copy(
+                members = updatedMembers,
+                lifecycleStatus = nextLifecycle,
+                isActive = false,
+                transactionHistory = listOf(record) + transactionHistory
+            )
+        )
+    }
+
+    fun applyDeclinedMemberRemovalAndReviseTerms(declinedUserId: String, organizerId: String): Result<Circle> {
+        if (lifecycleStatus == "ACTIVE" || lifecycleStatus == "COMPLETED") {
+            return Result.failure(IllegalStateException("Cannot remove or substitute members after Circle activation."))
+        }
+        if (creatorId != organizerId) {
+            return Result.failure(IllegalArgumentException("Only the Circle organizer can revise pre-activation terms."))
+        }
+
+        val remaining = members.filterNot {
+            it.userId == declinedUserId || (it.acceptanceStatus == "DECLINED" && declinedUserId.isBlank())
+        }
+        if (remaining.size < 2) {
+            return Result.failure(
+                IllegalArgumentException("A Circle requires at least 2 participants. Please add another member or create a new Circle proposal.")
+            )
+        }
+
+        val nextVersion = termsVersion + 1
+        val reindexedMembers = remaining.mapIndexed { index, m ->
+            val isOrg = m.userId == organizerId
+            m.copy(
+                payoutRound = index + 1,
+                acceptanceStatus = if (isOrg) "ACCEPTED" else "PENDING",
+                acceptedTermsVersion = if (isOrg) nextVersion else m.acceptedTermsVersion
+            )
+        }
+
+        val newTarget = contributionPerMonth * reindexedMembers.size
+        val allAccepted = reindexedMembers.all {
+            it.acceptanceStatus == "ACCEPTED" && it.acceptedTermsVersion == nextVersion
+        }
+
+        val record = CircleTransactionRecord(
+            id = "ctx_${System.currentTimeMillis()}",
+            type = "TERMS_REVISED",
+            title = "Revised Final Terms Issued (v$nextVersion) — ${reindexedMembers.size} Members",
+            memberName = creatorName.ifBlank { "Organizer" },
+            memberPhone = organizerId,
+            roundNumber = 0,
+            amount = newTarget,
+            currency = currency,
+            status = "CONFIRMED",
+            txHash = "REVISED-TERMS-V$nextVersion"
+        )
+
+        return Result.success(
+            copy(
+                members = reindexedMembers,
+                memberCount = reindexedMembers.size,
+                maxMembers = reindexedMembers.size,
+                targetAmount = newTarget,
+                termsVersion = nextVersion,
+                lifecycleStatus = if (allAccepted) "READY_TO_ACTIVATE" else "AWAITING_ACCEPTANCE",
+                isActive = false,
+                transactionHistory = listOf(record) + transactionHistory
+            )
+        )
+    }
+
+    fun applyActivation(organizerId: String, newSorobanCircleId: Long, txHash: String, contractId: String): Result<Circle> {
+        if (lifecycleStatus == "ACTIVE" || lifecycleStatus == "COMPLETED") {
+            return Result.failure(IllegalStateException("Circle is already locked and active."))
+        }
+        if (!allMembersAcceptedCurrentTerms) {
+            return Result.failure(IllegalStateException("Cannot activate: Not all participants have accepted Terms v$termsVersion."))
+        }
+
+        val resetMembers = members.sortedBy { it.payoutRound }.mapIndexed { idx, m ->
+            m.copy(
+                payoutRound = idx + 1,
+                status = ContributionStatus.PENDING,
+                amount = 0.0,
+                contributionTxHash = "",
+                hasReceivedPayout = false,
+                payoutTxHash = ""
+            )
+        }
+        val derivedPayout = contributionPerMonth * resetMembers.size
+
+        val record = CircleTransactionRecord(
+            id = "ctx_${System.currentTimeMillis()}",
+            type = "CIRCLE_ACTIVATION",
+            title = "Circle Activated & Locked on Soroban (Terms v$termsVersion)",
+            memberName = creatorName.ifBlank { "Organizer" },
+            memberPhone = organizerId,
+            roundNumber = 1,
+            amount = derivedPayout,
+            currency = currency,
+            status = "CONFIRMED",
+            txHash = txHash
+        )
+
+        return Result.success(
+            copy(
+                members = resetMembers,
+                memberCount = resetMembers.size,
+                maxMembers = resetMembers.size,
+                targetAmount = derivedPayout,
+                savedAmount = 0.0,
+                isActive = true,
+                lifecycleStatus = "ACTIVE",
+                currentRound = 1,
+                currentRecipientIndex = 0,
+                sorobanCircleId = newSorobanCircleId,
+                activationTxHash = txHash,
+                escrowAddress = contractId,
+                escrowNetwork = "Stellar Testnet · Soroban (#$newSorobanCircleId)",
+                transactionHistory = listOf(record) + transactionHistory
+            )
+        )
+    }
+
+    fun applyMemberContribution(userId: String, amountContributed: Double = contributionPerMonth, txHash: String): Result<Circle> {
+        if (lifecycleStatus != "ACTIVE") {
+            return Result.failure(IllegalStateException("Circle is not active."))
+        }
+        val member = members.find { it.userId == userId || (it.userId.isBlank() && it.isYou) }
+            ?: return Result.failure(IllegalArgumentException("You are not an enrolled member of this Circle."))
+        if (kotlin.math.abs(amountContributed - contributionPerMonth) > 1e-6 || amountContributed <= 0.0) {
+            return Result.failure(
+                IllegalArgumentException("Contribution must equal exact fixed amount ($contributionPerMonth $currency).")
+            )
+        }
+        if (member.status == ContributionStatus.PAID) {
+            return Result.failure(IllegalStateException("You have already contributed for Round $currentRound."))
+        }
+
+        val updatedMembers = members.map { m ->
+            if (m.userId == member.userId) {
+                m.copy(
+                    status = ContributionStatus.PAID,
+                    amount = contributionPerMonth,
+                    contributionTxHash = txHash
+                )
+            } else m
+        }
+        val contributedCount = updatedMembers.count { it.status == ContributionStatus.PAID }
+        val newPooled = contributedCount * contributionPerMonth
+
+        val record = CircleTransactionRecord(
+            id = "ctx_${System.currentTimeMillis()}",
+            type = "CONTRIBUTION",
+            title = "Round $currentRound Contribution",
+            memberName = member.name,
+            memberPhone = member.userId,
+            roundNumber = currentRound,
+            amount = contributionPerMonth,
+            currency = currency,
+            status = "CONFIRMED",
+            txHash = txHash
+        )
+
+        return Result.success(
+            copy(
+                members = updatedMembers,
+                savedAmount = newPooled,
+                transactionHistory = listOf(record) + transactionHistory
+            )
+        )
+    }
+
+    fun applyRoundPayout(callerUserId: String, callerName: String, txHash: String): Result<Circle> {
+        if (lifecycleStatus != "ACTIVE") {
+            return Result.failure(IllegalStateException("Circle is not active."))
+        }
+        val isEnrolledCaller = members.any { it.userId == callerUserId || (it.userId.isBlank() && it.isYou) }
+        if (!isEnrolledCaller) {
+            return Result.failure(IllegalArgumentException("Only enrolled Circle members can invoke the scheduled payout."))
+        }
+        if (!allCurrentRoundContributionsComplete) {
+            return Result.failure(IllegalStateException("Payout rejected: Not all members have contributed for Round $currentRound."))
+        }
+        if (paidRounds.contains(currentRound)) {
+            return Result.failure(IllegalStateException("Duplicate payout rejected: Round $currentRound has already been paid."))
+        }
+
+        val orderedMembers = members.sortedBy { it.payoutRound }
+        val recipient = orderedMembers.getOrNull(currentRound - 1)
+            ?: return Result.failure(IllegalStateException("Invalid round recipient index."))
+        val exactPayoutAmount = scheduledPayoutAmount
+
+        val paidRound = currentRound
+        val newPaidRounds = (paidRounds + paidRound).distinct()
+        val isAllCompleted = newPaidRounds.size >= orderedMembers.size
+
+        val nextRound = if (isAllCompleted) paidRound else paidRound + 1
+        val nextMembers = orderedMembers.map { m ->
+            val justPaid = m.userId == recipient.userId
+            m.copy(
+                status = if (isAllCompleted) ContributionStatus.PAID else ContributionStatus.PENDING,
+                amount = if (isAllCompleted) contributionPerMonth else 0.0,
+                contributionTxHash = if (isAllCompleted) m.contributionTxHash else "",
+                hasReceivedPayout = m.hasReceivedPayout || justPaid,
+                payoutTxHash = if (justPaid) txHash else m.payoutTxHash
+            )
+        }
+
+        val payoutRecord = CircleTransactionRecord(
+            id = "ctx_${System.currentTimeMillis()}",
+            type = "PAYOUT",
+            title = "Round $paidRound Scheduled Payout → ${recipient.name} (invoked by $callerName)",
+            memberName = recipient.name,
+            memberPhone = recipient.userId,
+            roundNumber = paidRound,
+            amount = exactPayoutAmount,
+            currency = currency,
+            status = "CONFIRMED",
+            txHash = txHash
+        )
+
+        return Result.success(
+            copy(
+                members = nextMembers,
+                savedAmount = if (isAllCompleted) exactPayoutAmount else 0.0,
+                currentRound = nextRound,
+                currentRecipientIndex = (nextRound - 1).coerceAtLeast(0),
+                paidRounds = newPaidRounds,
+                lifecycleStatus = if (isAllCompleted) "COMPLETED" else "ACTIVE",
+                isActive = !isAllCompleted,
+                transactionHistory = listOf(payoutRecord) + transactionHistory
+            )
+        )
+    }
 }
 
 data class CircleMember(
